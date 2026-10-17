@@ -11,6 +11,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { IMPORT_TABLES, ImportError, importExport, runCli } from '../../server/scripts/import-json.ts'
 import { type Db, MIGRATIONS_FOLDER, openDb } from '../../server/src/db/index.ts'
 import { KeySecretStore, type SecretStore } from '../../server/src/secrets.ts'
+import { SEED_STEP_NAMES, compareCounts, renderCounts, seedSteps } from './import_check.ts'
+import { WRITE_STEPS } from './writes.ts'
 
 type Row = Record<string, string | number | boolean | null>
 interface ExportFile {
@@ -492,5 +494,48 @@ describe('runCli', () => {
     const errors: string[] = []
     expect(runCli([], { PLUTUS_SECRET_KEY: KEY }, { log: () => undefined, error: (m) => errors.push(m) })).toBe(2)
     expect(errors.join('\n')).toMatch(/usage/)
+  })
+})
+
+describe('import-check helpers', () => {
+  it('compares per-table counts from Postgres, the export file, and SQLite', () => {
+    const tables = ['accounts', 'goals', 'rules']
+    const result = compareCounts(
+      tables,
+      { accounts: 3, goals: 1, rules: 2 },
+      { accounts: 3, goals: 1, rules: 2 },
+      { accounts: 3, goals: 0 },
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.rows).toEqual([
+      { table: 'accounts', postgres: 3, exported: 3, sqlite: 3, ok: true },
+      { table: 'goals', postgres: 1, exported: 1, sqlite: 0, ok: false },
+      { table: 'rules', postgres: 2, exported: 2, sqlite: null, ok: false },
+    ])
+    expect(compareCounts(['accounts'], { accounts: 1 }, { accounts: 1 }, { accounts: 1 }).ok).toBe(true)
+  })
+
+  it('renders the count table with a verdict per row', () => {
+    const { rows } = compareCounts(['accounts', 'goals'], { accounts: 3, goals: 1 }, { accounts: 3, goals: 1 }, { accounts: 3 })
+    const text = renderCounts(rows)
+
+    expect(text.split('\n')[0]).toMatch(/table\s+postgres\s+export\s+sqlite/)
+    expect(text).toMatch(/accounts\s+3\s+3\s+3\s+equal/)
+    expect(text).toMatch(/goals\s+1\s+1\s+-\s+DIFFERENT/)
+  })
+
+  it('seeds data through existing write steps that fill the tables the demo leaves empty', () => {
+    const steps = seedSteps()
+
+    expect(steps.map((s) => s.name)).toEqual([...SEED_STEP_NAMES])
+    for (const step of steps) expect(WRITE_STEPS).toContain(step)
+    for (const endpoint of ['POST /api/goals', 'POST /api/manual-entries', 'POST /api/categories', 'POST /api/reports/changes/dismiss']) {
+      expect(steps.map((s) => s.endpoint)).toContain(endpoint)
+    }
+    // Nothing that removes what the check wants to carry over: the secret, rules, dismissals.
+    for (const name of ['disconnect SimpleFIN', 'delete a rule', 'clear change dismissals', 'start a sync without a connection']) {
+      expect(SEED_STEP_NAMES).not.toContain(name)
+    }
   })
 })
