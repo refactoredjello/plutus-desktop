@@ -30,8 +30,8 @@ export function stableJson(value: unknown): string {
   let ascii = ''
   for (let i = 0; i < text.length; i++) {
     const code = text.charCodeAt(i)
-    // Python escapes every UTF-16 unit above 0x7f, surrogate halves included.
-    ascii += code > 0x7f ? `\\u${code.toString(16).padStart(4, '0')}` : text.charAt(i)
+    // Python escapes every UTF-16 unit outside printable ASCII: DEL and above, surrogates too.
+    ascii += code > 0x7e ? `\\u${code.toString(16).padStart(4, '0')}` : text.charAt(i)
   }
   return `${ascii}\n`
 }
