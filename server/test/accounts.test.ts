@@ -27,7 +27,7 @@ function snapshot(db: Db, accountId: number, balance: string, asOf: string, avai
 async function list(app: ReturnType<typeof makeApp>['app']): Promise<any[]> {
   const r = await app.request('/api/accounts')
   expect(r.status).toBe(200)
-  return r.json()
+  return (await r.json()) as any[]
 }
 
 it('test_accounts_empty', async () => {
