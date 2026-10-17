@@ -9,8 +9,8 @@ import { orNull, params, responseList } from '../schemas/model.js'
 import { MonthDetail } from '../schemas/month.js'
 import { Month, queryInt } from '../schemas/params.js'
 import { AccountBalanceSeries, CategoryTotal, MonthlySummary } from '../schemas/reports.js'
-import { balanceHistory, monthlySummary, spendingByCategory } from '../services/reports.js'
-import { json, notImplemented } from './openapi.js'
+import { balanceHistory, monthDetail, monthlySummary, spendingByCategory } from '../services/reports.js'
+import { json } from './openapi.js'
 
 const getMonthlySummary = createRoute({
   method: 'get',
@@ -65,7 +65,7 @@ const getBalanceHistory = createRoute({
 
 export function registerReports(app: App): void {
   app.openapi(getMonthlySummary, (c) => c.json(monthlySummary(c.var.db, c.req.valid('query').months), 200))
-  app.openapi(getMonthDetail, notImplemented)
+  app.openapi(getMonthDetail, (c) => c.json(monthDetail(c.var.db, c.req.valid('param').month), 200))
   app.openapi(getSpendingByCategory, (c) => {
     const { month, essentiality } = c.req.valid('query')
     return c.json(spendingByCategory(c.var.db, month, essentiality ?? null), 200)
