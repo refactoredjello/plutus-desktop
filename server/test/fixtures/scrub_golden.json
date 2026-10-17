@@ -1,0 +1,228 @@
+[
+  {
+    "raw": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+    "expected_key": "BLUE BOTTLE COFFEE OAKLAND CA",
+    "must_not_contain": [
+      "4821",
+      "SQ *"
+    ]
+  },
+  {
+    "raw": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+    "expected_key": "NOPA RESTAURANT SAN FRANCISCO CA",
+    "must_not_contain": [
+      "TST*"
+    ]
+  },
+  {
+    "raw": "TRADER JOE S #552 OAKLAND CA",
+    "expected_key": "TRADER JOE S OAKLAND CA",
+    "must_not_contain": [
+      "#552"
+    ]
+  },
+  {
+    "raw": "NETFLIX.COM 866-579-7172 CA",
+    "expected_key": "NETFLIX.COM CA",
+    "must_not_contain": [
+      "866",
+      "7172"
+    ]
+  },
+  {
+    "raw": "SPOTIFY USA 877-778-1161",
+    "expected_key": "SPOTIFY USA",
+    "must_not_contain": [
+      "877",
+      "1161"
+    ]
+  },
+  {
+    "raw": "AMZN Mktp US*2K4LM9TQ1",
+    "expected_key": "AMZN MKTP US",
+    "must_not_contain": [
+      "2K4LM9TQ1"
+    ]
+  },
+  {
+    "raw": "SHELL OIL 57444829203 OAKLAND CA",
+    "expected_key": "SHELL OIL OAKLAND CA",
+    "must_not_contain": [
+      "57444829203"
+    ]
+  },
+  {
+    "raw": "ACME CORP PAYROLL PPD ID: 1234567890",
+    "expected_key": "ACME CORP PAYROLL",
+    "must_not_contain": [
+      "1234567890",
+      "PPD ID"
+    ]
+  },
+  {
+    "raw": "PG&E WEB ONLINE 09/09 PPD ID 0000123456",
+    "expected_key": "PG&E WEB ONLINE",
+    "must_not_contain": [
+      "09/09",
+      "0000123456"
+    ]
+  },
+  {
+    "raw": "ZELLE TO JANE DOE CONF# 8F3K2LQ",
+    "expected_key": "ZELLE TO",
+    "must_not_contain": [
+      "JANE",
+      "DOE",
+      "8F3K2LQ"
+    ]
+  },
+  {
+    "raw": "ZELLE FROM ALEX SAMPLE ON 09/10 REF # PNC0A1B2C3",
+    "expected_key": "ZELLE FROM",
+    "must_not_contain": [
+      "ALEX",
+      "SAMPLE",
+      "09/10",
+      "PNC0A1B2C3"
+    ]
+  },
+  {
+    "raw": "VENMO PAYMENT 1023456789 WEB ID: 3264681992",
+    "expected_key": "VENMO PAYMENT",
+    "must_not_contain": [
+      "1023456789",
+      "3264681992"
+    ]
+  },
+  {
+    "raw": "CHECK # 1042",
+    "expected_key": "CHECK",
+    "must_not_contain": [
+      "1042"
+    ]
+  },
+  {
+    "raw": "PAYMENT TO CHASE CARD ENDING IN 4821",
+    "expected_key": null,
+    "must_not_contain": [
+      "4821"
+    ]
+  },
+  {
+    "raw": "ONLINE TRANSFER TO SAV ...7788 REF #IB0X9Y",
+    "expected_key": null,
+    "must_not_contain": [
+      "7788",
+      "IB0X9Y"
+    ]
+  },
+  {
+    "raw": "PLANET FITNESS CLUB FEES",
+    "expected_key": "PLANET FITNESS CLUB FEES",
+    "must_not_contain": []
+  },
+  {
+    "raw": "CASH APP*JANE DOE",
+    "expected_key": "CASH APP",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "SQC*CASH APP JANE DOE",
+    "expected_key": "CASH APP",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "CASH APP TRANSFER TO JANE DOE",
+    "expected_key": "CASH APP TO",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "APPLE CASH SENT MONEY JANE DOE",
+    "expected_key": "APPLE CASH SENT",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "APPLE CASH BALANCE ADD",
+    "expected_key": "APPLE CASH",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "WIRE TRANSFER TO JANE DOE 20260301",
+    "expected_key": "WIRE TO",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "INCOMING WIRE FROM JANE DOE",
+    "expected_key": "WIRE FROM",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "WIRE TYPE:WIRE IN DATE:260301 BNF:JANE DOE",
+    "expected_key": "WIRE",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "ONLINE TRANSFER TO JANE DOE",
+    "expected_key": "ONLINE TRANSFER TO",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "TRANSFER FROM JANE DOE",
+    "expected_key": "TRANSFER FROM",
+    "must_not_contain": [
+      "JANE",
+      "DOE"
+    ]
+  },
+  {
+    "raw": "ACH ELECTRONIC DEBIT - PAYPAL INST XFER JANEDOE",
+    "expected_key": "ACH ELECTRONIC DEBIT - PAYPAL INST XFER",
+    "must_not_contain": [
+      "JANEDOE"
+    ]
+  },
+  {
+    "raw": "PAYPAL INST XFER JANE DOE 4029357733",
+    "expected_key": "PAYPAL INST XFER",
+    "must_not_contain": [
+      "JANE",
+      "DOE",
+      "4029357733"
+    ]
+  },
+  {
+    "raw": "PAYPAL INSTANT TRANSFER BOB SMITH",
+    "expected_key": "PAYPAL INSTANT TRANSFER",
+    "must_not_contain": [
+      "BOB",
+      "SMITH"
+    ]
+  }
+]

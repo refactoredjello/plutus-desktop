@@ -1,4 +1,4 @@
-.PHONY: help up down logs migrate revision test test-api test-web lint fmt typecheck openapi check password-hash demo-data demo-clear
+.PHONY: help up down logs migrate revision test test-api test-web lint fmt typecheck openapi check check-server dev-server password-hash demo-data demo-clear
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -38,11 +38,17 @@ typecheck: ## mypy strict and tsc
 	cd api && uv run mypy app
 	cd web && npm run typecheck
 
-openapi: ## Regenerate the OpenAPI spec and TypeScript client after schema changes
-	cd api && uv run python -m app.export_openapi ../web/src/api/openapi.json
+openapi: ## Regenerate the OpenAPI spec (from server/) and TypeScript client after schema changes
+	cd server && npm run openapi
 	cd web && npm run gen:api
 
-check: lint typecheck test ## Everything CI runs
+check-server: ## Lint, typecheck, and test the TypeScript server
+	cd server && npm run check
+
+dev-server: ## Run the TypeScript server headless on :8000, serving web/dist
+	cd server && npm run dev
+
+check: lint typecheck test check-server ## Everything CI runs
 
 password-hash: ## Print an argon2 hash for APP_PASSWORD_HASH
 	@cd api && uv run python -c 'import getpass; from argon2 import PasswordHasher; print("APP_PASSWORD_HASH=\x27" + PasswordHasher().hash(getpass.getpass("Password: ")) + "\x27")'

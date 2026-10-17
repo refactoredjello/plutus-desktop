@@ -1,0 +1,3003 @@
+{
+  "errors": [],
+  "accounts": [
+    {
+      "org": {
+        "domain": "examplebank.example",
+        "name": "Example Bank",
+        "sfin-url": "https://beta-bridge.simplefin.org/simplefin"
+      },
+      "id": "ACT-chk-001",
+      "name": "Everyday Checking",
+      "currency": "USD",
+      "balance": "4210.55",
+      "available-balance": "4210.55",
+      "balance-date": 1790769600,
+      "transactions": [
+        {
+          "id": "TRN-100000",
+          "posted": 1772884800,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1772884800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100088",
+          "posted": 1773921600,
+          "amount": "-75.75",
+          "description": "VENMO PAYMENT 1023456789 WEB ID: 3264681992",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1773921600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100001",
+          "posted": 1774094400,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1774094400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100015",
+          "posted": 1775044800,
+          "amount": "-2100.00",
+          "description": "ZELLE TO JANE DOE CONF# 8F3K2LQ",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775044800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100002",
+          "posted": 1775304000,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1775304000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100016",
+          "posted": 1775736000,
+          "amount": "-120.17",
+          "description": "PG&E WEB ONLINE 04/09 PPD ID 0000123456",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775736000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100017",
+          "posted": 1776254400,
+          "amount": "-917.51",
+          "description": "PAYMENT TO CHASE CARD ENDING IN 4821",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776254400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100019",
+          "posted": 1776254400,
+          "amount": "-500.00",
+          "description": "ONLINE TRANSFER TO SAV ...7788 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776254400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100003",
+          "posted": 1776513600,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1776513600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100128",
+          "posted": 1777204800,
+          "amount": "-37.21",
+          "description": "VENMO PAYMENT 1023456789 WEB ID: 3264681992",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777204800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100025",
+          "posted": 1777636800,
+          "amount": "-2100.00",
+          "description": "ZELLE TO JANE DOE CONF# 8F3K2LQ",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777636800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100004",
+          "posted": 1777723200,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1777723200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100026",
+          "posted": 1778328000,
+          "amount": "-97.28",
+          "description": "PG&E WEB ONLINE 05/09 PPD ID 0000123456",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778328000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100027",
+          "posted": 1778846400,
+          "amount": "-1415.53",
+          "description": "PAYMENT TO CHASE CARD ENDING IN 4821",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778846400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100029",
+          "posted": 1778846400,
+          "amount": "-500.00",
+          "description": "ONLINE TRANSFER TO SAV ...7788 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778846400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100005",
+          "posted": 1778932800,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1778932800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100006",
+          "posted": 1780142400,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1780142400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100035",
+          "posted": 1780315200,
+          "amount": "-2100.00",
+          "description": "ZELLE TO JANE DOE CONF# 8F3K2LQ",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1780315200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100036",
+          "posted": 1781006400,
+          "amount": "-134.07",
+          "description": "PG&E WEB ONLINE 06/09 PPD ID 0000123456",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781006400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100007",
+          "posted": 1781352000,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1781352000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100037",
+          "posted": 1781524800,
+          "amount": "-960.86",
+          "description": "PAYMENT TO CHASE CARD ENDING IN 4821",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781524800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100039",
+          "posted": 1781524800,
+          "amount": "-500.00",
+          "description": "ONLINE TRANSFER TO SAV ...7788 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781524800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100008",
+          "posted": 1782561600,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1782561600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100045",
+          "posted": 1782907200,
+          "amount": "-2100.00",
+          "description": "ZELLE TO JANE DOE CONF# 8F3K2LQ",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782907200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100046",
+          "posted": 1783598400,
+          "amount": "-86.64",
+          "description": "PG&E WEB ONLINE 07/09 PPD ID 0000123456",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783598400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100009",
+          "posted": 1783771200,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1783771200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100047",
+          "posted": 1784116800,
+          "amount": "-1053.05",
+          "description": "PAYMENT TO CHASE CARD ENDING IN 4821",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784116800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100049",
+          "posted": 1784116800,
+          "amount": "-500.00",
+          "description": "ONLINE TRANSFER TO SAV ...7788 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784116800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100010",
+          "posted": 1784980800,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1784980800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100055",
+          "posted": 1785585600,
+          "amount": "-2100.00",
+          "description": "ZELLE TO JANE DOE CONF# 8F3K2LQ",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785585600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100011",
+          "posted": 1786190400,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1786190400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100056",
+          "posted": 1786276800,
+          "amount": "-86.46",
+          "description": "PG&E WEB ONLINE 08/09 PPD ID 0000123456",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786276800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100057",
+          "posted": 1786795200,
+          "amount": "-1039.19",
+          "description": "PAYMENT TO CHASE CARD ENDING IN 4821",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786795200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100059",
+          "posted": 1786795200,
+          "amount": "-500.00",
+          "description": "ONLINE TRANSFER TO SAV ...7788 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786795200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100292",
+          "posted": 1787313600,
+          "amount": "-350.00",
+          "description": "CHECK # 1042",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787313600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100012",
+          "posted": 1787400000,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1787400000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100065",
+          "posted": 1788264000,
+          "amount": "-2100.00",
+          "description": "ZELLE TO JANE DOE CONF# 8F3K2LQ",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788264000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100013",
+          "posted": 1788609600,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1788609600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100066",
+          "posted": 1788955200,
+          "amount": "-114.97",
+          "description": "PG&E WEB ONLINE 09/09 PPD ID 0000123456",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788955200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100293",
+          "posted": 1789041600,
+          "amount": "120.00",
+          "description": "ZELLE FROM ALEX SAMPLE ON 09/10 REF # PNC0A1B2C3",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789041600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100067",
+          "posted": 1789473600,
+          "amount": "-1054.31",
+          "description": "PAYMENT TO CHASE CARD ENDING IN 4821",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789473600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100069",
+          "posted": 1789473600,
+          "amount": "-500.00",
+          "description": "ONLINE TRANSFER TO SAV ...7788 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789473600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100273",
+          "posted": 1789473600,
+          "amount": "-24.75",
+          "description": "VENMO PAYMENT 1023456789 WEB ID: 3264681992",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789473600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100014",
+          "posted": 1789819200,
+          "amount": "2850.00",
+          "description": "ACME CORP PAYROLL PPD ID: 1234567890",
+          "payee": "Acme Corp",
+          "memo": "",
+          "transacted_at": 1789819200,
+          "pending": false
+        }
+      ],
+      "holdings": []
+    },
+    {
+      "org": {
+        "domain": "examplecardco.example",
+        "name": "Example Card Co",
+        "sfin-url": "https://beta-bridge.simplefin.org/simplefin"
+      },
+      "id": "ACT-cc-002",
+      "name": "Rewards Visa",
+      "currency": "USD",
+      "balance": "-842.17",
+      "available-balance": "7157.83",
+      "balance-date": 1790769600,
+      "transactions": [
+        {
+          "id": "TRN-100075",
+          "posted": 1772625600,
+          "amount": "-118.64",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1772625600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100076",
+          "posted": 1772712000,
+          "amount": "-4.46",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1772712000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100077",
+          "posted": 1772712000,
+          "amount": "-123.22",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1772712000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100078",
+          "posted": 1772884800,
+          "amount": "-42.98",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1772884800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100079",
+          "posted": 1772884800,
+          "amount": "-31.32",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1772884800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100080",
+          "posted": 1772971200,
+          "amount": "-7.18",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1772971200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100081",
+          "posted": 1773230400,
+          "amount": "-4.16",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1773230400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100082",
+          "posted": 1773316800,
+          "amount": "-7.28",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1773316800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100083",
+          "posted": 1773489600,
+          "amount": "-36.65",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1773489600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100084",
+          "posted": 1773576000,
+          "amount": "-4.32",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1773576000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100085",
+          "posted": 1773662400,
+          "amount": "-7.60",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1773662400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100086",
+          "posted": 1773748800,
+          "amount": "-6.27",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1773748800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100087",
+          "posted": 1773921600,
+          "amount": "-38.90",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1773921600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100089",
+          "posted": 1774008000,
+          "amount": "-145.97",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774008000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100090",
+          "posted": 1774094400,
+          "amount": "-4.35",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774094400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100091",
+          "posted": 1774180800,
+          "amount": "-8.36",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774180800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100092",
+          "posted": 1774267200,
+          "amount": "-8.98",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774267200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100093",
+          "posted": 1774353600,
+          "amount": "-6.94",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774353600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100094",
+          "posted": 1774353600,
+          "amount": "-54.22",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774353600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100095",
+          "posted": 1774353600,
+          "amount": "-57.09",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774353600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100096",
+          "posted": 1774440000,
+          "amount": "-5.19",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774440000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100097",
+          "posted": 1774526400,
+          "amount": "-7.92",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774526400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100098",
+          "posted": 1774612800,
+          "amount": "-7.65",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774612800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100099",
+          "posted": 1774699200,
+          "amount": "-50.92",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774699200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100100",
+          "posted": 1774785600,
+          "amount": "-94.94",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774785600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100101",
+          "posted": 1774958400,
+          "amount": "-4.29",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1774958400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100102",
+          "posted": 1775044800,
+          "amount": "-8.79",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775044800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100103",
+          "posted": 1775131200,
+          "amount": "-60.49",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775131200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100021",
+          "posted": 1775217600,
+          "amount": "-15.49",
+          "description": "NETFLIX.COM 866-579-7172 CA",
+          "payee": "Netflix",
+          "memo": "",
+          "transacted_at": 1775217600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100104",
+          "posted": 1775217600,
+          "amount": "-135.69",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775217600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100105",
+          "posted": 1775217600,
+          "amount": "-41.50",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775217600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100106",
+          "posted": 1775304000,
+          "amount": "-8.45",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775304000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100107",
+          "posted": 1775304000,
+          "amount": "-95.40",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775304000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100108",
+          "posted": 1775390400,
+          "amount": "-108.78",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775390400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100109",
+          "posted": 1775476800,
+          "amount": "-7.76",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775476800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100110",
+          "posted": 1775476800,
+          "amount": "-80.41",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775476800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100111",
+          "posted": 1775476800,
+          "amount": "-29.69",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775476800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100022",
+          "posted": 1775563200,
+          "amount": "-11.99",
+          "description": "SPOTIFY USA 877-778-1161",
+          "payee": "Spotify",
+          "memo": "",
+          "transacted_at": 1775563200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100112",
+          "posted": 1775649600,
+          "amount": "-79.82",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775649600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100113",
+          "posted": 1775736000,
+          "amount": "-57.92",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775736000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100114",
+          "posted": 1775908800,
+          "amount": "-49.83",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775908800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100115",
+          "posted": 1775908800,
+          "amount": "-76.00",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775908800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100116",
+          "posted": 1775995200,
+          "amount": "-7.71",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775995200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100117",
+          "posted": 1775995200,
+          "amount": "-53.65",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1775995200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100118",
+          "posted": 1776254400,
+          "amount": "-7.90",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776254400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100018",
+          "posted": 1776340800,
+          "amount": "917.51",
+          "description": "AUTOMATIC PAYMENT - THANK YOU",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776340800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100119",
+          "posted": 1776340800,
+          "amount": "-73.13",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776340800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100120",
+          "posted": 1776513600,
+          "amount": "-8.36",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776513600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100121",
+          "posted": 1776600000,
+          "amount": "-32.60",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776600000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100023",
+          "posted": 1776686400,
+          "amount": "-24.99",
+          "description": "PLANET FITNESS CLUB FEES",
+          "payee": "Planet Fitness",
+          "memo": "",
+          "transacted_at": 1776686400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100122",
+          "posted": 1776686400,
+          "amount": "-7.21",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776686400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100123",
+          "posted": 1776772800,
+          "amount": "-135.88",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776772800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100124",
+          "posted": 1776859200,
+          "amount": "-7.03",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776859200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100125",
+          "posted": 1776945600,
+          "amount": "-8.63",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776945600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100126",
+          "posted": 1777032000,
+          "amount": "-7.32",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777032000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100127",
+          "posted": 1777118400,
+          "amount": "-6.04",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777118400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100129",
+          "posted": 1777291200,
+          "amount": "-6.90",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777291200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100130",
+          "posted": 1777464000,
+          "amount": "-8.09",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777464000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100131",
+          "posted": 1777550400,
+          "amount": "-6.38",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777550400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100132",
+          "posted": 1777550400,
+          "amount": "-49.51",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777550400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100133",
+          "posted": 1777636800,
+          "amount": "-5.22",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777636800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100134",
+          "posted": 1777636800,
+          "amount": "-61.28",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777636800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100135",
+          "posted": 1777636800,
+          "amount": "-47.29",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777636800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100136",
+          "posted": 1777723200,
+          "amount": "-43.72",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777723200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100031",
+          "posted": 1777809600,
+          "amount": "-15.49",
+          "description": "NETFLIX.COM 866-579-7172 CA",
+          "payee": "Netflix",
+          "memo": "",
+          "transacted_at": 1777809600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100137",
+          "posted": 1777982400,
+          "amount": "-5.30",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777982400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100138",
+          "posted": 1777982400,
+          "amount": "-100.14",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777982400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100139",
+          "posted": 1778068800,
+          "amount": "-5.43",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778068800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100032",
+          "posted": 1778155200,
+          "amount": "-11.99",
+          "description": "SPOTIFY USA 877-778-1161",
+          "payee": "Spotify",
+          "memo": "",
+          "transacted_at": 1778155200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100140",
+          "posted": 1778155200,
+          "amount": "-49.27",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778155200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100141",
+          "posted": 1778241600,
+          "amount": "-8.52",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778241600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100142",
+          "posted": 1778328000,
+          "amount": "-5.76",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778328000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100143",
+          "posted": 1778500800,
+          "amount": "-7.40",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778500800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100144",
+          "posted": 1778587200,
+          "amount": "-5.97",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778587200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100145",
+          "posted": 1778587200,
+          "amount": "-57.50",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778587200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100146",
+          "posted": 1778673600,
+          "amount": "-5.06",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778673600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100147",
+          "posted": 1778760000,
+          "amount": "-4.41",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778760000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100148",
+          "posted": 1778760000,
+          "amount": "-89.34",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778760000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100149",
+          "posted": 1778846400,
+          "amount": "-24.65",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778846400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100028",
+          "posted": 1778932800,
+          "amount": "1415.53",
+          "description": "AUTOMATIC PAYMENT - THANK YOU",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778932800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100150",
+          "posted": 1779105600,
+          "amount": "-5.56",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779105600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100033",
+          "posted": 1779278400,
+          "amount": "-24.99",
+          "description": "PLANET FITNESS CLUB FEES",
+          "payee": "Planet Fitness",
+          "memo": "",
+          "transacted_at": 1779278400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100151",
+          "posted": 1779278400,
+          "amount": "-8.92",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779278400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100152",
+          "posted": 1779364800,
+          "amount": "-8.25",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779364800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100153",
+          "posted": 1779624000,
+          "amount": "-126.98",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779624000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100154",
+          "posted": 1779710400,
+          "amount": "-8.25",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779710400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100155",
+          "posted": 1779710400,
+          "amount": "-53.33",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779710400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100156",
+          "posted": 1779796800,
+          "amount": "-4.05",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779796800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100157",
+          "posted": 1779796800,
+          "amount": "-60.20",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779796800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100158",
+          "posted": 1779969600,
+          "amount": "-6.91",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779969600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100159",
+          "posted": 1780315200,
+          "amount": "-4.07",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1780315200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100160",
+          "posted": 1780401600,
+          "amount": "-8.34",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1780401600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100041",
+          "posted": 1780488000,
+          "amount": "-15.49",
+          "description": "NETFLIX.COM 866-579-7172 CA",
+          "payee": "Netflix",
+          "memo": "",
+          "transacted_at": 1780488000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100161",
+          "posted": 1780488000,
+          "amount": "-4.26",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1780488000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100162",
+          "posted": 1780574400,
+          "amount": "-46.41",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1780574400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100163",
+          "posted": 1780747200,
+          "amount": "-8.30",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1780747200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100042",
+          "posted": 1780833600,
+          "amount": "-11.99",
+          "description": "SPOTIFY USA 877-778-1161",
+          "payee": "Spotify",
+          "memo": "",
+          "transacted_at": 1780833600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100164",
+          "posted": 1780833600,
+          "amount": "-53.21",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1780833600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100165",
+          "posted": 1780920000,
+          "amount": "-6.25",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1780920000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100166",
+          "posted": 1781006400,
+          "amount": "-7.44",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781006400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100167",
+          "posted": 1781092800,
+          "amount": "-6.72",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781092800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100168",
+          "posted": 1781092800,
+          "amount": "-25.77",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781092800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100169",
+          "posted": 1781265600,
+          "amount": "-47.86",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781265600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100170",
+          "posted": 1781352000,
+          "amount": "-4.46",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781352000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100171",
+          "posted": 1781438400,
+          "amount": "-61.47",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781438400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100172",
+          "posted": 1781524800,
+          "amount": "-6.93",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781524800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100038",
+          "posted": 1781611200,
+          "amount": "960.86",
+          "description": "AUTOMATIC PAYMENT - THANK YOU",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781611200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100173",
+          "posted": 1781784000,
+          "amount": "-6.57",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781784000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100174",
+          "posted": 1781870400,
+          "amount": "-7.78",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781870400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100043",
+          "posted": 1781956800,
+          "amount": "-24.99",
+          "description": "PLANET FITNESS CLUB FEES",
+          "payee": "Planet Fitness",
+          "memo": "",
+          "transacted_at": 1781956800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100175",
+          "posted": 1781956800,
+          "amount": "-7.49",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781956800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100176",
+          "posted": 1781956800,
+          "amount": "-137.05",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781956800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100177",
+          "posted": 1782043200,
+          "amount": "-139.15",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782043200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100178",
+          "posted": 1782043200,
+          "amount": "-81.07",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782043200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100179",
+          "posted": 1782302400,
+          "amount": "-7.95",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782302400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100180",
+          "posted": 1782388800,
+          "amount": "-6.93",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782388800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100181",
+          "posted": 1782561600,
+          "amount": "-115.31",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782561600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100182",
+          "posted": 1782561600,
+          "amount": "-61.06",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782561600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100183",
+          "posted": 1782648000,
+          "amount": "-53.69",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782648000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100184",
+          "posted": 1782820800,
+          "amount": "-7.27",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782820800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100185",
+          "posted": 1782820800,
+          "amount": "-81.64",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782820800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100186",
+          "posted": 1782993600,
+          "amount": "-37.39",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782993600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100051",
+          "posted": 1783080000,
+          "amount": "-15.49",
+          "description": "NETFLIX.COM 866-579-7172 CA",
+          "payee": "Netflix",
+          "memo": "",
+          "transacted_at": 1783080000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100187",
+          "posted": 1783080000,
+          "amount": "-57.18",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783080000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100188",
+          "posted": 1783166400,
+          "amount": "-117.58",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783166400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100189",
+          "posted": 1783252800,
+          "amount": "-145.15",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783252800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100190",
+          "posted": 1783339200,
+          "amount": "-80.73",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783339200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100191",
+          "posted": 1783339200,
+          "amount": "-78.78",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783339200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100052",
+          "posted": 1783425600,
+          "amount": "-11.99",
+          "description": "SPOTIFY USA 877-778-1161",
+          "payee": "Spotify",
+          "memo": "",
+          "transacted_at": 1783425600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100192",
+          "posted": 1783425600,
+          "amount": "-78.59",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783425600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100193",
+          "posted": 1783512000,
+          "amount": "-8.23",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783512000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100194",
+          "posted": 1783512000,
+          "amount": "-72.32",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783512000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100195",
+          "posted": 1783684800,
+          "amount": "-56.22",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783684800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100196",
+          "posted": 1783944000,
+          "amount": "-6.20",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1783944000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100197",
+          "posted": 1784030400,
+          "amount": "-4.66",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784030400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100198",
+          "posted": 1784116800,
+          "amount": "-8.12",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784116800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100048",
+          "posted": 1784203200,
+          "amount": "1053.05",
+          "description": "AUTOMATIC PAYMENT - THANK YOU",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784203200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100199",
+          "posted": 1784203200,
+          "amount": "-136.32",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784203200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100200",
+          "posted": 1784289600,
+          "amount": "-106.71",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784289600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100201",
+          "posted": 1784376000,
+          "amount": "-31.41",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784376000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100202",
+          "posted": 1784462400,
+          "amount": "-80.38",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784462400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100053",
+          "posted": 1784548800,
+          "amount": "-24.99",
+          "description": "PLANET FITNESS CLUB FEES",
+          "payee": "Planet Fitness",
+          "memo": "",
+          "transacted_at": 1784548800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100203",
+          "posted": 1784548800,
+          "amount": "-6.04",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784548800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100204",
+          "posted": 1784548800,
+          "amount": "-134.09",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784548800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100205",
+          "posted": 1784548800,
+          "amount": "-85.64",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784548800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100206",
+          "posted": 1784635200,
+          "amount": "-7.35",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784635200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100207",
+          "posted": 1784721600,
+          "amount": "-4.50",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784721600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100208",
+          "posted": 1784721600,
+          "amount": "-42.75",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784721600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100209",
+          "posted": 1784808000,
+          "amount": "-59.00",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784808000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100210",
+          "posted": 1784894400,
+          "amount": "-4.95",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784894400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100211",
+          "posted": 1784894400,
+          "amount": "-123.28",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784894400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100212",
+          "posted": 1784980800,
+          "amount": "-7.93",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784980800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100213",
+          "posted": 1784980800,
+          "amount": "-43.85",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784980800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100214",
+          "posted": 1784980800,
+          "amount": "-132.99",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784980800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100215",
+          "posted": 1785067200,
+          "amount": "-83.25",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785067200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100216",
+          "posted": 1785153600,
+          "amount": "-5.25",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785153600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100217",
+          "posted": 1785153600,
+          "amount": "-102.72",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785153600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100218",
+          "posted": 1785153600,
+          "amount": "-35.52",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785153600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100219",
+          "posted": 1785240000,
+          "amount": "-4.26",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785240000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100220",
+          "posted": 1785326400,
+          "amount": "-85.42",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785326400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100221",
+          "posted": 1785326400,
+          "amount": "-135.07",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785326400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100222",
+          "posted": 1785412800,
+          "amount": "-8.82",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785412800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100223",
+          "posted": 1785412800,
+          "amount": "-82.69",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785412800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100224",
+          "posted": 1785499200,
+          "amount": "-4.40",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785499200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100225",
+          "posted": 1785499200,
+          "amount": "-44.63",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785499200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100226",
+          "posted": 1785585600,
+          "amount": "-70.25",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785585600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100061",
+          "posted": 1785758400,
+          "amount": "-15.49",
+          "description": "NETFLIX.COM 866-579-7172 CA",
+          "payee": "Netflix",
+          "memo": "",
+          "transacted_at": 1785758400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100227",
+          "posted": 1785758400,
+          "amount": "-6.27",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785758400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100228",
+          "posted": 1785758400,
+          "amount": "-49.94",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785758400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100229",
+          "posted": 1785844800,
+          "amount": "-121.49",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785844800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100230",
+          "posted": 1785844800,
+          "amount": "-38.38",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785844800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100062",
+          "posted": 1786104000,
+          "amount": "-11.99",
+          "description": "SPOTIFY USA 877-778-1161",
+          "payee": "Spotify",
+          "memo": "",
+          "transacted_at": 1786104000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100231",
+          "posted": 1786104000,
+          "amount": "-102.24",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786104000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100232",
+          "posted": 1786276800,
+          "amount": "-67.52",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786276800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100233",
+          "posted": 1786363200,
+          "amount": "-145.03",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786363200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100234",
+          "posted": 1786449600,
+          "amount": "-7.17",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786449600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100235",
+          "posted": 1786449600,
+          "amount": "-112.07",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786449600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100236",
+          "posted": 1786536000,
+          "amount": "-25.07",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786536000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100237",
+          "posted": 1786708800,
+          "amount": "-77.29",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786708800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100238",
+          "posted": 1786795200,
+          "amount": "-5.98",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786795200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100239",
+          "posted": 1786795200,
+          "amount": "-45.55",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786795200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100058",
+          "posted": 1786881600,
+          "amount": "1039.19",
+          "description": "AUTOMATIC PAYMENT - THANK YOU",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786881600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100240",
+          "posted": 1786881600,
+          "amount": "-4.04",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786881600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100241",
+          "posted": 1786968000,
+          "amount": "-65.16",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786968000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100242",
+          "posted": 1786968000,
+          "amount": "-47.16",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786968000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100243",
+          "posted": 1787054400,
+          "amount": "-13.73",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787054400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100244",
+          "posted": 1787140800,
+          "amount": "-82.09",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787140800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100063",
+          "posted": 1787227200,
+          "amount": "-24.99",
+          "description": "PLANET FITNESS CLUB FEES",
+          "payee": "Planet Fitness",
+          "memo": "",
+          "transacted_at": 1787227200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100245",
+          "posted": 1787313600,
+          "amount": "-6.55",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787313600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100246",
+          "posted": 1787313600,
+          "amount": "-86.09",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787313600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100247",
+          "posted": 1787400000,
+          "amount": "-46.11",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787400000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100248",
+          "posted": 1787486400,
+          "amount": "-7.86",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787486400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100249",
+          "posted": 1787659200,
+          "amount": "-6.21",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787659200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100250",
+          "posted": 1787659200,
+          "amount": "-103.34",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787659200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100251",
+          "posted": 1787745600,
+          "amount": "-8.16",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787745600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100252",
+          "posted": 1787745600,
+          "amount": "-125.07",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787745600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100253",
+          "posted": 1787918400,
+          "amount": "-6.38",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787918400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100254",
+          "posted": 1787918400,
+          "amount": "-36.81",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787918400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100255",
+          "posted": 1788004800,
+          "amount": "-57.25",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788004800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100256",
+          "posted": 1788091200,
+          "amount": "-5.41",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788091200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100257",
+          "posted": 1788177600,
+          "amount": "-4.47",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788177600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100071",
+          "posted": 1788436800,
+          "amount": "-15.49",
+          "description": "NETFLIX.COM 866-579-7172 CA",
+          "payee": "Netflix",
+          "memo": "",
+          "transacted_at": 1788436800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100258",
+          "posted": 1788609600,
+          "amount": "-8.74",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788609600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100259",
+          "posted": 1788609600,
+          "amount": "-82.09",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788609600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100260",
+          "posted": 1788696000,
+          "amount": "-83.73",
+          "description": "TST* NOPA RESTAURANT SAN FRANCISCO CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788696000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100072",
+          "posted": 1788782400,
+          "amount": "-11.99",
+          "description": "SPOTIFY USA 877-778-1161",
+          "payee": "Spotify",
+          "memo": "",
+          "transacted_at": 1788782400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100261",
+          "posted": 1788782400,
+          "amount": "-4.81",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788782400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100262",
+          "posted": 1788868800,
+          "amount": "-7.38",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788868800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100263",
+          "posted": 1788868800,
+          "amount": "-78.86",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788868800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100264",
+          "posted": 1788955200,
+          "amount": "-8.04",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1788955200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100265",
+          "posted": 1789041600,
+          "amount": "-5.41",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789041600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100266",
+          "posted": 1789128000,
+          "amount": "-5.25",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789128000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100267",
+          "posted": 1789128000,
+          "amount": "-82.21",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789128000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100268",
+          "posted": 1789214400,
+          "amount": "-7.82",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789214400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100269",
+          "posted": 1789300800,
+          "amount": "-6.26",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789300800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100270",
+          "posted": 1789300800,
+          "amount": "-36.86",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789300800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100271",
+          "posted": 1789387200,
+          "amount": "-4.14",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789387200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100272",
+          "posted": 1789473600,
+          "amount": "-8.15",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789473600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100068",
+          "posted": 1789560000,
+          "amount": "1054.31",
+          "description": "AUTOMATIC PAYMENT - THANK YOU",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789560000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100274",
+          "posted": 1789560000,
+          "amount": "-8.17",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789560000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100275",
+          "posted": 1789560000,
+          "amount": "-35.91",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789560000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100276",
+          "posted": 1789646400,
+          "amount": "-6.10",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789646400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100277",
+          "posted": 1789732800,
+          "amount": "-6.58",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789732800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100278",
+          "posted": 1789732800,
+          "amount": "-45.79",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789732800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100279",
+          "posted": 1789819200,
+          "amount": "-137.21",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789819200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100280",
+          "posted": 1789819200,
+          "amount": "-53.41",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789819200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100073",
+          "posted": 1789905600,
+          "amount": "-24.99",
+          "description": "PLANET FITNESS CLUB FEES",
+          "payee": "Planet Fitness",
+          "memo": "",
+          "transacted_at": 1789905600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100281",
+          "posted": 1789905600,
+          "amount": "-6.35",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789905600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100282",
+          "posted": 1789905600,
+          "amount": "-77.45",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789905600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100283",
+          "posted": 1790164800,
+          "amount": "-62.17",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790164800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100284",
+          "posted": 1790251200,
+          "amount": "-4.21",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790251200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100285",
+          "posted": 1790337600,
+          "amount": "-69.27",
+          "description": "TRADER JOE S #552 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790337600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100286",
+          "posted": 1790424000,
+          "amount": "-8.45",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790424000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100287",
+          "posted": 1790510400,
+          "amount": "-8.62",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790510400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100288",
+          "posted": 1790510400,
+          "amount": "-62.00",
+          "description": "AMZN Mktp US*2K4LM9TQ1",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790510400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100289",
+          "posted": 1790596800,
+          "amount": "-58.13",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790596800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100290",
+          "posted": 1790683200,
+          "amount": "-65.45",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790683200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100291",
+          "posted": 1790769600,
+          "amount": "-57.31",
+          "description": "SHELL OIL 57444829203 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790769600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100294",
+          "posted": 0,
+          "amount": "-6.75",
+          "description": "SQ *BLUE BOTTLE COFFEE 4821 OAKLAND CA",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790769600,
+          "pending": true
+        }
+      ],
+      "holdings": []
+    },
+    {
+      "org": {
+        "domain": "examplebank.example",
+        "name": "Example Bank",
+        "sfin-url": "https://beta-bridge.simplefin.org/simplefin"
+      },
+      "id": "ACT-sav-003",
+      "name": "High Yield Savings",
+      "currency": "USD",
+      "balance": "12650.40",
+      "available-balance": "12650.40",
+      "balance-date": 1790769600,
+      "transactions": [
+        {
+          "id": "TRN-100020",
+          "posted": 1776254400,
+          "amount": "500.00",
+          "description": "ONLINE TRANSFER FROM CHK ...1234 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1776254400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100024",
+          "posted": 1777377600,
+          "amount": "2.05",
+          "description": "INTEREST PAYMENT",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1777377600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100030",
+          "posted": 1778846400,
+          "amount": "500.00",
+          "description": "ONLINE TRANSFER FROM CHK ...1234 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1778846400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100034",
+          "posted": 1779969600,
+          "amount": "2.85",
+          "description": "INTEREST PAYMENT",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1779969600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100040",
+          "posted": 1781524800,
+          "amount": "500.00",
+          "description": "ONLINE TRANSFER FROM CHK ...1234 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1781524800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100044",
+          "posted": 1782648000,
+          "amount": "2.34",
+          "description": "INTEREST PAYMENT",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1782648000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100050",
+          "posted": 1784116800,
+          "amount": "500.00",
+          "description": "ONLINE TRANSFER FROM CHK ...1234 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1784116800,
+          "pending": false
+        },
+        {
+          "id": "TRN-100054",
+          "posted": 1785240000,
+          "amount": "2.51",
+          "description": "INTEREST PAYMENT",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1785240000,
+          "pending": false
+        },
+        {
+          "id": "TRN-100060",
+          "posted": 1786795200,
+          "amount": "500.00",
+          "description": "ONLINE TRANSFER FROM CHK ...1234 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1786795200,
+          "pending": false
+        },
+        {
+          "id": "TRN-100064",
+          "posted": 1787918400,
+          "amount": "2.80",
+          "description": "INTEREST PAYMENT",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1787918400,
+          "pending": false
+        },
+        {
+          "id": "TRN-100070",
+          "posted": 1789473600,
+          "amount": "500.00",
+          "description": "ONLINE TRANSFER FROM CHK ...1234 REF #IB0X9Y",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1789473600,
+          "pending": false
+        },
+        {
+          "id": "TRN-100074",
+          "posted": 1790596800,
+          "amount": "2.68",
+          "description": "INTEREST PAYMENT",
+          "payee": "",
+          "memo": "",
+          "transacted_at": 1790596800,
+          "pending": false
+        }
+      ],
+      "holdings": []
+    }
+  ]
+}
