@@ -114,7 +114,7 @@ describe('samples', () => {
   })
 
   it('exercise non-ASCII text, which json.dumps escapes by default', () => {
-    expect(JSON.stringify(SAMPLES)).toMatch(/[^\u0000-\u007f]/)
+    expect([...JSON.stringify(SAMPLES)].some((ch) => ch.charCodeAt(0) > 127)).toBe(true)
   })
 })
 
