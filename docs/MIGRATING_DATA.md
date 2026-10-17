@@ -4,9 +4,9 @@ The Docker app keeps everything in Postgres. The desktop app (and the headless T
 server) keeps everything in one SQLite file. Moving over takes two commands: export from
 Postgres to a JSON file, then import that file into a new SQLite database.
 
-> **The export file holds your SimpleFIN access URL in clear text.** That URL is a password:
-> anyone who has it can read your bank data. The file also holds every transaction, note, and
-> balance. Keep it on your own machine, never commit, email, or upload it, and **delete it
+> **The export file holds your SimpleFIN access URL and your Anthropic API key in clear
+> text.** The URL is a password: anyone who has it can read your bank data. The key lets anyone
+> spend on your Anthropic account. The file also holds every transaction, note, and balance. Keep it on your own machine, never commit, email, or upload it, and **delete it
 > as soon as the import has succeeded** (step 5).
 
 ## What moves
@@ -16,9 +16,10 @@ one-time marks, categorizations, your categories (including custom and hidden on
 cached merchant classifications, recurring charges, manual entries, goals, suggestions, sync
 history, dismissed "What changed" items, and the SimpleFIN connection.
 
-What does not move: settings that lived in the Docker app's `.env` (LLM provider, model,
-Anthropic API key, Ollama URL, owner name tokens, sync interval, first-sync history). Set them
-again in the new app's Settings page after the import (step 6).
+The settings that lived in the Docker app's `.env` move too: LLM provider, model, Anthropic
+API key, Ollama URL, owner name tokens, sync interval, first-sync history, and whether the
+scheduler runs. They land in the new app's settings, where the Settings page can change them;
+the new app's own defaults never override them.
 
 ## 1. Stop syncing
 
@@ -54,8 +55,10 @@ The import needs a database that holds nothing yet. It refuses anything else, so
 merge into or overwrite existing data.
 
 - **Desktop app:** the file is `~/Library/Application Support/Plutus/plutus.sqlite` on macOS.
-  Quit the app first. If you have opened it before but have nothing in it you want, move that
-  folder aside; opening the app writes default settings, and the import then refuses the file.
+  Quit the app first. A desktop that was opened but never synced or edited is fine: the
+  default settings it wrote on first launch are replaced by yours. Anything more (a
+  transaction, a rule, a SimpleFIN connection) and the import refuses the file; move that
+  folder aside if you don't need what is in it.
 - **Headless server:** the file is `PLUTUS_DB_PATH`, or `plutus.sqlite` in `PLUTUS_DATA_DIR`
   (default `~/.plutus`).
 
@@ -68,7 +71,7 @@ PLUTUS_SECRET_KEY='<the key the new server will use>' \
   node_modules/.bin/tsx server/scripts/import-json.ts plutus-export.json --db <path to plutus.sqlite>
 ```
 
-`PLUTUS_SECRET_KEY` re-encrypts the SimpleFIN URL in the new database. It must be the key the
+`PLUTUS_SECRET_KEY` re-encrypts the SimpleFIN URL and the API key in the new database. It must be the key the
 headless server runs with; pick a new long random value, not the Docker `SECRET_KEY`. Without
 `--db`, the target is `PLUTUS_DB_PATH`, else `PLUTUS_DATA_DIR/plutus.sqlite`.
 
@@ -76,9 +79,10 @@ The import runs in one transaction: it either imports everything or writes nothi
 committing it checks that every table has exactly as many rows as the file. Compare its count
 table with the one from step 2.
 
-**Desktop app and the SimpleFIN connection.** The desktop encrypts secrets with the macOS
-Keychain, not with `PLUTUS_SECRET_KEY`, so it cannot read a URL this command encrypted. All
-your data imports, but the desktop will ask you to reconnect SimpleFIN. An import from inside
+**Desktop app and the secrets.** The desktop encrypts secrets with the macOS Keychain, not
+with `PLUTUS_SECRET_KEY`, so it cannot read the URL or the API key this command encrypted.
+All your data and settings import, but the desktop will ask you to reconnect SimpleFIN and
+to enter the API key again. An import from inside
 the desktop app that uses the Keychain is planned (brief 5B in `docs/DESKTOP_PLAN.md`); wait
 for it if you want the connection to carry over.
 
@@ -90,23 +94,28 @@ rm plutus-export.json
 
 Also empty it from the trash if you moved it there, and delete any copy you made.
 
-## 6. Check, then set your settings
+## 6. Check
 
 Start the new app and compare a few pages with the Docker app: the dashboard, a month's
-transactions, recurring charges, goals. Then open Settings and set the LLM provider, model,
-API key, and **owner name tokens** you had in `.env`. The owner name tokens decide how new
-transactions are cleaned up into merchant names; if they differ from before, new transactions
-stop matching your rules, cached categories, and recurring charges.
+transactions, recurring charges, goals. Open Settings and check the LLM provider and the
+**owner name tokens**. The owner name tokens decide how new transactions are cleaned up into
+merchant names; if they differ from before, new transactions stop matching your rules, cached
+categories, and recurring charges.
+
+The headless server applies any of these settings set in its environment (`LLM_PROVIDER`,
+`OWNER_NAME_TOKENS`, and so on) at every start, over the imported values. Leave them unset
+to keep what you imported.
 
 Keep the Docker stack and its database volume until you are satisfied. Nothing in this process
 changes them.
 
 ## Format notes
 
-The file is JSON: `format` (`plutus-export`), `format_version` (1), `alembic_revision` (the
+The file is JSON: `format` (`plutus-export`), `format_version` (2), `alembic_revision` (the
 Python schema it came from; the importer reads `0006`), `exported_at`, `sequences` (the
-highest id each table ever handed out, so the new database never reuses an id), and `tables`
-(every row, in an order where parents come before children). Money is a two-decimal string,
+highest id each table ever handed out, so the new database never reuses an id),
+`runtime_config` (the `.env` settings, keyed like the Settings API, the API key in clear text
+or null), and `tables` (every row, in an order where parents come before children). Money is a two-decimal string,
 dates are `YYYY-MM-DD`, timestamps are ISO 8601 in UTC. The importer stores money as integer
 cents and timestamps in the server's format (UTC, milliseconds, `Z`); microseconds are cut
 to milliseconds.
