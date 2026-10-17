@@ -596,4 +596,38 @@ describe('formatting (values printed by Python)', () => {
   it('capwords splits on whitespace runs and capitalises each word', () => {
     expect(changes.capwords("  hello   wORLD\tfoo-bar o'neil ".toLowerCase())).toBe("Hello World Foo-bar O'neil")
   })
+
+  // [input, string.capwords(input.lower()), string.capwords(input)], printed by Python 3.14
+  // (Unicode 16): str.capitalize title-cases the first character and lowers the rest.
+  it.each([
+    ['\u00dftra\u00dfe x', 'Sstra\u00dfe X', 'Sstra\u00dfe X'],
+    ['\u01c6emal \u01c4EMAL', '\u01c5emal \u01c5emal', '\u01c5emal \u01c5emal'],
+    ['\u01c9ubljana \u01ccjegos \u01f3wonimir', '\u01c8ubljana \u01cbjegos \u01f2wonimir', '\u01c8ubljana \u01cbjegos \u01f2wonimir'],
+    ['\ufb01sh \ufb00 \ufb06op', 'Fish Ff Stop', 'Fish Ff Stop'],
+    ['\u10d0\u10d1 \u10fb', '\u10d0\u10d1 \u10fb', '\u10d0\u10d1 \u10fb'],
+    ['\u1fb3x \u1f80y \u1fb2', '\u1fbcx \u1f88y \u1fba\u0345', '\u1fbcx \u1f88y \u1fba\u0345'],
+    ['\u0587 \u0149x', '\u0535\u0582 \u02bcNx', '\u0535\u0582 \u02bcNx'],
+    ['\u0391\u03a3 \u03a3\u0391 \u0391\u03a3\u0391', '\u0391\u03c2 \u03a3\u03b1 \u0391\u03c3\u03b1', '\u0391\u03c2 \u03a3\u03b1 \u0391\u03c3\u03b1'],
+    ['\ua7cf\ua7ce \u{16ebb}\u{16ea0}', '\ua7cf\ua7ce \u{16ebb}\u{16ea0}', '\ua7cf\ua7ce \u{16ebb}\u{16ea0}'],
+    ['\u0130stanbul', 'I\u0307stanbul', '\u0130stanbul'],
+    ['\u0130I', 'I\u0307i', '\u0130i'],
+  ])('capwords matches Python on %j', (input, ofLowered, direct) => {
+    expect(changes.capwords(changes.pyLower(input))).toBe(ofLowered)
+    expect(changes.capwords(input)).toBe(direct)
+  })
+
+  // [input, input.lower()], printed by Python 3.14: final sigma and Unicode 16 casing.
+  it.each([
+    ['\u0391\u03a3', '\u03b1\u03c2'],
+    ['\u03a3', '\u03c3'],
+    ['\u0391\u03a3\u0391', '\u03b1\u03c3\u03b1'],
+    ["\u0391'\u03a3", "\u03b1'\u03c2"],
+    ['\u0391\u03a3\u0301', '\u03b1\u03c2\u0301'],
+    ['\u0391\u03a3\u0301\u0391', '\u03b1\u03c3\u0301\u03b1'],
+    ['\u02b0\u03a3', '\u02b0\u03c3'],
+    ['\ua7ce\u{16ea0}X', '\ua7ce\u{16ea0}x'],
+    ['A\u03a3 \u03a3', 'a\u03c2 \u03c3'],
+  ])('pyLower matches str.lower on %j', (input, lowered) => {
+    expect(changes.pyLower(input)).toBe(lowered)
+  })
 })
