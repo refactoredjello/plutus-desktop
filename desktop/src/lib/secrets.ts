@@ -13,9 +13,11 @@ export interface SafeStorageLike {
   decryptString(encrypted: Buffer): string
 }
 
+const UNAVAILABLE = 'OS encryption is not available'
+
 export class OsEncryptionUnavailableError extends Error {
   constructor() {
-    super('OS encryption is not available; refusing to store secrets in plain text')
+    super(`${UNAVAILABLE}; refusing to store secrets in plain text`)
     this.name = 'OsEncryptionUnavailableError'
   }
 }
@@ -29,7 +31,7 @@ export class SafeStorageSecretStore implements SecretStore {
   }
 
   encrypt(plain: string): string {
-    this.#requireAvailable()
+    if (!this.#safeStorage.isEncryptionAvailable()) throw new OsEncryptionUnavailableError()
     let encrypted: Buffer
     try {
       encrypted = this.#safeStorage.encryptString(plain)
@@ -39,8 +41,9 @@ export class SafeStorageSecretStore implements SecretStore {
     return encrypted.toString('base64')
   }
 
+  /** Every failure is a SecretDecryptError, which the settings service reports as a 400. */
   decrypt(blob: string): string {
-    this.#requireAvailable()
+    if (!this.#safeStorage.isEncryptionAvailable()) throw new SecretDecryptError(UNAVAILABLE)
     const raw = Buffer.from(blob, 'base64')
     if (raw.length === 0 || raw.toString('base64') !== blob) throw new SecretDecryptError()
     try {
@@ -48,9 +51,5 @@ export class SafeStorageSecretStore implements SecretStore {
     } catch {
       throw new SecretDecryptError()
     }
-  }
-
-  #requireAvailable(): void {
-    if (!this.#safeStorage.isEncryptionAvailable()) throw new OsEncryptionUnavailableError()
   }
 }
