@@ -42,6 +42,17 @@ Listed in every report (`ruleNotes()` in `endpoints.ts`); the code is `normalize
 not covered here is a finding: classify it as a port bug, a Python bug, or an accepted
 difference, and give it to the owning brief.
 
+## Import check
+
+`make import-check` (not part of `make check`) tests the Postgres export and SQLite import of
+brief 2D end to end: it recreates `plutus_export`, loads the demo data, stores a fake
+encrypted SimpleFIN URL, runs the write steps that fill the tables the demo leaves empty,
+exports with `python -m app.export_json`, imports with `server/scripts/import-json.ts`, and
+compares per-table row counts (Postgres, file, SQLite) and `GET /api/reports/monthly` between
+the Python API and the TypeScript server on the imported file. `--all-gets` (run
+`node_modules/.bin/tsx tools/parity/import_check.ts --all-gets`) also prints every parity GET
+for information. The importer's unit tests are `import.test.ts`.
+
 ## Data
 
 Fake demo data only (`api/tests/fixtures/simplefin_accounts.json`). Never point the harness at
