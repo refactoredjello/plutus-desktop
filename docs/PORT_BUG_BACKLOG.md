@@ -46,3 +46,11 @@ Each entry names the brief that found it and where it lives in the TypeScript po
 
 22. A goal that is already reached can show "not on track" when recent monthly net is negative.
 23. Marking one occurrence of a recurring planned entry as paid hides all its future occurrences from the projection.
+
+## What changed (brief 3B)
+
+24. S9 uses the projection, which reads the real "today", not the `today` passed to `compute`, so computing for another day gives an S9 for the wrong day.
+25. `merchant_label` orders by `posted_on desc` with no tiebreak, so with two payees on the same day the label is arbitrary.
+26. S4 builds "usual" from the span between the first and last active month, so inactive months in between are included; this matters only when a month's spending nets to zero.
+27. S7's "biggest" item is taken from at most 500 of the newest review rows, while its total counts every row.
+28. S5's "seen before" and S6's "similar before" count pending and transfer transactions.
