@@ -237,7 +237,7 @@ export const WRITE_STEPS: readonly WriteStep[] = [
       body: { name: 'Parity emergency fund', target_amount: '6000.00', target_date: addDays(today, 365) },
     }),
     capture: captureId('goalId'),
-    reread: (state) => ['/api/goals', ...(state.goalId == null ? [] : [`/api/goals/${state.goalId ?? "none"}`])],
+    reread: (state) => ['/api/goals', ...(state.goalId == null ? [] : [`/api/goals/${state.goalId}`])],
   },
   {
     name: 'reject a goal dated today',
