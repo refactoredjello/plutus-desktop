@@ -27,8 +27,11 @@ import { type Logger, createLogger } from '../src/lib/log.js'
 import { cents } from '../src/lib/money.js'
 import { type ClaudeClient, ClaudeProvider, MAX_TOKENS } from '../src/providers/llm/claude.js'
 import { FakeLLMProvider } from '../src/providers/llm/fake.js'
+import { OllamaProvider } from '../src/providers/llm/ollama.js'
 import {
+  CLASSIFICATION_BATCH_JSON_SCHEMA,
   ClassificationBatch,
+  SUGGESTION_BATCH_JSON_SCHEMA,
   SuggestionBatch,
   classifySystemPrompt,
   classifyUserMessage,
@@ -389,5 +392,80 @@ describe('ClaudeProvider over the real SDK', () => {
       throw new TypeError('fetch failed')
     })
     expect((await providerError(down.provider.classifyMerchants(ITEMS))).detail).toBe('Could not reach the Claude API')
+  })
+})
+
+// --- Ollama -----------------------------------------------------------------------------------
+
+function ollama(handler: (request: Request) => Response | Promise<Response>, requests?: Request[]): OllamaProvider {
+  return new OllamaProvider('http://ollama.test:11434/', 'llama3.1', mockFetch(handler, requests))
+}
+
+describe('OllamaProvider', () => {
+  it('sends the chat request and parses the reply', async () => {
+    const seen: Request[] = []
+    const handler = () => Response.json({ message: { role: 'assistant', content: JSON.stringify(RESULT) } })
+    const out = await ollama(handler, seen).classifyMerchants(ITEMS)
+    const request = seen[0] as Request
+    expect(request.url).toBe('http://ollama.test:11434/api/chat')
+    expect(request.method).toBe('POST')
+    expect(request.headers.get('content-type')).toBe('application/json')
+    expect(request.redirect).toBe('manual')
+    const body = (await request.json()) as Record<string, unknown>
+    expect(body.model).toBe('llama3.1')
+    expect(body.stream).toBe(false)
+    expect(body.format).toEqual(CLASSIFICATION_BATCH_JSON_SCHEMA)
+    expect(body.options).toEqual({ temperature: 0 })
+    const messages = body.messages as { role: string; content: string }[]
+    expect(messages[0]).toEqual({ role: 'system', content: classifySystemPrompt() })
+    expect(messages[1]).toEqual({ role: 'user', content: classifyUserMessage(ITEMS) })
+    expect(messages[1]?.content).toContain('ACME CORP PAYROLL')
+    expect(out.map((c) => c.detailed_category)).toEqual(['FOOD_AND_DRINK_COFFEE', 'INCOME_SALARY'])
+  })
+
+  it('suggests savings', async () => {
+    const content = JSON.stringify({ suggestions: [{ text: 'Trim dining.', category_label: null, estimated_monthly_saving: 20 }] })
+    const seen: Request[] = []
+    const out = await ollama(() => Response.json({ message: { content } }), seen).suggestSavings(CONTEXT)
+    const body = (await seen[0]?.json()) as Record<string, unknown>
+    expect(body.format).toEqual(SUGGESTION_BATCH_JSON_SCHEMA)
+    expect((body.messages as { content: string }[])[0]?.content).toBe(savingsSystemPrompt())
+    expect(out[0]?.estimated_monthly_saving).toBe(2000)
+  })
+
+  it('makes no call for an empty batch', async () => {
+    const seen: Request[] = []
+    expect(await ollama(() => Response.json({}), seen).classifyMerchants([])).toEqual([])
+    expect(seen).toHaveLength(0)
+  })
+
+  it.each([
+    ['HTTP 500', () => new Response('boom', { status: 500 }), 'Ollama returned status 500'],
+    ['a redirect', () => new Response(null, { status: 301, headers: { location: 'http://x/' } }), 'Ollama returned status 301'],
+    ['not JSON', () => new Response('not json'), 'Ollama returned an unusable response'],
+    ['an empty object', () => Response.json({ message: { content: '{}' } }), 'Ollama returned an unusable response'],
+    [
+      'missing fields',
+      () => Response.json({ message: { content: '{"items": [{"merchant_key": "X"}]}' } }),
+      'Ollama returned an unusable response',
+    ],
+    ['no message', () => Response.json({ unexpected: true }), 'Ollama returned an unusable response'],
+    ['a null message', () => Response.json({ message: null }), 'Ollama returned an unusable response'],
+    ['a list', () => Response.json([{ message: { content: '{}' } }]), 'Ollama returned an unusable response'],
+    ['non-string content', () => Response.json({ message: { content: RESULT } }), 'Ollama returned an unusable response'],
+    ['content that is not JSON', () => Response.json({ message: { content: 'sure!' } }), 'Ollama returned an unusable response'],
+  ] as const)('raises ProviderError for %s', async (_name, handler, detail) => {
+    expect((await providerError(ollama(handler).classifyMerchants(ITEMS))).detail).toBe(detail)
+  })
+
+  it('raises ProviderError when Ollama cannot be reached', async () => {
+    const refused = () => {
+      throw new TypeError('fetch failed')
+    }
+    expect((await providerError(ollama(refused).classifyMerchants(ITEMS))).detail).toBe('Could not reach Ollama')
+    const slow = () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+    }
+    expect((await providerError(ollama(slow).suggestSavings(CONTEXT))).detail).toBe('Could not reach Ollama')
   })
 })
