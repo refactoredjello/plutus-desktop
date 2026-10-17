@@ -1,0 +1,16 @@
+{
+  "name": "plutus",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "web",
+    "server",
+    "desktop"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "check": "npm run lint --workspaces --if-present && npm run typecheck --workspaces --if-present && npm run test --workspaces --if-present"
+  }
+}
