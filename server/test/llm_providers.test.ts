@@ -19,7 +19,8 @@ import Anthropic, {
   RateLimitError,
   UnprocessableEntityError,
 } from '@anthropic-ai/sdk'
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { ProviderError } from '../src/lib/errors.js'
 import { type Logger, createLogger } from '../src/lib/log.js'
@@ -35,6 +36,17 @@ import {
 } from '../src/providers/llm/prompts.js'
 import type { MerchantInput, SavingsContext } from '../src/providers/llm/types.js'
 import { mockFetch } from './factories.js'
+import { FIXTURES } from './setup.js'
+
+/**
+ * What the Python SDK's messages.parse(output_format=Model) sends as output_config.format.schema
+ * (anthropic's transform_schema over pydantic's schema), snapshotted in llm_prompts.json.
+ */
+const PY_SCHEMAS = (
+  JSON.parse(readFileSync(join(FIXTURES, 'llm_prompts.json'), 'utf8')) as {
+    claude_output_schemas: { ClassificationBatch: unknown; SuggestionBatch: unknown }
+  }
+).claude_output_schemas
 
 const ITEMS: MerchantInput[] = [
   { merchant_key: 'BLUE BOTTLE COFFEE OAKLAND CA', amount_bucket: '<10', direction: 'outflow', account_kind: 'credit' },
@@ -195,7 +207,7 @@ describe('ClaudeProvider', () => {
     expect(kwargs.max_tokens).toBe(MAX_TOKENS)
     expect(MAX_TOKENS).toBe(8000)
     expect(kwargs.output_config.format.type).toBe('json_schema')
-    expect(kwargs.output_config.format.schema).toEqual(zodOutputFormat(ClassificationBatch).schema)
+    expect(kwargs.output_config.format.schema).toEqual(PY_SCHEMAS.ClassificationBatch)
     expect(kwargs).not.toHaveProperty('thinking')
     const system = kwargs.system
     expect(system[0]?.text).toBe(classifySystemPrompt())
@@ -279,7 +291,7 @@ describe('ClaudeProvider', () => {
     const out = await provider.suggestSavings(CONTEXT)
 
     const kwargs = call(parse)
-    expect(kwargs.output_config.format.schema).toEqual(zodOutputFormat(SuggestionBatch).schema)
+    expect(kwargs.output_config.format.schema).toEqual(PY_SCHEMAS.SuggestionBatch)
     expect(kwargs.system[0]?.text).toBe(savingsSystemPrompt())
     expect(kwargs.system[0]?.cache_control).toEqual({ type: 'ephemeral' })
     const user = kwargs.messages[0]?.content ?? ''
@@ -348,9 +360,10 @@ describe('ClaudeProvider over the real SDK', () => {
       max_tokens: 8000,
       system: [{ type: 'text', text: classifySystemPrompt(), cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: classifyUserMessage(ITEMS) }],
-      output_config: { format: { type: 'json_schema' } },
+      output_config: { format: { type: 'json_schema', schema: PY_SCHEMAS.ClassificationBatch } },
     })
     expect(sent).not.toHaveProperty('thinking')
+    expect(sent.output_config).toEqual({ format: { type: 'json_schema', schema: PY_SCHEMAS.ClassificationBatch } })
   })
 
   it('reports output that fails validation', async () => {

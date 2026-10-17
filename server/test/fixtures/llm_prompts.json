@@ -122,6 +122,132 @@
     "title": "SuggestionBatch",
     "type": "object"
   },
+  "claude_output_schemas": {
+    "ClassificationBatch": {
+      "$defs": {
+        "ClassifiedMerchant": {
+          "type": "object",
+          "title": "ClassifiedMerchant",
+          "properties": {
+            "merchant_key": {
+              "type": "string",
+              "title": "Merchant Key"
+            },
+            "detailed_category": {
+              "type": "string",
+              "title": "Detailed Category"
+            },
+            "essentiality": {
+              "$ref": "#/$defs/Essentiality"
+            },
+            "confidence": {
+              "$ref": "#/$defs/Confidence"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "merchant_key",
+            "detailed_category",
+            "essentiality",
+            "confidence"
+          ]
+        },
+        "Confidence": {
+          "type": "string",
+          "enum": [
+            "very_high",
+            "high",
+            "medium",
+            "low",
+            "unknown"
+          ],
+          "description": "Mirrors Plaid's confidence levels.",
+          "title": "Confidence"
+        },
+        "Essentiality": {
+          "type": "string",
+          "enum": [
+            "essential",
+            "flexible",
+            "discretionary"
+          ],
+          "title": "Essentiality"
+        }
+      },
+      "type": "object",
+      "title": "ClassificationBatch",
+      "properties": {
+        "items": {
+          "type": "array",
+          "title": "Items",
+          "items": {
+            "$ref": "#/$defs/ClassifiedMerchant"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ]
+    },
+    "SuggestionBatch": {
+      "$defs": {
+        "SuggestedSaving": {
+          "type": "object",
+          "title": "SuggestedSaving",
+          "properties": {
+            "text": {
+              "type": "string",
+              "title": "Text"
+            },
+            "category_label": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Label"
+            },
+            "estimated_monthly_saving": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estimated Monthly Saving"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "text",
+            "category_label",
+            "estimated_monthly_saving"
+          ]
+        }
+      },
+      "type": "object",
+      "title": "SuggestionBatch",
+      "properties": {
+        "suggestions": {
+          "type": "array",
+          "title": "Suggestions",
+          "items": {
+            "$ref": "#/$defs/SuggestedSaving"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "suggestions"
+      ]
+    }
+  },
   "classify_user_messages": [
     {
       "items": [
