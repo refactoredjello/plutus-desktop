@@ -3,7 +3,7 @@
 import { z } from '@hono/zod-openapi'
 import { DateTime, Money } from './common.js'
 import { AccountType } from './enums.js'
-import { model } from './model.js'
+import { model, orNull } from './model.js'
 
 export const AccountRead = model('AccountRead', {
   id: z.int(),
@@ -14,6 +14,6 @@ export const AccountRead = model('AccountRead', {
   is_active: z.boolean(),
   balance: Money.nullable(),
   available: Money.nullable(),
-  balance_as_of: DateTime.nullable(),
+  balance_as_of: orNull(DateTime),
 })
 export type AccountRead = z.infer<typeof AccountRead>

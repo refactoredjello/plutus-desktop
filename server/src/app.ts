@@ -18,6 +18,7 @@ import {
   DomainError,
   PROBLEM_CONTENT_TYPE,
   type Problem,
+  ValidationError,
   problemBody,
   validationError,
 } from './lib/errors.js'
@@ -79,6 +80,19 @@ const isApi = (path: string) => path === API_PREFIX || path.startsWith(`${API_PR
 
 function problem(c: Context, body: Problem): Response {
   return c.body(JSON.stringify(body), body.status as 400, { 'Content-Type': PROBLEM_CONTENT_TYPE })
+}
+
+/**
+ * The body checks that run before a route's validation hook: @hono/zod-openapi's media type
+ * gate (415, missing or wrong Content-Type) and Hono's json validator (400, malformed or empty
+ * JSON). FastAPI answered 422 for both; plan 5.5 makes them 422 problem+json.
+ */
+function isBodyValidationException(err: unknown): err is HTTPException {
+  if (!(err instanceof HTTPException)) return false
+  return (
+    (err.status === 415 && err.message === 'Unsupported Media Type') ||
+    (err.status === 400 && err.message === 'Malformed JSON in request body')
+  )
 }
 
 function requestId(): MiddlewareHandler<AppEnv> {
@@ -174,6 +188,9 @@ export function createApp(deps: AppDeps): App {
 
   app.onError((err, c) => {
     if (err instanceof DomainError) return problem(c, problemBody(err, c.req.path))
+    if (isBodyValidationException(err)) {
+      return problem(c, problemBody(new ValidationError(`body: ${err.message}`), c.req.path))
+    }
     if (err instanceof HTTPException) return err.getResponse()
     c.var.log.error({ err }, 'unhandled error')
     return c.text('Internal Server Error', 500)

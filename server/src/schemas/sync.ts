@@ -3,7 +3,7 @@
 import { z } from '@hono/zod-openapi'
 import { DateTime } from './common.js'
 import { SyncStatus, SyncTrigger } from './enums.js'
-import { model, requestModel } from './model.js'
+import { model, orNull, requestModel } from './model.js'
 
 export const SyncRunRead = model('SyncRunRead', {
   id: z.int(),
@@ -11,7 +11,7 @@ export const SyncRunRead = model('SyncRunRead', {
   trigger: SyncTrigger,
   status: SyncStatus,
   started_at: DateTime,
-  finished_at: DateTime.nullable(),
+  finished_at: orNull(DateTime),
   added: z.int(),
   updated: z.int(),
   error_text: z.string().nullable(),
@@ -22,7 +22,7 @@ export type SyncRunRead = z.infer<typeof SyncRunRead>
 export const SyncSchedule = model('SyncSchedule', {
   enabled: z.boolean(),
   interval_hours: z.int(),
-  next_run_at: DateTime.nullable(),
+  next_run_at: orNull(DateTime),
 })
 export type SyncSchedule = z.infer<typeof SyncSchedule>
 
@@ -33,7 +33,7 @@ export type SimpleFINConnect = z.infer<typeof SimpleFINConnect>
 
 export const SimpleFINStatus = model('SimpleFINStatus', {
   connected: z.boolean(),
-  connected_at: DateTime.nullable(),
+  connected_at: orNull(DateTime),
 })
 export type SimpleFINStatus = z.infer<typeof SimpleFINStatus>
 

@@ -75,10 +75,12 @@ export function params<S extends z.ZodRawShape>(shape: S) {
 }
 
 /**
- * `X | None` for a component: `anyOf [$ref, null]`, as Pydantic writes it. (`.nullable()` on a
- * component renders as `allOf`, which the client generator reads as non-null.)
+ * `X | None` as Pydantic writes it: `anyOf [X, null]`. Needed for components (`.nullable()` on
+ * a component renders as `allOf`, which the client generator reads as non-null) and for dates
+ * (`.nullable()` hoists `format` beside `type: [string, null]`, which changes the client's doc
+ * comments).
  */
-export function nullableRef<T extends z.ZodType>(schema: T) {
+export function orNull<T extends z.ZodType>(schema: T) {
   return z.union([schema, z.null()])
 }
 

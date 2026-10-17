@@ -581,10 +581,7 @@ export interface components {
             available: string | null;
             /** Balance */
             balance: string | null;
-            /**
-             * Balance As Of
-             * Format: date-time
-             */
+            /** Balance As Of */
             balance_as_of: string | null;
             /** Currency */
             currency: string;
@@ -783,7 +780,7 @@ export interface components {
             /** Name */
             name: string;
             /** Target Amount */
-            target_amount: string;
+            target_amount: number | string;
             /**
              * Target Date
              * Format: date
@@ -831,18 +828,23 @@ export interface components {
             /** Name */
             name?: string | null;
             /** Target Amount */
-            target_amount?: string | null;
-            /**
-             * Target Date
-             * Format: date
-             */
+            target_amount?: number | string | null;
+            /** Target Date */
             target_date?: string | null;
         };
+        /** HealthRead */
         HealthRead: {
-            /** @enum {string} */
+            /**
+             * Database
+             * @enum {string}
+             */
             database: "ok" | "unreachable";
-            /** @enum {string} */
+            /**
+             * Status
+             * @enum {string}
+             */
             status: "ok" | "degraded";
+            /** Version */
             version: string;
         };
         /** LLMStatus */
@@ -857,7 +859,7 @@ export interface components {
         /** ManualEntryCreate */
         ManualEntryCreate: {
             /** Amount */
-            amount: string;
+            amount: number | string;
             /** Category Id */
             category_id?: number | null;
             /** Description */
@@ -867,10 +869,7 @@ export interface components {
              * Format: date
              */
             due_date: string;
-            /**
-             * End Date
-             * Format: date
-             */
+            /** End Date */
             end_date?: string | null;
             /** @default none */
             recurrence?: components["schemas"]["Recurrence"];
@@ -888,10 +887,7 @@ export interface components {
              * Format: date
              */
             due_date: string;
-            /**
-             * End Date
-             * Format: date
-             */
+            /** End Date */
             end_date: string | null;
             /** Fulfilled Transaction Id */
             fulfilled_transaction_id: number | null;
@@ -902,20 +898,14 @@ export interface components {
         /** ManualEntryUpdate */
         ManualEntryUpdate: {
             /** Amount */
-            amount?: string | null;
+            amount?: number | string | null;
             /** Category Id */
             category_id?: number | null;
             /** Description */
             description?: string | null;
-            /**
-             * Due Date
-             * Format: date
-             */
+            /** Due Date */
             due_date?: string | null;
-            /**
-             * End Date
-             * Format: date
-             */
+            /** End Date */
             end_date?: string | null;
             /** Fulfilled Transaction Id */
             fulfilled_transaction_id?: number | null;
@@ -1002,9 +992,13 @@ export interface components {
         };
         /** Page[TransactionRead] */
         Page_TransactionRead_: {
+            /** Items */
             items: components["schemas"]["TransactionRead"][];
+            /** Limit */
             limit: number;
+            /** Offset */
             offset: number;
+            /** Total */
             total: number;
         };
         /** ProjectedMonth */
@@ -1073,10 +1067,7 @@ export interface components {
             essentiality: components["schemas"]["Essentiality"] | null;
             /** Id */
             id: number;
-            /**
-             * Last Seen On
-             * Format: date
-             */
+            /** Last Seen On */
             last_seen_on: string | null;
             /** Merchant Key */
             merchant_key: string;
@@ -1090,7 +1081,7 @@ export interface components {
         /** RecurringChargeUpdate */
         RecurringChargeUpdate: {
             /** Amount */
-            amount?: string | null;
+            amount?: number | string | null;
             cadence?: components["schemas"]["Cadence"] | null;
             essentiality?: components["schemas"]["Essentiality"] | null;
             status?: components["schemas"]["RecurrenceStatus"] | null;
@@ -1125,10 +1116,7 @@ export interface components {
         SimpleFINStatus: {
             /** Connected */
             connected: boolean;
-            /**
-             * Connected At
-             * Format: date-time
-             */
+            /** Connected At */
             connected_at: string | null;
         };
         /** SuggestionRead */
@@ -1165,10 +1153,7 @@ export interface components {
             added: number;
             /** Error Text */
             error_text: string | null;
-            /**
-             * Finished At
-             * Format: date-time
-             */
+            /** Finished At */
             finished_at: string | null;
             /** Id */
             id: number;
@@ -1192,10 +1177,7 @@ export interface components {
             enabled: boolean;
             /** Interval Hours */
             interval_hours: number;
-            /**
-             * Next Run At
-             * Format: date-time
-             */
+            /** Next Run At */
             next_run_at: string | null;
         };
         /**

@@ -1,14 +1,9 @@
 /** Ports app/schemas/goals.py. */
 
 import { z } from '@hono/zod-openapi'
-import { DateTime, Money, PlainDate } from './common.js'
+import { DateTime, Money, PlainDate, PositiveMoneyInput } from './common.js'
 import { SuggestionStatus } from './enums.js'
-import { model, nullableRef, requestModel } from './model.js'
-
-/** `Money = Field(gt=0)`. */
-const PositiveMoney = Money.refine((value) => !value.startsWith('-') && /[1-9]/.test(value), {
-  message: 'Input should be greater than 0',
-})
+import { model, orNull, requestModel } from './model.js'
 
 export const GoalProgress = model('GoalProgress', {
   saved_so_far: Money,
@@ -27,21 +22,21 @@ export const GoalRead = model('GoalRead', {
   target_date: PlainDate,
   starting_amount: Money,
   is_active: z.boolean(),
-  progress: nullableRef(GoalProgress),
+  progress: orNull(GoalProgress),
 })
 export type GoalRead = z.infer<typeof GoalRead>
 
 export const GoalCreate = requestModel('GoalCreate', {
   name: z.string().min(1).max(255),
-  target_amount: PositiveMoney,
+  target_amount: PositiveMoneyInput,
   target_date: PlainDate,
 })
 export type GoalCreate = z.infer<typeof GoalCreate>
 
 export const GoalUpdate = requestModel('GoalUpdate', {
   name: z.string().min(1).max(255).nullable().optional(),
-  target_amount: PositiveMoney.nullable().optional(),
-  target_date: PlainDate.nullable().optional(),
+  target_amount: PositiveMoneyInput.nullable().optional(),
+  target_date: orNull(PlainDate).optional(),
   is_active: z.boolean().nullable().optional(),
 })
 export type GoalUpdate = z.infer<typeof GoalUpdate>

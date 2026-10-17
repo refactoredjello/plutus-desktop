@@ -3,7 +3,7 @@
 import { z } from '@hono/zod-openapi'
 import { DateTime } from './common.js'
 import { Essentiality, RuleMatchType } from './enums.js'
-import { model, nullableRef, requestModel } from './model.js'
+import { model, orNull, requestModel } from './model.js'
 
 export const CategoryRead = model('CategoryRead', {
   id: z.int(),
@@ -34,7 +34,7 @@ export const RuleRead = model('RuleRead', {
   match_type: RuleMatchType,
   pattern: z.string(),
   category_id: z.int(),
-  essentiality: nullableRef(Essentiality),
+  essentiality: orNull(Essentiality),
   created_at: DateTime,
 })
 export type RuleRead = z.infer<typeof RuleRead>

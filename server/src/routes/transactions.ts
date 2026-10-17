@@ -4,7 +4,7 @@ import { createRoute, z } from '@hono/zod-openapi'
 import type { App } from '../app.js'
 import { PlainDate } from '../schemas/common.js'
 import { EssentialityFilter } from '../schemas/enums.js'
-import { nullableRef, params } from '../schemas/model.js'
+import { orNull, params } from '../schemas/model.js'
 import { pathInt, queryBool, queryInt, queryIntList } from '../schemas/params.js'
 import { TransactionPage, TransactionRead, TransactionUpdate } from '../schemas/transactions.js'
 import { json, jsonBody, notImplemented } from './openapi.js'
@@ -22,7 +22,7 @@ const listTransactions = createRoute({
       end: PlainDate.nullable().optional(),
       account_id: queryIntList(),
       category_id: queryIntList(),
-      essentiality: nullableRef(EssentialityFilter).optional(),
+      essentiality: orNull(EssentialityFilter).optional(),
       uncategorized: queryBool(false),
       needs_review: queryBool(false),
       include_transfers: queryBool(false),

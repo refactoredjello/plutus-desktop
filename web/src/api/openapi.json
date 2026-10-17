@@ -47,12 +47,16 @@
             ]
           },
           "balance_as_of": {
-            "format": "date-time",
-            "title": "Balance As Of",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance As Of"
           },
           "currency": {
             "title": "Currency",
@@ -466,6 +470,7 @@
             ]
           },
           "llm_model": {
+            "minLength": 1,
             "title": "Llm Model",
             "type": "string"
           },
@@ -494,10 +499,12 @@
             "type": "boolean"
           },
           "sync_first_history_days": {
+            "minimum": 1,
             "title": "Sync First History Days",
             "type": "integer"
           },
           "sync_interval_hours": {
+            "minimum": 1,
             "title": "Sync Interval Hours",
             "type": "integer"
           }
@@ -574,9 +581,17 @@
             "type": "string"
           },
           "target_amount": {
-            "pattern": "^-?\\d+\\.\\d{2}$",
-            "title": "Target Amount",
-            "type": "string"
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Target Amount"
           },
           "target_date": {
             "format": "date",
@@ -706,20 +721,32 @@
             ]
           },
           "target_amount": {
-            "pattern": "^-?\\d+\\.\\d{2}$",
-            "title": "Target Amount",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Amount"
           },
           "target_date": {
-            "format": "date",
-            "title": "Target Date",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Date"
           }
         },
         "title": "GoalUpdate",
@@ -732,6 +759,7 @@
               "ok",
               "unreachable"
             ],
+            "title": "Database",
             "type": "string"
           },
           "status": {
@@ -739,9 +767,11 @@
               "ok",
               "degraded"
             ],
+            "title": "Status",
             "type": "string"
           },
           "version": {
+            "title": "Version",
             "type": "string"
           }
         },
@@ -750,6 +780,7 @@
           "database",
           "version"
         ],
+        "title": "HealthRead",
         "type": "object"
       },
       "LLMStatus": {
@@ -779,9 +810,16 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "pattern": "^-?\\d+\\.\\d{2}$",
-            "title": "Amount",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
           },
           "category_id": {
             "title": "Category Id",
@@ -802,12 +840,16 @@
             "type": "string"
           },
           "end_date": {
-            "format": "date",
-            "title": "End Date",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
           },
           "recurrence": {
             "$ref": "#/components/schemas/Recurrence",
@@ -846,12 +888,16 @@
             "type": "string"
           },
           "end_date": {
-            "format": "date",
-            "title": "End Date",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
           },
           "fulfilled_transaction_id": {
             "title": "Fulfilled Transaction Id",
@@ -885,12 +931,19 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "pattern": "^-?\\d+\\.\\d{2}$",
-            "title": "Amount",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
           },
           "category_id": {
             "title": "Category Id",
@@ -909,20 +962,28 @@
             ]
           },
           "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
           },
           "end_date": {
-            "format": "date",
-            "title": "End Date",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
           },
           "fulfilled_transaction_id": {
             "title": "Fulfilled Transaction Id",
@@ -1185,15 +1246,19 @@
             "items": {
               "$ref": "#/components/schemas/TransactionRead"
             },
+            "title": "Items",
             "type": "array"
           },
           "limit": {
+            "title": "Limit",
             "type": "integer"
           },
           "offset": {
+            "title": "Offset",
             "type": "integer"
           },
           "total": {
+            "title": "Total",
             "type": "integer"
           }
         },
@@ -1376,12 +1441,16 @@
             "type": "integer"
           },
           "last_seen_on": {
-            "format": "date",
-            "title": "Last Seen On",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen On"
           },
           "merchant_key": {
             "title": "Merchant Key",
@@ -1415,12 +1484,19 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "pattern": "^-?\\d+\\.\\d{2}$",
-            "title": "Amount",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
           },
           "cadence": {
             "anyOf": [
@@ -1531,12 +1607,16 @@
             "type": "boolean"
           },
           "connected_at": {
-            "format": "date-time",
-            "title": "Connected At",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected At"
           }
         },
         "required": [
@@ -1632,12 +1712,16 @@
             ]
           },
           "finished_at": {
-            "format": "date-time",
-            "title": "Finished At",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
           },
           "id": {
             "title": "Id",
@@ -1693,12 +1777,16 @@
             "type": "integer"
           },
           "next_run_at": {
-            "format": "date-time",
-            "title": "Next Run At",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Run At"
           }
         },
         "required": [

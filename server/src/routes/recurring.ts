@@ -3,7 +3,7 @@
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
 import { RecurrenceStatus } from '../schemas/enums.js'
-import { nullableRef, params, responseList } from '../schemas/model.js'
+import { orNull, params, responseList } from '../schemas/model.js'
 import { pathInt } from '../schemas/params.js'
 import { RecurringChargeCreate, RecurringChargeRead, RecurringChargeUpdate } from '../schemas/recurring.js'
 import { json, jsonBody, notImplemented } from './openapi.js'
@@ -14,7 +14,7 @@ const listRecurring = createRoute({
   operationId: 'list_recurring',
   summary: 'List Recurring',
   tags: ['recurring'],
-  request: { query: params({ status: nullableRef(RecurrenceStatus).optional() }) },
+  request: { query: params({ status: orNull(RecurrenceStatus).optional() }) },
   responses: { 200: json(responseList(RecurringChargeRead, 'list_recurring')) },
 })
 

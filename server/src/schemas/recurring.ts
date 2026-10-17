@@ -1,9 +1,9 @@
 /** Ports app/schemas/recurring.py. */
 
 import { z } from '@hono/zod-openapi'
-import { Money, PlainDate } from './common.js'
+import { Money, MoneyInput, PlainDate } from './common.js'
 import { Cadence, Essentiality, RecurrenceStatus } from './enums.js'
-import { model, nullableRef, requestModel } from './model.js'
+import { model, orNull, requestModel } from './model.js'
 
 export const RecurringChargeRead = model('RecurringChargeRead', {
   id: z.int(),
@@ -12,9 +12,9 @@ export const RecurringChargeRead = model('RecurringChargeRead', {
   amount: Money,
   cadence: Cadence,
   next_expected_date: PlainDate,
-  last_seen_on: PlainDate.nullable(),
+  last_seen_on: orNull(PlainDate),
   status: RecurrenceStatus,
-  essentiality: nullableRef(Essentiality),
+  essentiality: orNull(Essentiality),
   annual_cost: Money,
 })
 export type RecurringChargeRead = z.infer<typeof RecurringChargeRead>
@@ -30,9 +30,9 @@ export const RecurringChargeCreate = requestModel(
 export type RecurringChargeCreate = z.infer<typeof RecurringChargeCreate>
 
 export const RecurringChargeUpdate = requestModel('RecurringChargeUpdate', {
-  status: nullableRef(RecurrenceStatus).optional(),
-  essentiality: nullableRef(Essentiality).optional(),
-  amount: Money.nullable().optional(),
-  cadence: nullableRef(Cadence).optional(),
+  status: orNull(RecurrenceStatus).optional(),
+  essentiality: orNull(Essentiality).optional(),
+  amount: MoneyInput.nullable().optional(),
+  cadence: orNull(Cadence).optional(),
 })
 export type RecurringChargeUpdate = z.infer<typeof RecurringChargeUpdate>

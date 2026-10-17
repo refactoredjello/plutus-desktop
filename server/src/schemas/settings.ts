@@ -22,12 +22,12 @@ export type ConfigRead = z.infer<typeof ConfigRead>
 /** Every field optional; `anthropic_api_key: null` clears the key. */
 export const ConfigUpdate = requestModel('ConfigUpdate', {
   llm_provider: z.enum(LLM_PROVIDERS).optional(),
-  llm_model: z.string().optional(),
+  llm_model: z.string().min(1).optional(),
   anthropic_api_key: z.string().nullable().optional(),
   ollama_base_url: z.string().optional(),
   owner_name_tokens: z.array(z.string()).optional(),
-  sync_interval_hours: z.int().optional(),
-  sync_first_history_days: z.int().optional(),
+  sync_interval_hours: z.int().min(1).optional(),
+  sync_first_history_days: z.int().min(1).optional(),
   scheduler_enabled: z.boolean().optional(),
 })
 export type ConfigUpdate = z.infer<typeof ConfigUpdate>

@@ -4,7 +4,7 @@ import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
 import { PlainDate } from '../schemas/common.js'
 import { EssentialityFilter } from '../schemas/enums.js'
-import { nullableRef, params, responseList } from '../schemas/model.js'
+import { orNull, params, responseList } from '../schemas/model.js'
 import { MonthDetail } from '../schemas/month.js'
 import { Month, queryInt } from '../schemas/params.js'
 import { AccountBalanceSeries, CategoryTotal, MonthlySummary } from '../schemas/reports.js'
@@ -40,7 +40,7 @@ const getSpendingByCategory = createRoute({
   request: {
     query: params({
       month: Month,
-      essentiality: nullableRef(EssentialityFilter).optional(),
+      essentiality: orNull(EssentialityFilter).optional(),
     }),
   },
   responses: { 200: json(responseList(CategoryTotal, 'get_spending_by_category')) },
