@@ -18,7 +18,9 @@ import {
   appSettings,
   balanceSnapshots,
   categorizations,
+  merchantClassifications,
   recurrences,
+  rules,
   syncRuns,
   transactions,
 } from '../src/db/schema.js'
@@ -32,6 +34,7 @@ import { KeySecretStore } from '../src/secrets.js'
 import * as appSettingsService from '../src/services/app_settings.js'
 import { runtimeConfig } from '../src/services/config.js'
 import * as sync from '../src/services/sync.js'
+import * as demo from '../scripts/demo.js'
 import { ACCESS_URL, mockFetch } from './factories.js'
 import { makeDb, testConfig } from './setup.js'
 
@@ -414,5 +417,66 @@ describe('sync: the manual run and its background half', () => {
     await expect(sync.executeInBackground(db, secrets, defaults, 999)).resolves.toBeUndefined()
     db.$client.close()
     await expect(sync.executeInBackground(db, secrets, defaults, 1, silentLogger())).resolves.toBeUndefined()
+  })
+})
+
+describe('demo loader (app/demo.py)', () => {
+  it('load syncs the fixture through the real pipeline under provider demo', async () => {
+    expect(await demo.load(db, secrets, defaults)).toEqual(['demo sync success: added 295, updated 0'])
+    expect(db.select().from(accounts).all().map((a) => a.provider)).toEqual(['demo', 'demo', 'demo'])
+    expect(db.select().from(syncRuns).all()).toMatchObject([{ provider: 'demo', trigger: 'manual', status: 'success' }])
+    expect(db.select({ n: count() }).from(categorizations).get()?.n).toBeGreaterThan(0)
+    expect(await demo.load(db, secrets, defaults)).toEqual(['demo sync success: added 0, updated 0'])
+  })
+
+  it('load refuses like run_sync when a guard refuses', async () => {
+    sync.startRun(db, secrets, defaults, 'simplefin', 'manual')
+    await expect(demo.load(db, secrets, defaults)).rejects.toThrow(/already running/)
+    db.update(syncRuns).set({ status: 'success' }).run()
+    insertRun({ started_at: ago(60_000), requests: sync.DAILY_REQUEST_BUDGET - 1 })
+    await expect(demo.load(db, secrets, defaults)).rejects.toThrow(/budget/)
+  })
+
+  it('clear removes demo accounts, their rows, demo runs, and orphaned classifications', async () => {
+    await demo.load(db, secrets, defaults)
+    const cached = db.select().from(merchantClassifications).all()
+    expect(cached.length).toBeGreaterThan(1)
+    const kept = cached[0]!
+    const own = db.insert(accounts).values({ provider: 'simplefin', external_id: 'X', name: 'Mine' }).returning().get()
+    db.insert(transactions)
+      .values({
+        account_id: own.id,
+        external_id: 'T',
+        posted_on: '2026-10-01' as PlainDate,
+        amount: parseMoney('-1.00'),
+        raw_description: 'X',
+        merchant_key: kept.merchant_key,
+      })
+      .run()
+    insertRun({ provider: 'simplefin', started_at: ago(60_000) })
+    db.insert(rules).values({ match_type: 'exact', pattern: 'NETFLIX', category_id: kept.category_id }).run()
+
+    expect(demo.clear(db)).toEqual([
+      `removed 3 demo accounts, their transactions, and ${cached.length - 1} cached merchants`,
+      'Rules you created are kept.',
+    ])
+    expect(db.select().from(accounts).all().map((a) => a.provider)).toEqual(['simplefin'])
+    expect(rows(transactions)).toBe(1)
+    expect(db.select().from(syncRuns).all().map((r) => r.provider)).toEqual(['simplefin'])
+    expect(db.select().from(merchantClassifications).all().map((c) => c.merchant_key)).toEqual([kept.merchant_key])
+    expect(db.select({ n: count() }).from(rules).get()?.n).toBe(1)
+  })
+
+  it('main prints the usage and fails without a known command', async () => {
+    const errors: string[] = []
+    vi.spyOn(console, 'error').mockImplementation((text: string) => void errors.push(text))
+    expect(await demo.main(['nope'])).toBe(1)
+    expect(await demo.main([])).toBe(1)
+    expect(await demo.main(['load', 'extra'])).toBe(1)
+    expect(errors[0]).toContain('npm run demo -- load')
+  })
+
+  it('reads the fixture the tests use', () => {
+    expect(demo.FIXTURE.endsWith('test/fixtures/simplefin_accounts.json')).toBe(true)
   })
 })
