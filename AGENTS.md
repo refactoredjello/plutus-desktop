@@ -86,4 +86,6 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 
 An orchestrator session owns schemas, migrations, `app/main.py`, and merges; subagents implement briefs in their own worktree and branch, touching only files they own. Role definitions live in `.claude/agents/`. See `docs/AGENT_PLAN.md`.
 
+Suspected Python bugs found during the port go in `docs/PORT_BUG_BACKLOG.md`; port them as they are and never fix one without the owner's go-ahead.
+
 The desktop port (TypeScript server plus Electron, SQLite instead of Postgres) is planned in `docs/DESKTOP_PLAN.md`. While it runs, Python code under `api/` is frozen except the two changes that plan names, and new server work goes in `server/`.

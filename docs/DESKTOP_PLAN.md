@@ -644,6 +644,7 @@ Done when: `web` is green and `desktop` dev and dist both serve the built app.
 
 ## 9. After cutover
 
+- Bring `docs/PORT_BUG_BACKLOG.md` (Python bugs found during the port, ported as they are) to the owner and fix only what the owner approves. Never start these fixes unasked.
 - Implement `docs/HANDOFF_RULES_AND_BUGS.md` in TypeScript: the rule builder, the stale-cache fix, the transfer false-positive fix, the cadence-change fix.
 - Auto-update through electron-updater once builds are signed.
 - A headless install guide for a VPS, since the server still runs without Electron.
