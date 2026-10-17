@@ -433,7 +433,7 @@ describe('demo loader (app/demo.py)', () => {
     sync.startRun(db, secrets, defaults, 'simplefin', 'manual')
     await expect(demo.load(db, secrets, defaults)).rejects.toThrow(/already running/)
     db.update(syncRuns).set({ status: 'success' }).run()
-    insertRun({ started_at: ago(60_000), requests: sync.DAILY_REQUEST_BUDGET - 1 })
+    insertRun({ started_at: ago(60_000), requests: sync.DAILY_REQUEST_BUDGET })
     await expect(demo.load(db, secrets, defaults)).rejects.toThrow(/budget/)
   })
 
