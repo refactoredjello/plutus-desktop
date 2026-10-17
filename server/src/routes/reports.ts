@@ -1,13 +1,15 @@
-/** Ports app/routers/reports.py (stub). */
+/** Ports app/routers/reports.py. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
+import { plainDate } from '../lib/dates.js'
 import { PlainDate } from '../schemas/common.js'
 import { EssentialityFilter } from '../schemas/enums.js'
 import { orNull, params, responseList } from '../schemas/model.js'
 import { MonthDetail } from '../schemas/month.js'
 import { Month, queryInt } from '../schemas/params.js'
 import { AccountBalanceSeries, CategoryTotal, MonthlySummary } from '../schemas/reports.js'
+import { balanceHistory, monthlySummary, spendingByCategory } from '../services/reports.js'
 import { json, notImplemented } from './openapi.js'
 
 const getMonthlySummary = createRoute({
@@ -62,8 +64,14 @@ const getBalanceHistory = createRoute({
 })
 
 export function registerReports(app: App): void {
-  app.openapi(getMonthlySummary, notImplemented)
+  app.openapi(getMonthlySummary, (c) => c.json(monthlySummary(c.var.db, c.req.valid('query').months), 200))
   app.openapi(getMonthDetail, notImplemented)
-  app.openapi(getSpendingByCategory, notImplemented)
-  app.openapi(getBalanceHistory, notImplemented)
+  app.openapi(getSpendingByCategory, (c) => {
+    const { month, essentiality } = c.req.valid('query')
+    return c.json(spendingByCategory(c.var.db, month, essentiality ?? null), 200)
+  })
+  app.openapi(getBalanceHistory, (c) => {
+    const { start, end } = c.req.valid('query')
+    return c.json(balanceHistory(c.var.db, start ? plainDate(start) : null, end ? plainDate(end) : null), 200)
+  })
 }
