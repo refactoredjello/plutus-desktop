@@ -1,13 +1,39 @@
 /**
  * SimpleFIN connection, LLM status, and the runtime config (new, plan 5.7).
- * Ports app/routers/settings.py (stub).
+ * Ports app/routers/settings.py.
  */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
+import { NotImplementedYetError } from '../lib/errors.js'
 import { ConfigRead, ConfigUpdate } from '../schemas/settings.js'
 import { LLMStatus, SimpleFINConnect, SimpleFINStatus } from '../schemas/sync.js'
-import { json, jsonBody, noContent, notImplemented } from './openapi.js'
+import * as appSettings from '../services/app_settings.js'
+import * as config from '../services/config.js'
+import { json, jsonBody, noContent } from './openapi.js'
+
+/**
+ * The SimpleFIN claim the connect route uses, looked up per request so tests can swap it.
+ * Until brief 1D's providers/bank/simplefin.ts is wired in, connecting answers 501 like the stub.
+ */
+export const simplefinClaim: { claim: appSettings.ClaimSetupToken } = {
+  claim: async () => {
+    throw new NotImplementedYetError()
+  },
+}
+
+function read(c: config.RuntimeConfig): ConfigRead {
+  return {
+    llm_provider: c.llmProvider,
+    llm_model: c.llmModel,
+    anthropic_api_key_set: c.anthropicApiKeySet,
+    ollama_base_url: c.ollamaBaseUrl,
+    owner_name_tokens: c.ownerNameTokens,
+    sync_interval_hours: c.syncIntervalHours,
+    sync_first_history_days: c.syncFirstHistoryDays,
+    scheduler_enabled: c.schedulerEnabled,
+  }
+}
 
 const getSimplefinStatus = createRoute({
   method: 'get',
@@ -67,10 +93,26 @@ const updateConfig = createRoute({
 })
 
 export function registerSettings(app: App): void {
-  app.openapi(getSimplefinStatus, notImplemented)
-  app.openapi(connectSimplefin, notImplemented)
-  app.openapi(disconnectSimplefin, notImplemented)
-  app.openapi(getLlmStatus, notImplemented)
-  app.openapi(getConfig, notImplemented)
-  app.openapi(updateConfig, notImplemented)
+  app.openapi(getSimplefinStatus, (c) => {
+    return c.json(appSettings.simplefinStatus(c.var.db, c.var.secrets), 200)
+  })
+  app.openapi(connectSimplefin, async (c) => {
+    const { setup_token } = c.req.valid('json')
+    const claim = (token: string) => simplefinClaim.claim(token)
+    return c.json(await appSettings.connectSimplefin(c.var.db, c.var.secrets, setup_token, claim), 200)
+  })
+  app.openapi(disconnectSimplefin, (c) => {
+    appSettings.disconnectSimplefin(c.var.db)
+    return c.body(null, 204)
+  })
+  app.openapi(getLlmStatus, (c) => {
+    return c.json(config.llmStatus(c.var.db, c.var.secrets, c.var.config.defaults), 200)
+  })
+  app.openapi(getConfig, (c) => {
+    return c.json(read(config.runtimeConfig(c.var.db, c.var.secrets, c.var.config.defaults)), 200)
+  })
+  app.openapi(updateConfig, (c) => {
+    const changes = c.req.valid('json')
+    return c.json(read(config.updateConfig(c.var.db, c.var.secrets, c.var.config.defaults, changes)), 200)
+  })
 }
