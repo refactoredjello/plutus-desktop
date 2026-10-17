@@ -1,0 +1,13 @@
+{
+  // Emit only. `npm run typecheck` checks types against the server's sources; here the server
+  // resolves to its built JavaScript, which is what runs.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "noCheck": true,
+    "paths": {},
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"]
+}
