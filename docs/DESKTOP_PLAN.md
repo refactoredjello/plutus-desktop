@@ -68,6 +68,7 @@ All subagents run on Opus. Each works in its own git worktree on a branch named 
 | parity-engineer | `.claude/agents/parity-engineer.md` | 1G, 2D, 4A | `tools/parity/`, `api/app/export_json.py`, `server/scripts/import-json.ts`, and the one-line `PLUTUS_TODAY` change in `api/app/services/schedule.py` |
 | frontend-engineer | `.claude/agents/frontend-engineer.md` (existing, model bumped to opus) | 2E, 5C | `web/` |
 | backend-engineer | `.claude/agents/backend-engineer.md` (existing) | none; the Python code is frozen during the port | |
+| docs-writer | `.claude/agents/docs-writer.md` | 6A | `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/agents/*.md`, `docs/`, and every package and tool README |
 
 Brief ids by role:
 
@@ -93,6 +94,7 @@ Brief ids by role:
 | 5A | Cutover: remove Python, Docker, Postgres; docs; CI | server-engineer |
 | 5B | Packaging and signing | desktop-engineer |
 | 5C | Frontend cleanup after cutover | frontend-engineer |
+| 6A | Documentation pass: README, agent docs, architecture, every README | docs-writer |
 
 ---
 
@@ -113,11 +115,13 @@ Wave 3   3A sync+scheduler+demo   3B what changed
 Wave 4   4A parity run ──▶ fix briefs to owning agents ──▶ Fable checkpoint B
                  │
 Wave 5   5A cutover   5B packaging   5C frontend cleanup
+                 │
+Wave 6   6A documentation pass
 ```
 
-Parallelism: up to five agents in Wave 1, four in Wave 2, two in Wave 3, three in Wave 5. The orchestrator merges a wave in dependency order and runs the gate before starting the next.
+Parallelism: up to five agents in Wave 1, four in Wave 2, two in Wave 3, three in Wave 5, one in Wave 6. The orchestrator merges a wave in dependency order and runs the gate before starting the next.
 
-Rough duration with agents: Wave 0 two days, Waves 1 to 3 one to two days each, Wave 4 one to three days depending on the diff, Wave 5 one to two days. Call it two to three weeks of calendar time at a steady pace.
+Rough duration with agents: Wave 0 two days, Waves 1 to 3 one to two days each, Wave 4 one to three days depending on the diff, Wave 5 one to two days, Wave 6 under a day. Call it two to three weeks of calendar time at a steady pace.
 
 ### 4.2 The three things that make this a port, not a rewrite
 
@@ -313,7 +317,7 @@ The orchestrator then, in `~/dev/plutus-desktop`:
 3. Follow-ups go to the same agent via `SendMessage`, which keeps its context. Do not spawn a fresh agent for a fix to its own work.
 4. Merge in dependency order inside the wave with `git merge --no-ff` (section 5.14). After each merge, run `make check` on main.
 5. Run the wave gate (section 7), tag `wave-N`, and only then start the next wave.
-6. Keep AGENTS.md current as the repo changes shape. By Wave 5 it describes the TypeScript app only.
+6. Keep AGENTS.md current as the repo changes shape. By Wave 5 it describes the TypeScript app only; Wave 6 makes a final pass over every doc.
 
 ### 6.3 Rules
 
@@ -336,6 +340,7 @@ The orchestrator then, in `~/dev/plutus-desktop`:
 | Wave 3 | `npm run demo` in `server/` loads the fixture through the real pipeline. All ported tests pass. Every route stub is gone. |
 | Wave 4 | Parity diff is empty, or every remaining difference is listed with a reason and accepted at Fable checkpoint B. The Electron app with demo data matches the Docker app page by page. |
 | Wave 5 | No Python, Docker, or Postgres in the repo. CI green on Node only. An unsigned macOS build launches, syncs demo data, and survives a restart with its data. Docs and AGENTS.md describe the new shape. The owner's real data imports and the SimpleFIN connection survives. |
+| Wave 6 | Tag `wave-6`. Every doc listed in brief 6A describes the repo as it is at `wave-5`: each command in README.md, AGENTS.md, and the package READMEs was run as written and works; no doc mentions Python, Docker, Postgres, FastAPI, or `api/` except as history (the decisions log, `PLAN.md`, `AGENT_PLAN.md` history notes, `DESKTOP_PLAN.md`, `PORT_BUG_BACKLOG.md`, `HANDOFF_RULES_AND_BUGS.md`); every relative link resolves; the agent role files match the final layout and ownership. `make check` stays green. The owner reviews the finished port after this tag. |
 
 ---
 
@@ -616,7 +621,7 @@ Wave 5. Depends on checkpoint B approval.
 
 Owns: deletions and docs listed below, `Makefile`, `.github/workflows/ci.yml`, `.env.example`, `AGENTS.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/REQUIREMENTS.md` decisions log, `docs/AGENT_PLAN.md`, `.claude/agents/backend-engineer.md`.
 
-Tasks: delete `api/`, `compose.yaml`, `compose.override.yaml`, `db/`, `web/Dockerfile`, `web/nginx.conf`, root `pyproject.toml`, and the Python bits of the Makefile; move fixtures to `server/test/fixtures` for good; CI runs `npm ci` and `npm run check` and builds the desktop app unsigned on macOS; rewrite README setup for the desktop app with the data migration steps from `docs/MIGRATING_DATA.md`; rewrite the architecture doc's overview, layout, and conventions tables for the TypeScript server; update AGENTS.md so every line is true; delete `backend-engineer.md` and fold its rules into `server-engineer.md`; keep `tools/parity/` with a saved baseline of the final Python responses so future refactors can diff against it.
+Tasks: delete `api/`, `compose.yaml`, `compose.override.yaml`, `db/`, `web/Dockerfile`, `web/nginx.conf`, root `pyproject.toml`, and the Python bits of the Makefile; move fixtures to `server/test/fixtures` for good; CI runs `npm ci` and `npm run check` and builds the desktop app unsigned on macOS; rewrite README setup for the desktop app with the data migration steps from `docs/MIGRATING_DATA.md`; rewrite the architecture doc's overview, layout, and conventions tables for the TypeScript server; update AGENTS.md so every line is true (brief 6A makes the final documentation pass after Wave 5); delete `backend-engineer.md` and fold its rules into `server-engineer.md`; keep `tools/parity/` with a saved baseline of the final Python responses so future refactors can diff against it.
 
 Done when: `make check` is green with no Python or Docker anywhere; the docs describe only what exists.
 
@@ -639,6 +644,23 @@ Owns: `web/`.
 Tasks: remove anything that only made sense in a browser deployment: the Vite proxy to `api`, `allowedHosts`, mock-mode docs that mention Docker; make the build output path the one `server` and `desktop` serve; keep `npm run dev:mock` working.
 
 Done when: `web` is green and `desktop` dev and dist both serve the built app.
+
+### 6A — Documentation pass (docs-writer)
+
+Wave 6. Depends on 5A, 5B, and 5C, all merged and tagged `wave-5`.
+
+Owns: `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/agents/*.md`, `docs/ARCHITECTURE.md`, `docs/REQUIREMENTS.md` (requirements text and the decisions log), `docs/AGENT_PLAN.md`, `docs/MIGRATING_DATA.md`, `docs/PRD_WHAT_CHANGED.md` (implementation references only), `desktop/README.md`, `tools/parity/README.md`, `server/test/fixtures/README.md`, and any other README in the repo. Code is out of scope: a doc that cannot be made true without a code change is reported, not fixed.
+
+Tasks:
+1. Read every doc above against the repo at `wave-5` and rewrite what is no longer true: setup, commands, layout, ownership, conventions, gotchas, testing, privacy rules, and the data migration steps. Keep each doc's purpose; cut lines that stopped being true rather than adding history.
+2. README.md: what Plutus is, how to install and run the desktop app, how to run the headless server, how to migrate data from the old Docker app (pointing at `docs/MIGRATING_DATA.md`), and the development commands.
+3. AGENTS.md and CLAUDE.md: the TypeScript server, the Electron shell, the web app, the parity harness, the commands that exist, the conventions that hold, and the gotchas that still cost time. Remove every Python, Docker, and Postgres line, and the "desktop port in progress" paragraph. Keep the pointer to `docs/PORT_BUG_BACKLOG.md` and its ask-the-owner-first rule.
+4. `.claude/agents/*.md`: each role file matches the final layout and file ownership; `backend-engineer.md` is gone (5A); no role mentions Python, `api/`, Alembic, or pytest. Update `docs/AGENT_PLAN.md` to the same roles.
+5. `docs/ARCHITECTURE.md` and `docs/REQUIREMENTS.md`: the architecture describes the desktop app and the headless server as built; requirements whose wording assumed Docker, Postgres, or FastAPI are reworded to the same intent. Add a decisions-log entry dated the day of the pass if the pass changes a requirement's wording.
+6. Run every command the docs tell a reader to run, in a fresh worktree from `wave-5` (`npm ci`, `make check`, `npm run dev` and `npm run smoke` in `desktop/`, the headless server, the import steps against the demo data), and fix the docs where a command is wrong. Check every relative link.
+7. Docs with nothing to assert: commit as `docs: <what> (no tests: docs)`, one commit per document or tightly related group.
+
+Done when: the Wave 6 gate holds; the report lists every doc changed, every command run with its result, and any doc that could not be made true without a code change.
 
 ---
 
