@@ -2,12 +2,15 @@
 
 The desktop app reads the file with `server/scripts/import-json.ts` (docs/MIGRATING_DATA.md).
 Encrypted settings are decrypted with the current SECRET_KEY, so the file holds the SimpleFIN
-access URL in clear text. It is written owner-only and never overwrites a file; delete it after
-the import.
+access URL in clear text, and `runtime_config` holds the Anthropic API key from the environment
+in clear text too. It is written owner-only and never overwrites a file; delete it after the
+import.
 
 Values: money is a two-decimal string, dates are YYYY-MM-DD, timestamps ISO 8601 in UTC,
 booleans and ids as they are. Rows are ordered by primary key; tables in foreign-key order.
 `sequences` holds, per table with an integer id, the highest id Postgres ever handed out.
+`runtime_config` holds the settings that lived in the environment, keyed like the desktop's
+ConfigUpdate, so the importer can store them through the config service.
 """
 
 import json
@@ -42,7 +45,7 @@ from app.models import (
 from app.services.app_settings import get_setting
 
 FORMAT = "plutus-export"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 # Parents before children, so an importer can insert in this order. transactions also refers
 # to itself (transfer_pair_id); the importer fills that in a second pass.
@@ -102,6 +105,20 @@ def _sequence(db: Session, table: Table) -> int:
     return int(db.execute(_SEQUENCE, {"t": table.name}).scalar_one())
 
 
+def _runtime_config(settings: Settings) -> dict[str, object]:
+    key = settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else ""
+    return {
+        "llm_provider": settings.llm_provider.value,
+        "llm_model": settings.llm_model,
+        "anthropic_api_key": key if key.strip() else None,
+        "ollama_base_url": settings.ollama_base_url,
+        "owner_name_tokens": list(settings.owner_name_tokens),
+        "sync_interval_hours": settings.sync_interval_hours,
+        "sync_first_history_days": settings.sync_first_history_days,
+        "scheduler_enabled": settings.scheduler_enabled,
+    }
+
+
 def export_data(db: Session, settings: Settings) -> dict[str, object]:
     revision = db.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     return {
@@ -111,6 +128,7 @@ def export_data(db: Session, settings: Settings) -> dict[str, object]:
         "exported_at": datetime.now(UTC).isoformat(),
         # Ids are never reused (change dismissal keys embed them); the importer keeps it so.
         "sequences": {t.name: _sequence(db, t) for t in _TABLES if "id" in t.columns},
+        "runtime_config": _runtime_config(settings),
         "tables": {table.name: _rows(db, settings, table) for table in _TABLES},
     }
 
