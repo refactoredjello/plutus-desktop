@@ -42,6 +42,12 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+type Body = Record<string, unknown>
+
+async function body(r: Response): Promise<Body> {
+  return (await r.json()) as Body
+}
+
 function send(method: string, body?: unknown): RequestInit {
   return body === undefined
     ? { method }
@@ -56,7 +62,7 @@ function appWith(defaults: Partial<RuntimeDefaults> = {}) {
 describe('SimpleFIN connection (test_sync_routes.py)', () => {
   it('reports status, connects, and disconnects', async () => {
     const { app } = makeApp()
-    expect(await (await app.request('/api/settings/simplefin')).json()).toEqual({
+    expect(await body(await app.request('/api/settings/simplefin'))).toEqual({
       connected: false,
       connected_at: null,
     })
@@ -66,12 +72,12 @@ describe('SimpleFIN connection (test_sync_routes.py)', () => {
     expect(JSON.parse(text).connected).toBe(true)
     expect(text).not.toContain('pass456')
     expect(claims).toEqual([makeToken()])
-    const status = await (await app.request('/api/settings/simplefin')).json()
+    const status = await body(await app.request('/api/settings/simplefin'))
     expect(status.connected).toBe(true)
     expect(status.connected_at).toBeTruthy()
     expect(status.connected_at).toBe(JSON.parse(text).connected_at)
     expect((await app.request('/api/settings/simplefin', send('DELETE'))).status).toBe(204)
-    expect((await (await app.request('/api/settings/simplefin')).json()).connected).toBe(false)
+    expect((await body(await app.request('/api/settings/simplefin'))).connected).toBe(false)
   })
 
   it('answers 502 for a bad token', async () => {
@@ -79,7 +85,7 @@ describe('SimpleFIN connection (test_sync_routes.py)', () => {
     const r = await app.request('/api/settings/simplefin', send('POST', { setup_token: '%%%' }))
     expect(r.status).toBe(502)
     expect(r.headers.get('content-type')).toBe('application/problem+json')
-    expect((await (await app.request('/api/settings/simplefin')).json()).connected).toBe(false)
+    expect((await body(await app.request('/api/settings/simplefin'))).connected).toBe(false)
   })
 
   it('disconnecting when not connected is still 204', async () => {
@@ -92,7 +98,7 @@ describe('SimpleFIN connection (test_sync_routes.py)', () => {
 
 describe('GET /api/settings/llm (test_category_routes.py::test_llm_status)', () => {
   const llmStatus = async (defaults: Partial<RuntimeDefaults>) =>
-    (await appWith(defaults).app.request('/api/settings/llm')).json()
+    body(await appWith(defaults).app.request('/api/settings/llm'))
 
   it('reports provider, model, and whether it is configured', async () => {
     expect(await llmStatus({ llmProvider: 'fake' })).toEqual({
@@ -115,9 +121,9 @@ describe('GET /api/settings/llm (test_category_routes.py::test_llm_status)', () 
   it('follows config updates', async () => {
     const { app } = makeApp()
     await app.request('/api/settings/config', send('PUT', { llm_provider: 'claude' }))
-    expect((await (await app.request('/api/settings/llm')).json()).configured).toBe(false)
+    expect((await body(await app.request('/api/settings/llm'))).configured).toBe(false)
     await app.request('/api/settings/config', send('PUT', { anthropic_api_key: API_KEY }))
-    expect(await (await app.request('/api/settings/llm')).json()).toEqual({
+    expect(await body(await app.request('/api/settings/llm'))).toEqual({
       provider: 'claude',
       model: 'claude-haiku-4-5',
       configured: true,
@@ -130,7 +136,7 @@ describe('/api/settings/config', () => {
     const { app } = makeApp()
     const r = await app.request('/api/settings/config')
     expect(r.status).toBe(200)
-    expect(await r.json()).toEqual({
+    expect(await body(r)).toEqual({
       llm_provider: 'fake',
       llm_model: 'claude-haiku-4-5',
       anthropic_api_key_set: false,
@@ -165,8 +171,8 @@ describe('/api/settings/config', () => {
       sync_first_history_days: 90,
       scheduler_enabled: true,
     }
-    expect(await r.json()).toEqual(expected)
-    expect(await (await app.request('/api/settings/config')).json()).toEqual(expected)
+    expect(await body(r)).toEqual(expected)
+    expect(await body(await app.request('/api/settings/config'))).toEqual(expected)
   })
 
   it('sets and clears the API key without ever returning it', async () => {
@@ -180,14 +186,14 @@ describe('/api/settings/config', () => {
     expect(read).not.toContain(API_KEY)
     expect(JSON.parse(read).anthropic_api_key_set).toBe(true)
     const cleared = await app.request('/api/settings/config', send('PUT', { anthropic_api_key: null }))
-    expect((await cleared.json()).anthropic_api_key_set).toBe(false)
+    expect((await body(cleared)).anthropic_api_key_set).toBe(false)
   })
 
   it('accepts an empty update', async () => {
     const { app } = makeApp()
     const r = await app.request('/api/settings/config', send('PUT', {}))
     expect(r.status).toBe(200)
-    expect((await r.json()).llm_provider).toBe('fake')
+    expect((await body(r)).llm_provider).toBe('fake')
   })
 })
 
