@@ -281,7 +281,7 @@ describe('importExport', () => {
     expect(seq('accounts')).toBe(2)
     const next = db.$client
       .prepare(
-        "INSERT INTO transactions (account_id, external_id, posted_on, amount, raw_description) VALUES (1, 'TRN-NEW', '2026-04-01', -100, 'NEW') RETURNING id",
+        "INSERT INTO transactions (account_id, external_id, posted_on, amount, raw_description, pending, is_transfer) VALUES (1, 'TRN-NEW', '2026-04-01', -100, 'NEW', 0, 0) RETURNING id",
       )
       .pluck()
       .get()
