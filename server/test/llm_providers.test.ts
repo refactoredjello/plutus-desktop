@@ -4,10 +4,37 @@
  * api/app/providers/llm/fake.py.
  */
 
-import { describe, expect, it } from 'vitest'
+import Anthropic, {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIError,
+  APIUserAbortError,
+  AnthropicError,
+  AuthenticationError,
+  BadRequestError,
+  ConflictError,
+  InternalServerError,
+  NotFoundError,
+  PermissionDeniedError,
+  RateLimitError,
+  UnprocessableEntityError,
+} from '@anthropic-ai/sdk'
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
+import { describe, expect, it, vi } from 'vitest'
+import { ProviderError } from '../src/lib/errors.js'
+import { type Logger, createLogger } from '../src/lib/log.js'
 import { cents } from '../src/lib/money.js'
+import { type ClaudeClient, ClaudeProvider, MAX_TOKENS } from '../src/providers/llm/claude.js'
 import { FakeLLMProvider } from '../src/providers/llm/fake.js'
+import {
+  ClassificationBatch,
+  SuggestionBatch,
+  classifySystemPrompt,
+  classifyUserMessage,
+  savingsSystemPrompt,
+} from '../src/providers/llm/prompts.js'
 import type { MerchantInput, SavingsContext } from '../src/providers/llm/types.js'
+import { mockFetch } from './factories.js'
 
 const ITEMS: MerchantInput[] = [
   { merchant_key: 'BLUE BOTTLE COFFEE OAKLAND CA', amount_bucket: '<10', direction: 'outflow', account_kind: 'credit' },
@@ -104,5 +131,250 @@ describe('FakeLLMProvider', () => {
     ])
     const excluded: SavingsContext = { ...CONTEXT, excluded_suggestions: ['Review your TV and movies subscription (monthly).'] }
     expect((await fake.suggestSavings(excluded))[0]?.text).toBe('Set a weekly cap on dining out.')
+  })
+})
+
+// --- Claude -----------------------------------------------------------------------------------
+
+const RESULT: ClassificationBatch = {
+  items: [
+    { merchant_key: 'BLUE BOTTLE COFFEE OAKLAND CA', detailed_category: 'FOOD_AND_DRINK_COFFEE', essentiality: 'discretionary', confidence: 'high' },
+    { merchant_key: 'ACME CORP PAYROLL', detailed_category: 'INCOME_SALARY', essentiality: 'essential', confidence: 'very_high' },
+  ],
+}
+
+interface StubResponse {
+  parsed_output: unknown
+  stop_reason: string
+  usage: { cache_read_input_tokens: number; cache_creation_input_tokens: number }
+}
+
+function response(parsed: unknown, stopReason = 'end_turn'): StubResponse {
+  return { parsed_output: parsed, stop_reason: stopReason, usage: { cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } }
+}
+
+interface ParseParams {
+  model: string
+  max_tokens: number
+  system: { type: string; text: string; cache_control: unknown }[]
+  messages: { role: string; content: string }[]
+  output_config: { format: { type: string; schema: unknown; parse: (text: string) => unknown } }
+}
+
+/** The MagicMock client: `parse` resolves to `stub` or rejects with `error`. */
+function claude(stub: StubResponse | null = null, error?: unknown, log?: Logger) {
+  const parse = vi.fn(async (_params: ParseParams) => {
+    if (error !== undefined) throw error
+    return stub ?? response(RESULT)
+  })
+  const client = { messages: { parse } } as unknown as ClaudeClient
+  return { provider: new ClaudeProvider('sk-test', 'claude-haiku-4-5', client, log), parse }
+}
+
+function call(parse: ReturnType<typeof claude>['parse'], index = 0): ParseParams {
+  return parse.mock.calls[index]?.[0] as ParseParams
+}
+
+async function providerError(promise: Promise<unknown>): Promise<ProviderError> {
+  try {
+    await promise
+  } catch (error) {
+    expect(error).toBeInstanceOf(ProviderError)
+    return error as ProviderError
+  }
+  throw new Error('expected a ProviderError')
+}
+
+describe('ClaudeProvider', () => {
+  it('sends the request shape Python sends', async () => {
+    const { provider, parse } = claude()
+    const out = await provider.classifyMerchants(ITEMS)
+
+    const kwargs = call(parse)
+    expect(kwargs.model).toBe('claude-haiku-4-5')
+    expect(kwargs.max_tokens).toBe(MAX_TOKENS)
+    expect(MAX_TOKENS).toBe(8000)
+    expect(kwargs.output_config.format.type).toBe('json_schema')
+    expect(kwargs.output_config.format.schema).toEqual(zodOutputFormat(ClassificationBatch).schema)
+    expect(kwargs).not.toHaveProperty('thinking')
+    const system = kwargs.system
+    expect(system[0]?.text).toBe(classifySystemPrompt())
+    expect(system[0]?.cache_control).toEqual({ type: 'ephemeral' })
+    const user = kwargs.messages[0]?.content ?? ''
+    expect(kwargs.messages[0]?.role).toBe('user')
+    expect(user).toBe(classifyUserMessage(ITEMS))
+    expect(user).toContain('BLUE BOTTLE COFFEE OAKLAND CA')
+    expect(user).toContain('outflow')
+
+    expect(out.map((c) => c.merchant_key)).toEqual(ITEMS.map((i) => i.merchant_key))
+    expect(out[0]?.detailed_category).toBe('FOOD_AND_DRINK_COFFEE')
+    expect(out[0]?.essentiality).toBe('discretionary')
+    expect(out[1]?.confidence).toBe('very_high')
+  })
+
+  it('keeps the system prompt identical across calls', async () => {
+    const { provider, parse } = claude()
+    await provider.classifyMerchants(ITEMS)
+    await provider.classifyMerchants(ITEMS.slice(0, 1))
+    expect(call(parse, 0).system).toEqual(call(parse, 1).system)
+    expect(call(parse, 0).messages).not.toEqual(call(parse, 1).messages)
+  })
+
+  it('makes no call for an empty batch', async () => {
+    const { provider, parse } = claude()
+    expect(await provider.classifyMerchants([])).toEqual([])
+    expect(parse).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['refusal', 'Claude declined the request'],
+    ['max_tokens', 'Claude output was cut off at the token limit'],
+  ])('raises ProviderError on stop reason %s', async (stopReason, message) => {
+    const { provider } = claude(response(RESULT, stopReason))
+    expect((await providerError(provider.classifyMerchants(ITEMS))).detail).toBe(message)
+  })
+
+  it('raises ProviderError when parsed output is missing', async () => {
+    const { provider } = claude(response(null))
+    expect((await providerError(provider.classifyMerchants(ITEMS))).detail).toBe('Claude returned no structured output')
+  })
+
+  const headers = new Headers()
+  const body = { error: { message: 'x' } }
+  it.each([
+    ['RateLimitError', new RateLimitError(429, body, 'slow down', headers), 'Claude rate limit reached'],
+    ['InternalServerError', new InternalServerError(500, body, 'oops', headers), 'Claude API returned status 500'],
+    ['AuthenticationError', new AuthenticationError(401, body, 'bad key', headers), 'Claude API returned status 401'],
+    ['APIConnectionError', new APIConnectionError({}), 'Could not reach the Claude API'],
+    ['APIConnectionTimeoutError', new APIConnectionTimeoutError(), 'Could not reach the Claude API'],
+  ] as const)('turns %s into a ProviderError', async (_name, error, message) => {
+    const { provider } = claude(null, error)
+    expect((await providerError(provider.classifyMerchants(ITEMS))).detail).toBe(message)
+    expect((await providerError(provider.suggestSavings(CONTEXT))).detail).toBe(message)
+  })
+
+  it.each([
+    ['BadRequestError', new BadRequestError(400, body, 'bad', headers), 'Claude API returned status 400'],
+    ['PermissionDeniedError', new PermissionDeniedError(403, body, 'no', headers), 'Claude API returned status 403'],
+    ['NotFoundError', new NotFoundError(404, body, 'gone', headers), 'Claude API returned status 404'],
+    ['ConflictError', new ConflictError(409, body, 'conflict', headers), 'Claude API returned status 409'],
+    ['UnprocessableEntityError', new UnprocessableEntityError(422, body, 'bad', headers), 'Claude API returned status 422'],
+    ['InternalServerError 529', new InternalServerError(529, body, 'overloaded', headers), 'Claude API returned status 529'],
+    ['APIError 418', new APIError(418, body, 'teapot', headers), 'Claude API returned status 418'],
+    ['APIUserAbortError', new APIUserAbortError(), 'Claude SDK error: APIUserAbortError'],
+    ['AnthropicError', new AnthropicError('other'), 'Claude SDK error: AnthropicError'],
+  ] as const)('maps every other SDK error class: %s', async (_name, error, message) => {
+    const { provider } = claude(null, error)
+    expect((await providerError(provider.classifyMerchants(ITEMS))).detail).toBe(message)
+  })
+
+  it('suggests savings from aggregates only', async () => {
+    const parsed: SuggestionBatch = {
+      suggestions: [
+        { text: 'Cook at home twice a week.', category_label: 'Restaurants', estimated_monthly_saving: 40.5 },
+        { text: 'Review subscriptions.', category_label: null, estimated_monthly_saving: null },
+      ],
+    }
+    const { provider, parse } = claude(response(parsed))
+    const out = await provider.suggestSavings(CONTEXT)
+
+    const kwargs = call(parse)
+    expect(kwargs.output_config.format.schema).toEqual(zodOutputFormat(SuggestionBatch).schema)
+    expect(kwargs.system[0]?.text).toBe(savingsSystemPrompt())
+    expect(kwargs.system[0]?.cache_control).toEqual({ type: 'ephemeral' })
+    const user = kwargs.messages[0]?.content ?? ''
+    const payload = JSON.parse(user.split('\n').slice(1).join('\n')) as Record<string, unknown>
+    expect(payload.excluded_suggestions).toEqual(['Cancel Netflix'])
+    expect(payload.monthly_gap).toBe('300.00')
+    expect((payload.categories as unknown[])[0]).toEqual({ label: 'Restaurants', monthly_totals: ['200.00', '250.50'] })
+    expect(user.toLowerCase()).not.toContain('merchant')
+    expect(out[0]?.estimated_monthly_saving).toBe(4050)
+    expect(out[1]?.estimated_monthly_saving).toBeNull()
+
+    // Savings prompt is also stable across calls.
+    await provider.suggestSavings(CONTEXT)
+    expect(call(parse, 0).system).toEqual(call(parse, 1).system)
+  })
+
+  it('logs cache usage at debug, never the prompt or the key', async () => {
+    const lines: string[] = []
+    const log = createLogger({ level: 'debug' }, { write: (line: string) => void lines.push(line) })
+    const stub = { ...response(RESULT), usage: { cache_read_input_tokens: 4100, cache_creation_input_tokens: 7 } }
+    await claude(stub, undefined, log).provider.classifyMerchants(ITEMS)
+    expect(lines).toHaveLength(1)
+    expect(JSON.parse(lines[0] ?? '')).toMatchObject({
+      level: 'debug',
+      msg: 'llm_call',
+      provider: 'claude',
+      model: 'claude-haiku-4-5',
+      cache_read: 4100,
+      cache_write: 7,
+    })
+    expect(lines[0]).not.toContain('sk-test')
+    expect(lines[0]).not.toContain('BLUE BOTTLE')
+  })
+})
+
+/** A real SDK client over a stubbed fetch, to check the wire request and the SDK's parsing. */
+function sdkClaude(handler: (request: Request) => Response | Promise<Response>) {
+  const requests: Request[] = []
+  const client = new Anthropic({ apiKey: 'sk-test', maxRetries: 0, fetch: mockFetch(handler, requests) })
+  return { provider: new ClaudeProvider('sk-test', 'claude-haiku-4-5', client), requests }
+}
+
+function message(text: string, stopReason = 'end_turn'): Response {
+  return Response.json({
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    model: 'claude-haiku-4-5',
+    content: [{ type: 'text', text }],
+    stop_reason: stopReason,
+    stop_sequence: null,
+    usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+  })
+}
+
+describe('ClaudeProvider over the real SDK', () => {
+  it('sends the system block with the cache breakpoint and the JSON schema format', async () => {
+    const { provider, requests } = sdkClaude(() => message(JSON.stringify(RESULT)))
+    const out = await provider.classifyMerchants(ITEMS)
+    expect(out).toEqual(RESULT.items)
+    const sent = (await requests[0]?.json()) as Record<string, unknown>
+    expect(requests[0]?.url).toBe('https://api.anthropic.com/v1/messages')
+    expect(requests[0]?.headers.get('x-api-key')).toBe('sk-test')
+    expect(sent).toMatchObject({
+      model: 'claude-haiku-4-5',
+      max_tokens: 8000,
+      system: [{ type: 'text', text: classifySystemPrompt(), cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: classifyUserMessage(ITEMS) }],
+      output_config: { format: { type: 'json_schema' } },
+    })
+    expect(sent).not.toHaveProperty('thinking')
+  })
+
+  it('reports output that fails validation', async () => {
+    for (const text of ['{"items": [{"merchant_key": "X"}]}', 'not json', '{"items": [{"merchant_key": "X"']) {
+      const { provider } = sdkClaude(() => message(text))
+      expect((await providerError(provider.classifyMerchants(ITEMS))).detail).toBe(
+        'Claude returned output that failed validation',
+      )
+    }
+  })
+
+  it('maps HTTP errors through the SDK classes', async () => {
+    const statuses: [number, string][] = [
+      [429, 'Claude rate limit reached'],
+      [500, 'Claude API returned status 500'],
+      [401, 'Claude API returned status 401'],
+    ]
+    for (const [status, detail] of statuses) {
+      const { provider } = sdkClaude(() => Response.json({ type: 'error', error: { type: 'x', message: 'x' } }, { status }))
+      expect((await providerError(provider.classifyMerchants(ITEMS))).detail).toBe(detail)
+    }
+    const down = sdkClaude(() => {
+      throw new TypeError('fetch failed')
+    })
+    expect((await providerError(down.provider.classifyMerchants(ITEMS))).detail).toBe('Could not reach the Claude API')
   })
 })
