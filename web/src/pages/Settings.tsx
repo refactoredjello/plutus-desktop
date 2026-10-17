@@ -3,6 +3,7 @@ import { AccountsCard } from '@/features/settings/AccountsCard'
 import { BankConnectionCard } from '@/features/settings/BankConnectionCard'
 import { ClearDismissalsCard } from '@/features/settings/ClearDismissalsCard'
 import { CategoriesCard } from '@/features/settings/CategoriesCard'
+import { ConfigCard } from '@/features/settings/ConfigCard'
 import { LlmStatusLine } from '@/features/settings/LlmStatusLine'
 import { useSimplefinStatus, useSync } from '@/features/settings/queries'
 import { NextSyncLine } from '@/features/settings/NextSyncLine'
@@ -40,6 +41,7 @@ export function SettingsPage() {
       </div>
       <AccountsCard />
       <LlmStatusLine />
+      <ConfigCard />
       <CategoriesCard />
       <RulesCard />
       <ClearDismissalsCard />
