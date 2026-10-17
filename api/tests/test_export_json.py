@@ -57,7 +57,7 @@ def test_envelope_names_format_version_and_alembic_revision(db: Session) -> None
     data = export_data(db, _settings())
 
     assert data["format"] == FORMAT == "plutus-export"
-    assert data["format_version"] == FORMAT_VERSION == 1
+    assert data["format_version"] == FORMAT_VERSION == 2
     assert data["alembic_revision"] == _head_revision()
     exported_at = datetime.fromisoformat(str(data["exported_at"]))
     assert exported_at.utcoffset() == timedelta(0)
@@ -276,3 +276,45 @@ def test_sequences_record_the_highest_id_ever_handed_out(db: Session) -> None:
     assert sequences["transactions"] >= dropped.id
     assert sequences["accounts"] >= account.id
     assert sequences["categories"] >= 1
+
+
+def test_runtime_config_carries_the_env_settings_keyed_like_config_update(db: Session) -> None:
+    settings = Settings(
+        secret_key=SecretStr("export-test-key"),
+        llm_provider="claude",  # type: ignore[arg-type]
+        llm_model="claude-haiku-4-5",
+        anthropic_api_key=SecretStr("sk-ant-fake-not-a-key"),
+        ollama_base_url="http://localhost:11434",
+        owner_name_tokens=["ALEX", "SAMPLE"],
+        sync_interval_hours=12,
+        sync_first_history_days=90,
+        scheduler_enabled=False,
+    )
+
+    data = export_data(db, settings)
+
+    assert data["runtime_config"] == {
+        "llm_provider": "claude",
+        "llm_model": "claude-haiku-4-5",
+        "anthropic_api_key": "sk-ant-fake-not-a-key",
+        "ollama_base_url": "http://localhost:11434",
+        "owner_name_tokens": ["ALEX", "SAMPLE"],
+        "sync_interval_hours": 12,
+        "sync_first_history_days": 90,
+        "scheduler_enabled": False,
+    }
+    assert list(data)[-1] == "tables"
+
+
+@pytest.mark.parametrize("key", [None, "", "   "])
+def test_a_missing_or_blank_api_key_exports_as_null(db: Session, key: str | None) -> None:
+    settings = Settings(
+        secret_key=SecretStr("export-test-key"),
+        anthropic_api_key=None if key is None else SecretStr(key),
+    )
+
+    config = export_data(db, settings)["runtime_config"]
+
+    assert isinstance(config, dict)
+    assert config["anthropic_api_key"] is None
+    assert config["llm_provider"] == settings.llm_provider.value
