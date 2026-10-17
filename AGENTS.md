@@ -32,6 +32,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 |---|---|
 | `make check` | Everything CI runs. Must pass before a change is done. |
 | `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the TypeScript server, then `schema.d.ts`. A test fails if they're stale. `server/test/contract.test.ts` also checks the spec against FastAPI's, frozen in `server/test/fixtures/fastapi-openapi.json`. |
+| `make parity-self` / `make parity` | Parity harness (`tools/parity`): Python against itself (must be zero differences), then Python against the TypeScript server on demo data; writes `tools/parity/report.md`. Needs the compose Postgres; not part of `make check`. |
 | `make revision m="..."` | New Alembic migration (autogenerate), then review it. |
 | `make help` | The rest. |
 
@@ -40,6 +41,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - `api/app/models` SQLAlchemy tables; `schemas` Pydantic request/response models; `routers` thin HTTP layer; `services` business logic; `providers` SimpleFIN and LLM adapters.
 - `api/app/services/aggregates.py` is the single definition of income, expenses, transfers, money movement, essentiality buckets, and "usual" (recent active months). Build every report on it; never re-derive these rules.
 - `server/` is the TypeScript port (Hono, Drizzle, better-sqlite3), laid out per docs/DESKTOP_PLAN.md 4.3. `server/test/setup.ts` gives each test its own in-memory SQLite via `makeDb()`.
+- `server/src/services/config.ts` is the runtime config: knobs live in `app_settings`, seeded once from env; read them with `runtimeConfig()`/`llmSettings()`, never `process.env`.
 - `web/src/api` is generated; never edit it. `src/pages` one file per route; `src/features/<area>` components and queries; `src/mocks` MSW handlers for tests.
 - `docs/` requirements (with a decisions log and known limitations), architecture, plans, and PRDs.
 
