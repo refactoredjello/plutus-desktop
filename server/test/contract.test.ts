@@ -205,6 +205,10 @@ describe('component schemas match FastAPI', () => {
     expect(missing).toEqual([])
   })
 
+  it('has no components beyond those and the new config contract', () => {
+    expect(Object.keys(serverSchemas).sort()).toEqual([...ported, 'ConfigRead', 'ConfigUpdate'].sort())
+  })
+
   it.each(ported)('%s has the same required property names', (name) => {
     expect(sorted(serverSchema(name).required)).toEqual(sorted(FASTAPI.components.schemas[name]?.required))
   })
@@ -217,6 +221,7 @@ describe('component schemas match FastAPI', () => {
       description: s?.description,
       type: s?.type,
       enum: s?.enum,
+      default: s?.default,
       additionalProperties: s?.additionalProperties,
       properties: Object.fromEntries(Object.entries(canonicalProperties(s ?? {})).map(([k, v]) => [k, strip(v)])),
     })
