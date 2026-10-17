@@ -1,0 +1,239 @@
+/**
+ * Settings routes. Ports test_sync_routes.py::test_simplefin_status_connect_disconnect and
+ * ::test_connect_with_bad_token_is_502, and test_category_routes.py::test_llm_status; adds the
+ * new GET/PUT /api/settings/config contract (plan 5.7) and the privacy guarantees: the access
+ * URL and the API key are never returned and never logged.
+ *
+ * SimpleFIN's claim is a fake until brief 1D's simplefin.ts is wired in: like Python's
+ * mocked_simplefin, it decodes the token and answers with ACCESS_URL.
+ */
+
+import { Writable } from 'node:stream'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { RuntimeDefaults } from '../src/config.js'
+import { ProviderError } from '../src/lib/errors.js'
+import { createLogger } from '../src/lib/log.js'
+import { simplefinClaim } from '../src/routes/settings.js'
+import { ACCESS_URL, makeToken } from './factories.js'
+import { makeApp, testConfig } from './setup.js'
+
+const API_KEY = 'sk-ant-route-test-987654'
+
+/** claim_setup_token's input checks over a mocked bridge that answers ACCESS_URL. */
+async function fakeClaim(token: string): Promise<string> {
+  const claimUrl = Buffer.from(token.trim(), 'base64').toString('utf8')
+  if (!/^https?:\/\//.test(claimUrl)) {
+    throw new ProviderError('The SimpleFIN setup token does not contain a claim URL.')
+  }
+  return ACCESS_URL
+}
+
+const claims: string[] = []
+
+beforeEach(() => {
+  claims.length = 0
+  vi.spyOn(simplefinClaim, 'claim').mockImplementation(async (token) => {
+    claims.push(token)
+    return fakeClaim(token)
+  })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+function send(method: string, body?: unknown): RequestInit {
+  return body === undefined
+    ? { method }
+    : { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }
+}
+
+function appWith(defaults: Partial<RuntimeDefaults> = {}) {
+  const config = testConfig()
+  return makeApp({ config: { ...config, defaults: { ...config.defaults, ...defaults } } })
+}
+
+describe('SimpleFIN connection (test_sync_routes.py)', () => {
+  it('reports status, connects, and disconnects', async () => {
+    const { app } = makeApp()
+    expect(await (await app.request('/api/settings/simplefin')).json()).toEqual({
+      connected: false,
+      connected_at: null,
+    })
+    const r = await app.request('/api/settings/simplefin', send('POST', { setup_token: makeToken() }))
+    expect(r.status).toBe(200)
+    const text = await r.text()
+    expect(JSON.parse(text).connected).toBe(true)
+    expect(text).not.toContain('pass456')
+    expect(claims).toEqual([makeToken()])
+    const status = await (await app.request('/api/settings/simplefin')).json()
+    expect(status.connected).toBe(true)
+    expect(status.connected_at).toBeTruthy()
+    expect(status.connected_at).toBe(JSON.parse(text).connected_at)
+    expect((await app.request('/api/settings/simplefin', send('DELETE'))).status).toBe(204)
+    expect((await (await app.request('/api/settings/simplefin')).json()).connected).toBe(false)
+  })
+
+  it('answers 502 for a bad token', async () => {
+    const { app } = makeApp()
+    const r = await app.request('/api/settings/simplefin', send('POST', { setup_token: '%%%' }))
+    expect(r.status).toBe(502)
+    expect(r.headers.get('content-type')).toBe('application/problem+json')
+    expect((await (await app.request('/api/settings/simplefin')).json()).connected).toBe(false)
+  })
+
+  it('disconnecting when not connected is still 204', async () => {
+    const { app } = makeApp()
+    const r = await app.request('/api/settings/simplefin', send('DELETE'))
+    expect(r.status).toBe(204)
+    expect(await r.text()).toBe('')
+  })
+})
+
+describe('GET /api/settings/llm (test_category_routes.py::test_llm_status)', () => {
+  const llmStatus = async (defaults: Partial<RuntimeDefaults>) =>
+    (await appWith(defaults).app.request('/api/settings/llm')).json()
+
+  it('reports provider, model, and whether it is configured', async () => {
+    expect(await llmStatus({ llmProvider: 'fake' })).toEqual({
+      provider: 'fake',
+      model: 'claude-haiku-4-5',
+      configured: true,
+    })
+    expect(await llmStatus({ llmProvider: 'ollama', llmModel: 'llama3.1' })).toEqual({
+      provider: 'ollama',
+      model: 'llama3.1',
+      configured: true,
+    })
+    const noKey = await llmStatus({ llmProvider: 'claude', anthropicApiKey: null })
+    expect([noKey.provider, noKey.configured]).toEqual(['claude', false])
+    const keyed = await llmStatus({ llmProvider: 'claude', anthropicApiKey: 'sk-test' })
+    expect(keyed.configured).toBe(true)
+    expect(JSON.stringify(keyed)).not.toContain('sk-test')
+  })
+
+  it('follows config updates', async () => {
+    const { app } = makeApp()
+    await app.request('/api/settings/config', send('PUT', { llm_provider: 'claude' }))
+    expect((await (await app.request('/api/settings/llm')).json()).configured).toBe(false)
+    await app.request('/api/settings/config', send('PUT', { anthropic_api_key: API_KEY }))
+    expect(await (await app.request('/api/settings/llm')).json()).toEqual({
+      provider: 'claude',
+      model: 'claude-haiku-4-5',
+      configured: true,
+    })
+  })
+})
+
+describe('/api/settings/config', () => {
+  it('reads the seeded test config', async () => {
+    const { app } = makeApp()
+    const r = await app.request('/api/settings/config')
+    expect(r.status).toBe(200)
+    expect(await r.json()).toEqual({
+      llm_provider: 'fake',
+      llm_model: 'claude-haiku-4-5',
+      anthropic_api_key_set: false,
+      ollama_base_url: 'http://localhost:11434',
+      owner_name_tokens: [],
+      sync_interval_hours: 6,
+      sync_first_history_days: 180,
+      scheduler_enabled: false,
+    })
+  })
+
+  it('updates only the given fields and returns the new config', async () => {
+    const { app } = makeApp()
+    const r = await app.request(
+      '/api/settings/config',
+      send('PUT', {
+        llm_provider: 'ollama',
+        llm_model: 'llama3.1',
+        owner_name_tokens: ['ALEX'],
+        sync_first_history_days: 90,
+        scheduler_enabled: true,
+      }),
+    )
+    expect(r.status).toBe(200)
+    const expected = {
+      llm_provider: 'ollama',
+      llm_model: 'llama3.1',
+      anthropic_api_key_set: false,
+      ollama_base_url: 'http://localhost:11434',
+      owner_name_tokens: ['ALEX'],
+      sync_interval_hours: 6,
+      sync_first_history_days: 90,
+      scheduler_enabled: true,
+    }
+    expect(await r.json()).toEqual(expected)
+    expect(await (await app.request('/api/settings/config')).json()).toEqual(expected)
+  })
+
+  it('sets and clears the API key without ever returning it', async () => {
+    const { app } = makeApp()
+    const set = await app.request('/api/settings/config', send('PUT', { anthropic_api_key: API_KEY }))
+    const setText = await set.text()
+    expect(JSON.parse(setText).anthropic_api_key_set).toBe(true)
+    expect(setText).not.toContain(API_KEY)
+    expect(JSON.parse(setText)).not.toHaveProperty('anthropic_api_key')
+    const read = await (await app.request('/api/settings/config')).text()
+    expect(read).not.toContain(API_KEY)
+    expect(JSON.parse(read).anthropic_api_key_set).toBe(true)
+    const cleared = await app.request('/api/settings/config', send('PUT', { anthropic_api_key: null }))
+    expect((await cleared.json()).anthropic_api_key_set).toBe(false)
+  })
+
+  it('accepts an empty update', async () => {
+    const { app } = makeApp()
+    const r = await app.request('/api/settings/config', send('PUT', {}))
+    expect(r.status).toBe(200)
+    expect((await r.json()).llm_provider).toBe('fake')
+  })
+})
+
+describe('privacy: secrets are never returned or logged', () => {
+  function capture() {
+    const chunks: string[] = []
+    const stream = new Writable({
+      write(chunk, _encoding, done) {
+        chunks.push(String(chunk))
+        done()
+      },
+    })
+    return { log: createLogger({ level: 'debug' }, stream), text: () => chunks.join('') }
+  }
+
+  it('keeps the access URL and the API key out of every response, the database, and the log', async () => {
+    const out = capture()
+    const config = testConfig()
+    const { app, db } = makeApp({
+      config: { ...config, defaults: { ...config.defaults, llmProvider: 'claude', anthropicApiKey: API_KEY } },
+      log: out.log,
+    })
+    const bodies: string[] = []
+    const call = async (url: string, init?: RequestInit) => {
+      const r = await app.request(url, init)
+      bodies.push(await r.text(), JSON.stringify([...r.headers]))
+      return r
+    }
+    await call('/api/settings/config')
+    await call('/api/settings/llm')
+    await call('/api/settings/simplefin', send('POST', { setup_token: makeToken() }))
+    await call('/api/settings/simplefin')
+    await call('/api/settings/config', send('PUT', { anthropic_api_key: `${API_KEY}-2`, llm_model: 'x' }))
+    await call('/api/settings/config')
+    await call('/api/settings/simplefin', send('POST', { setup_token: '%%%' }))
+    // An unexpected failure reaches the error handler's log.
+    vi.mocked(simplefinClaim.claim).mockRejectedValueOnce(new Error('bridge exploded'))
+    expect((await call('/api/settings/simplefin', send('POST', { setup_token: makeToken() }))).status).toBe(500)
+
+    const logged = out.text()
+    expect(logged).toContain('bridge exploded')
+    const stored = JSON.stringify(db.$client.prepare('select * from app_settings').all())
+    for (const text of [bodies.join('\n'), logged, stored]) {
+      expect(text).not.toContain(API_KEY)
+      expect(text).not.toContain(ACCESS_URL)
+      expect(text).not.toContain('pass456')
+    }
+  })
+})
