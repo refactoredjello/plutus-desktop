@@ -220,6 +220,10 @@ export function ruleNotes(): string[] {
       'seconds apart cannot agree. A valid instant there is masked; null, a naive timestamp, or a ' +
       'non-string stays visible and is compared.',
     'Money and dates are strings and compare exactly; "15.5" and "15.50" differ.',
+    'Numbers compare with ===, so -0 equals 0 (Python prints a float ratio as -0.0 or 1.0, ' +
+      'JavaScript as 0 or 1).',
+    'Text ordering is not normalized: Postgres sorts with the en_US.utf8 collation, SQLite by ' +
+      'bytes. Any such difference stays in the report for checkpoint B.',
     'Object key order is ignored (JSON objects are unordered). List order is compared except ' +
       'for the tie rules below.',
     'Status code and media type (without parameters) are compared with the body.',

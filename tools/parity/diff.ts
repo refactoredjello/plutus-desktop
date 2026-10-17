@@ -70,7 +70,8 @@ export function diff(expected: Json, actual: Json, path = ''): Difference[] {
     return out
   }
 
-  return Object.is(expected, actual) ? [] : [{ path, expected, actual }]
+  // === rather than Object.is: Python prints a float ratio as -0.0 where JavaScript prints 0.
+  return expected === actual ? [] : [{ path, expected, actual }]
 }
 
 /** Normalize both responses (normalize.ts) and diff status, content type, and body. */
