@@ -7,6 +7,7 @@ the import.
 
 Values: money is a two-decimal string, dates are YYYY-MM-DD, timestamps ISO 8601 in UTC,
 booleans and ids as they are. Rows are ordered by primary key; tables in foreign-key order.
+`sequences` holds, per table with an integer id, the highest id Postgres ever handed out.
 """
 
 import json
@@ -90,6 +91,17 @@ def _rows(db: Session, settings: Settings, table: Table) -> list[dict[str, Value
     return rows
 
 
+_SEQUENCE = text(
+    "SELECT coalesce(s.last_value, 0) FROM pg_sequences s"
+    " WHERE format('%I.%I', s.schemaname, s.sequencename) = pg_get_serial_sequence(:t, 'id')"
+)
+
+
+def _sequence(db: Session, table: Table) -> int:
+    """The highest id the table's sequence ever handed out, deleted rows included; 0 if none."""
+    return int(db.execute(_SEQUENCE, {"t": table.name}).scalar_one())
+
+
 def export_data(db: Session, settings: Settings) -> dict[str, object]:
     revision = db.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     return {
@@ -97,6 +109,8 @@ def export_data(db: Session, settings: Settings) -> dict[str, object]:
         "format_version": FORMAT_VERSION,
         "alembic_revision": revision,
         "exported_at": datetime.now(UTC).isoformat(),
+        # Ids are never reused (change dismissal keys embed them); the importer keeps it so.
+        "sequences": {t.name: _sequence(db, t) for t in _TABLES if "id" in t.columns},
         "tables": {table.name: _rows(db, settings, table) for table in _TABLES},
     }
 
