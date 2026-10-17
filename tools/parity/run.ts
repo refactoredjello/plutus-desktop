@@ -51,6 +51,9 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) throw new Error(`--today must be YYYY-MM
 
 const log = (msg: string) => process.stdout.write(`parity: ${msg}\n`)
 const lastLine = (r: CommandResult) => r.output.split('\n').filter(Boolean).at(-1) ?? ''
+/** The most telling line of a failed command: the first error line, else the last line. */
+const errorLine = (r: CommandResult) =>
+  r.output.split('\n').find((l) => /Error\b/.test(l))?.trim() ?? lastLine(r)
 
 function check(name: string, ok: boolean, detail: string): CheckResult {
   return { name, ok, detail }
@@ -117,7 +120,7 @@ async function main(): Promise<number> {
         otherDemo.ok && lastLine(otherDemo) === lastLine(pyDemo),
         otherDemo.ok
           ? `Python "${lastLine(pyDemo)}"; ${actualLabel} "${lastLine(otherDemo)}"`
-          : `Python "${lastLine(pyDemo)}"; ${actualLabel} failed (exit ${otherDemo.status}): ${otherDemo.output.slice(0, 300)}`,
+          : `Python "${lastLine(pyDemo)}"; ${actualLabel} failed (exit ${otherDemo.status}): ${errorLine(otherDemo).slice(0, 300)}`,
       ),
     )
 
