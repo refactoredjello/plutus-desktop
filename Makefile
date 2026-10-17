@@ -1,4 +1,4 @@
-.PHONY: help up down logs migrate revision test test-api test-web lint fmt typecheck openapi check check-server dev-server password-hash demo-data demo-clear
+.PHONY: help up down logs migrate revision test test-api test-web lint fmt typecheck openapi check check-server check-parity parity parity-self dev-server password-hash demo-data demo-clear
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -48,7 +48,18 @@ check-server: ## Lint, typecheck, and test the TypeScript server
 dev-server: ## Run the TypeScript server headless on :8000, serving web/dist
 	cd server && npm run dev
 
-check: lint typecheck test check-server ## Everything CI runs
+check-parity: ## Lint, typecheck, and unit-test the parity harness (starts no app, needs no Postgres)
+	node_modules/.bin/oxlint -c tools/parity/.oxlintrc.json tools/parity
+	node_modules/.bin/tsc -p tools/parity/tsconfig.json
+	node_modules/.bin/vitest run --config tools/parity/vitest.config.ts
+
+parity: ## Python vs TypeScript parity run on demo data; writes tools/parity/report.md
+	node_modules/.bin/tsx tools/parity/run.ts
+
+parity-self: ## Python vs Python self-check of the parity harness; must report zero differences
+	node_modules/.bin/tsx tools/parity/run.ts --self-check
+
+check: lint typecheck test check-server check-parity ## Everything CI runs
 
 password-hash: ## Print an argon2 hash for APP_PASSWORD_HASH
 	@cd api && uv run python -c 'import getpass; from argon2 import PasswordHasher; print("APP_PASSWORD_HASH=\x27" + PasswordHasher().hash(getpass.getpass("Password: ")) + "\x27")'
