@@ -21,12 +21,13 @@ import Anthropic, {
 } from '@anthropic-ai/sdk'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProviderError } from '../src/lib/errors.js'
 import { type Logger, createLogger } from '../src/lib/log.js'
 import { cents } from '../src/lib/money.js'
 import { type ClaudeClient, ClaudeProvider, MAX_TOKENS } from '../src/providers/llm/claude.js'
 import { FakeLLMProvider } from '../src/providers/llm/fake.js'
+import { type LlmSettings, getLlmProvider } from '../src/providers/llm/index.js'
 import { OllamaProvider } from '../src/providers/llm/ollama.js'
 import {
   CLASSIFICATION_BATCH_JSON_SCHEMA,
@@ -39,7 +40,7 @@ import {
 } from '../src/providers/llm/prompts.js'
 import type { MerchantInput, SavingsContext } from '../src/providers/llm/types.js'
 import { mockFetch } from './factories.js'
-import { FIXTURES } from './setup.js'
+import { FIXTURES, testConfig } from './setup.js'
 
 /**
  * What the Python SDK's messages.parse(output_format=Model) sends as output_config.format.schema
@@ -467,5 +468,62 @@ describe('OllamaProvider', () => {
       throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
     }
     expect((await providerError(ollama(slow).suggestSavings(CONTEXT))).detail).toBe('Could not reach Ollama')
+  })
+})
+
+// --- factory ----------------------------------------------------------------------------------
+
+/** Python's Settings() defaults for the LLM knobs, with overrides. */
+function llmSettings(overrides: Partial<LlmSettings> = {}): LlmSettings {
+  return {
+    llm_provider: 'fake',
+    llm_model: 'claude-haiku-4-5',
+    anthropic_api_key: null,
+    ollama_base_url: 'http://localhost:11434',
+    ...overrides,
+  }
+}
+
+describe('getLlmProvider', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
+  it('returns each provider', () => {
+    expect(getLlmProvider(llmSettings({ llm_provider: 'fake' }))).toBeInstanceOf(FakeLLMProvider)
+    const claude = getLlmProvider(llmSettings({ llm_provider: 'claude', anthropic_api_key: 'sk-test' }))
+    expect(claude).toBeInstanceOf(ClaudeProvider)
+    expect((claude as ClaudeProvider).model).toBe('claude-haiku-4-5')
+    const ollama = getLlmProvider(llmSettings({ llm_provider: 'ollama', llm_model: 'llama3.1' }))
+    expect(ollama).toBeInstanceOf(OllamaProvider)
+    expect((ollama as OllamaProvider).model).toBe('llama3.1')
+  })
+
+  it('requires an API key for Claude', () => {
+    for (const key of [null, '', '  \n']) {
+      expect(() => getLlmProvider(llmSettings({ llm_provider: 'claude', anthropic_api_key: key }))).toThrow(ProviderError)
+    }
+    expect(() => getLlmProvider(llmSettings({ llm_provider: 'claude' }))).toThrow(
+      'LLM_PROVIDER=claude requires ANTHROPIC_API_KEY to be set',
+    )
+  })
+
+  it('uses only the settings it is given, never the environment', async () => {
+    vi.stubEnv('LLM_PROVIDER', 'claude')
+    vi.stubEnv('ANTHROPIC_API_KEY', 'sk-from-env')
+    vi.stubEnv('OLLAMA_BASE_URL', 'http://env.example:1')
+    expect(getLlmProvider(llmSettings())).toBeInstanceOf(FakeLLMProvider)
+    expect(() => getLlmProvider(llmSettings({ llm_provider: 'claude' }))).toThrow(ProviderError)
+
+    const seen: Request[] = []
+    vi.stubGlobal('fetch', mockFetch(() => Response.json({ message: { content: JSON.stringify(RESULT) } }), seen))
+    const ollama = getLlmProvider(llmSettings({ llm_provider: 'ollama', ollama_base_url: 'http://ollama.test:11434/' }))
+    await ollama.classifyMerchants(ITEMS)
+    expect(seen[0]?.url).toBe('http://ollama.test:11434/api/chat')
+  })
+
+  it('defaults the model to an alias with no date suffix', () => {
+    expect(testConfig().defaults.llmModel).toBe('claude-haiku-4-5')
   })
 })
