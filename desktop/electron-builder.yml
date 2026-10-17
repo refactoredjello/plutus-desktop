@@ -1,0 +1,39 @@
+# Unsigned builds work out of the box; signing and notarization are wired in brief 5B
+# (see README.md). `npm run dist` builds web, server, and desktop first.
+appId: app.plutus.desktop
+productName: Plutus
+copyright: Plutus
+
+directories:
+  output: release
+
+# The app: compiled main and preload, plus production dependencies (plutus-server and its
+# dependencies, collected from the workspace).
+files:
+  - dist/**
+  - package.json
+  # Sources the app never loads: the server runs from its dist, SQLite from its prebuild.
+  - '!**/node_modules/plutus-server/{src,scripts,test}/**'
+  - '!**/node_modules/plutus-server/*.{ts,json}'
+  - 'node_modules/plutus-server/package.json'
+  - '!**/node_modules/better-sqlite3/{deps,src,build}/**'
+
+# The SPA, served by the in-process server from Resources/web (src/lib/paths.ts).
+extraResources:
+  - from: ../web/dist
+    to: web
+
+asar: true
+# Native modules cannot load from inside app.asar.
+asarUnpack:
+  - '**/node_modules/better-sqlite3/**/*.node'
+
+# better-sqlite3 13 ships N-API prebuilds (lib/<platform>.js loads prebuilds/<platform>.node)
+# and has no install script; N-API binaries load in Electron's Node unchanged, so there is
+# nothing to rebuild for Electron's ABI. Turn this back on if a dependency needs node-gyp.
+npmRebuild: false
+
+mac:
+  category: public.app-category.finance
+  # 5B adds dmg and zip for arm64 and x64; a .app directory is enough to launch and test.
+  target: dir
