@@ -12,8 +12,9 @@ import type { Logger } from '../lib/log.js'
 import { params, responseList } from '../schemas/model.js'
 import { pathInt, queryInt } from '../schemas/params.js'
 import { SyncRunRead, SyncSchedule } from '../schemas/sync.js'
+import { runtimeConfig } from '../services/config.js'
 import * as sync from '../services/sync.js'
-import { json, notImplemented } from './openapi.js'
+import { json } from './openapi.js'
 
 const background = new Set<Promise<void>>()
 
@@ -77,7 +78,13 @@ export function registerSync(app: App): void {
     detach(() => sync.executeInBackground(db, secrets, config.defaults, run.id, log), log)
     return c.json(run, 202)
   })
-  app.openapi(getSyncSchedule, notImplemented)
+  app.openapi(getSyncSchedule, (c) => {
+    const { syncIntervalHours, schedulerEnabled } = runtimeConfig(c.var.db, c.var.secrets, c.var.config.defaults)
+    return c.json(
+      { enabled: schedulerEnabled, interval_hours: syncIntervalHours, next_run_at: c.var.scheduler?.nextRunAt() ?? null },
+      200,
+    )
+  })
   app.openapi(listSyncRuns, (c) => {
     const { limit } = c.req.valid('query')
     return c.json(sync.listRuns(c.var.db, limit), 200)
