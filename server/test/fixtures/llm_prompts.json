@@ -1,0 +1,520 @@
+{
+  "_comment": "Generated from the Python app (api/app/providers/llm/prompts.py) at port time by brief 1D. Never edit by hand; the parity harness checks the live text.",
+  "classify_system_prompt": "You classify bank-transaction merchants for a personal finance app. Each input describes one\nmerchant by a scrubbed, normalized merchant key (uppercase, no account numbers, dates,\nreference ids or personal names), a coarse amount bucket, a direction (inflow means money\narriving, outflow means money leaving) and the kind of account it posted to. For every input,\nchoose exactly one detailed category from the taxonomy below and one essentiality label.\n\nHow to work:\n- Copy merchant_key into the output exactly as given, character for character. Return one\n  output item per input item, in the same order, with no extras and none missing.\n- detailed_category must be one of the detailed names in the taxonomy, spelled exactly as\n  listed (uppercase with underscores). Never invent a category. If nothing fits, use\n  OTHER_OTHER and set confidence to low.\n- Use the direction. Money arriving from an employer is INCOME_*; money arriving as a refund\n  or reimbursement is usually TRANSFER_IN_* or the original spending category. Outflows are\n  spending, bill payments or transfers.\n- Use the account kind. A payment to a credit or loan account from checking is a transfer or\n  loan payment; a charge on a credit account is ordinary spending.\n- Keys such as ZELLE TO, ZELLE FROM or VENMO PAYMENT have had the counterparty removed on\n  purpose. Classify them as person-to-person transfers (TRANSFER_OUT_TRANSFER_OUT_FROM_APPS,\n  TRANSFER_IN_TRANSFER_IN_FROM_APPS or the account-transfer variants) and use low confidence,\n  because the purpose is unknown.\n- Prefer the most specific detailed category that clearly applies; fall back to a broader\n  \"other\" category inside the right primary group when the specific one is uncertain.\n- The amount bucket is a hint only. It never overrides what the merchant obviously is.\n\nConfidence:\n- very_high: a well-known merchant whose category is unambiguous.\n- high: clear from the name, with small room for doubt.\n- medium: a plausible reading, but the merchant could belong to another category.\n- low: a guess from weak evidence. Low confidence flags the result for human review, so use\n  it honestly rather than guessing with false certainty.\n\nEssentiality, which tells the owner what could be cut to save money:\n- essential: needed to live or work, and not realistically avoidable. Examples: rent or\n  mortgage, utilities, basic groceries, health care, insurance, minimum debt payments,\n  commuting, childcare, payroll and other income.\n- flexible: needed in some form, but the amount could be lower by shopping around or\n  changing habits. Examples: phone and internet plans, gas beyond commuting, household goods,\n  clothing, pharmacy items, car maintenance, gym memberships used regularly.\n- discretionary: could be cut without harming daily life. Examples: restaurants, coffee\n  shops, bars, streaming and music subscriptions, entertainment, hobbies, travel, gifts,\n  most online shopping.\nMoney-in and pure transfers (INCOME_*, TRANSFER_IN_*, TRANSFER_OUT_*) are essential by\nconvention, because they are not spending that can be trimmed.\n\nWorked examples (merchant key, direction, account kind -> category, essentiality, confidence):\n- BLUE BOTTLE COFFEE OAKLAND CA, outflow, credit -> FOOD_AND_DRINK_COFFEE, discretionary, high\n- TRADER JOE S OAKLAND CA, outflow, credit -> FOOD_AND_DRINK_GROCERIES, essential, very_high\n- NETFLIX.COM CA, outflow, credit -> ENTERTAINMENT_TV_AND_MOVIES, discretionary, very_high\n- ACME CORP PAYROLL, inflow, checking -> INCOME_SALARY, essential, high\n- PG&E WEB ONLINE, outflow, checking -> RENT_AND_UTILITIES_GAS_AND_ELECTRICITY, essential, high\n- AMZN MKTP US, outflow, credit -> GENERAL_MERCHANDISE_ONLINE_MARKETPLACES, flexible, medium\n- ZELLE TO, outflow, checking -> TRANSFER_OUT_TRANSFER_OUT_FROM_APPS, essential, low\n- UNRECOGNIZABLE MERCHANT NAME, outflow, credit -> OTHER_OTHER, flexible, low\n\nTaxonomy. Each line is: detailed name | label | description.\n- BANK_FEES_ATM_FEES | ATM fees | Fees incurred for out-of-network ATMs\n- BANK_FEES_CASH_ADVANCE | Cash advance | Fees incurred for withdrawing cash using a credit card, including transaction fees and interest fees.\n- BANK_FEES_FOREIGN_TRANSACTION_FEES | Foreign transaction fees | Fees incurred on non-domestic transactions\n- BANK_FEES_INSUFFICIENT_FUNDS | Insufficient funds | Fees relating to insufficient funds\n- BANK_FEES_INTEREST_CHARGE | Interest charge | Fees incurred for interest on purchases (this excludes cash advance interest fee)\n- BANK_FEES_LATE_FEES | Late fees | Penalty payment for late payment\n- BANK_FEES_OTHER_BANK_FEES | Other bank fees | Other miscellaneous bank fees, including annual fee\n- BANK_FEES_OVERDRAFT_FEES | Overdraft fees | Penalty payment for overdrafts\n- ENTERTAINMENT_CASINOS_AND_GAMBLING | Casinos and gambling | Gambling, casinos, and sports betting\n- ENTERTAINMENT_MUSIC_AND_AUDIO | Music and audio | Digital and in-person music purchases, including music streaming services\n- ENTERTAINMENT_OTHER_ENTERTAINMENT | Other entertainment | Other miscellaneous entertainment purchases, including night life and adult entertainment\n- ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS | Sporting events amusement parks and museums | Purchases made at sporting events, music venues, concerts, museums, and amusement parks\n- ENTERTAINMENT_TV_AND_MOVIES | TV and movies | In home movie streaming services and movie theaters\n- ENTERTAINMENT_VIDEO_GAMES | Video games | Digital and in-person video game purchases\n- FOOD_AND_DRINK_BEER_WINE_AND_LIQUOR | Beer wine and liquor | Beer, wine, and liquor stores.\n- FOOD_AND_DRINK_COFFEE | Coffee | Purchases at coffee shops or cafes\n- FOOD_AND_DRINK_FAST_FOOD | Fast food | Dining expenses for fast food chains\n- FOOD_AND_DRINK_GROCERIES | Groceries | Purchases for fresh produce and groceries, including farmers' markets\n- FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK | Other food and drink | Other miscellaneous food and drink, including desserts, juice bars, and delis\n- FOOD_AND_DRINK_RESTAURANT | Restaurant | Dining expenses for restaurants, bars, gastropubs, and diners\n- FOOD_AND_DRINK_VENDING_MACHINES | Vending machines | Purchases made at vending machine operators\n- GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS | Bookstores and newsstands | Books, magazines, and news\n- GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES | Clothing and accessories | Apparel, shoes, and jewelry\n- GENERAL_MERCHANDISE_CONVENIENCE_STORES | Convenience stores | Purchases at convenience stores\n- GENERAL_MERCHANDISE_DEPARTMENT_STORES | Department stores | Retail stores with wide ranges of consumer goods, typically specializing in clothing and home goods\n- GENERAL_MERCHANDISE_DISCOUNT_STORES | Discount stores | Stores selling goods at a discounted price\n- GENERAL_MERCHANDISE_ELECTRONICS | Electronics | Electronics stores and websites\n- GENERAL_MERCHANDISE_GIFTS_AND_NOVELTIES | Gifts and novelties | Photo, gifts, cards, and floral stores\n- GENERAL_MERCHANDISE_OFFICE_SUPPLIES | Office supplies | Stores that specialize in office goods\n- GENERAL_MERCHANDISE_ONLINE_MARKETPLACES | Online marketplaces | Multi-purpose e-commerce platforms such as Etsy, Ebay and Amazon\n- GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE | Other general merchandise | Other miscellaneous merchandise, including toys, hobbies, and arts and crafts\n- GENERAL_MERCHANDISE_PET_SUPPLIES | Pet supplies | Pet supplies and pet food\n- GENERAL_MERCHANDISE_SPORTING_GOODS | Sporting goods | Sporting goods, camping gear, and outdoor equipment\n- GENERAL_MERCHANDISE_SUPERSTORES | Superstores | Superstores such as Target and Walmart, selling both groceries and general merchandise\n- GENERAL_MERCHANDISE_TOBACCO_AND_VAPE | Tobacco and vape | Purchases for tobacco and vaping products\n- GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING | Accounting and financial planning | Financial planning, tax, and accounting services.\n- GENERAL_SERVICES_AUTOMOTIVE | Automotive | Oil changes, car washes, repairs, and towing\n- GENERAL_SERVICES_CHILDCARE | Childcare | Babysitters and daycare\n- GENERAL_SERVICES_CONSULTING_AND_LEGAL | Consulting and legal | Consulting and legal services\n- GENERAL_SERVICES_EDUCATION | Education | Elementary, high school, professional schools, and college tuition\n- GENERAL_SERVICES_INSURANCE | Insurance | Insurance for auto, home, and healthcare\n- GENERAL_SERVICES_OTHER_GENERAL_SERVICES | Other general services | Other miscellaneous services, including advertising and cloud storage\n- GENERAL_SERVICES_POSTAGE_AND_SHIPPING | Postage and shipping | Mail, packaging, and shipping services\n- GENERAL_SERVICES_STORAGE | Storage | Storage services and facilities\n- GOVERNMENT_AND_NON_PROFIT_DONATIONS | Donations | Charitable, political, and religious donations\n- GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES | Government departments and agencies | Government departments and agencies, such as driving licenses, and passport renewal\n- GOVERNMENT_AND_NON_PROFIT_OTHER_GOVERNMENT_AND_NON_PROFIT | Other government and non profit | Other miscellaneous government and non-profit agencies\n- GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT | Tax payment | Tax payments, including income and property taxes\n- HOME_IMPROVEMENT_FURNITURE | Furniture | Furniture, bedding, and home accessories\n- HOME_IMPROVEMENT_HARDWARE | Hardware | Building materials, hardware stores, paint, and wallpaper\n- HOME_IMPROVEMENT_OTHER_HOME_IMPROVEMENT | Other home improvement | Other miscellaneous home purchases, including pool installation and pest control\n- HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE | Repair and maintenance | Plumbing, lighting, gardening, and roofing\n- HOME_IMPROVEMENT_SECURITY | Security | Home security system purchases\n- INCOME_CHILD_SUPPORT | Child support | Child support refers to court-ordered payments made by a parent to financially support their child’s living expenses\n- INCOME_CONTRACTOR | Contractor | Income from freelance or independent contract work.\n- INCOME_DIVIDENDS | Dividends | Income from dividends\n- INCOME_GIG_ECONOMY | Gig economy | Money earned by working in the gig economy, for example by driving for Lyft, Uber, etc.\n- INCOME_INTEREST_EARNED | Interest earned | Income from interest on savings accounts\n- INCOME_LONG_TERM_DISABILITY | Long term disability | Disability payments, for example from social security.\n- INCOME_MILITARY | Military | Money earned from veterans benefits. Salary earned from serving in the military (through DFAS) is categorized as salary\n- INCOME_OTHER | Other | Other miscellaneous income\n- INCOME_RENTAL | Rental | Rental income includes money earned from payments related to property rentals, lease income, and short-term rental platforms such as airbnb and VRBO.\n- INCOME_RETIREMENT_PENSION | Retirement pension | Payments from the social security administration, private retirement systems, (eg. 401k) pensions, and government retirement programs\n- INCOME_SALARY | Salary | Income from salaries and wages\n- INCOME_TAX_REFUND | Tax refund | Government tax refund provided to the user\n- INCOME_UNEMPLOYMENT | Unemployment | Money earned from unemployment benefits\n- LOAN_DISBURSEMENTS_AUTO | Auto | Auto loan disbursements\n- LOAN_DISBURSEMENTS_CASH_ADVANCES | Cash advances | Payday loans and cash advances\n- LOAN_DISBURSEMENTS_EWA | Ewa | Early wage access disbursements from integrated payroll providers.\n- LOAN_DISBURSEMENTS_MORTGAGE | Mortgage | Mortgage loan disbursements\n- LOAN_DISBURSEMENTS_OTHER_DISBURSEMENT | Other disbursement | Other miscellaneous loan disbursements\n- LOAN_DISBURSEMENTS_PERSONAL | Personal | Personal loan disbursements, including both secured and unsecured loans.\n- LOAN_DISBURSEMENTS_STUDENT | Student | Student loan disbursements.\n- LOAN_PAYMENTS_BNPL | Bnpl | Loan payments for buy now, pay later (BNPL) services.\n- LOAN_PAYMENTS_CAR_PAYMENT | Car payment | Payments on car loans and leases.\n- LOAN_PAYMENTS_CASH_ADVANCES | Cash advances | Loan payments for cash advances.\n- LOAN_PAYMENTS_CREDIT_CARD_PAYMENT | Credit card payment | Payments made to a credit card account.\n- LOAN_PAYMENTS_EWA | Ewa | Loan payments for early wage access from integrated payroll providers.\n- LOAN_PAYMENTS_MORTGAGE_PAYMENT | Mortgage payment | Payments on mortgages\n- LOAN_PAYMENTS_OTHER_PAYMENT | Other payment | Other miscellaneous debt payments\n- LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT | Personal loan payment | Payments on personal loans.\n- LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT | Student loan payment | Payments on student loans. For college tuition, refer to \"General Services - Education\"\n- MEDICAL_DENTAL_CARE | Dental care | Dentists and general dental care\n- MEDICAL_EYE_CARE | Eye care | Optometrists, contacts, and glasses stores\n- MEDICAL_NURSING_CARE | Nursing care | Nursing care and facilities\n- MEDICAL_OTHER_MEDICAL | Other medical | Other miscellaneous medical, including blood work, hospitals, and ambulances\n- MEDICAL_PHARMACIES_AND_SUPPLEMENTS | Pharmacies and supplements | Pharmacies and nutrition shops\n- MEDICAL_PRIMARY_CARE | Primary care | Doctors and physicians\n- MEDICAL_VETERINARY_SERVICES | Veterinary services | Prevention and care procedures for animals\n- OTHER_OTHER | Other | No further description.\n- PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS | Gyms and fitness centers | Gyms, fitness centers, and workout classes\n- PERSONAL_CARE_HAIR_AND_BEAUTY | Hair and beauty | Manicures, haircuts, waxing, spa/massages, and bath and beauty products\n- PERSONAL_CARE_LAUNDRY_AND_DRY_CLEANING | Laundry and dry cleaning | Wash and fold, and dry cleaning expenses\n- PERSONAL_CARE_OTHER_PERSONAL_CARE | Other personal care | Other miscellaneous personal care, including mental health apps and services\n- RENT_AND_UTILITIES_GAS_AND_ELECTRICITY | Gas and electricity | Gas and electricity bills\n- RENT_AND_UTILITIES_INTERNET_AND_CABLE | Internet and cable | Internet and cable bills\n- RENT_AND_UTILITIES_OTHER_UTILITIES | Other utilities | Other miscellaneous utility bills\n- RENT_AND_UTILITIES_RENT | Rent | Rent payment\n- RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT | Sewage and waste management | Sewage and garbage disposal bills\n- RENT_AND_UTILITIES_TELEPHONE | Telephone | Telephone bills\n- RENT_AND_UTILITIES_WATER | Water | Water bills\n- TRANSFER_IN_ACCOUNT_TRANSFER | Account transfer | General inbound transfers from another account\n- TRANSFER_IN_DEPOSIT | Deposit | Cash, checks, and ATM deposits into a bank account\n- TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS | Investment and retirement funds | Money transferred into the account from an investment or retirement account\n- TRANSFER_IN_OTHER_TRANSFER_IN | Other transfer in | Other miscellaneous inbound transactions\n- TRANSFER_IN_SAVINGS | Savings | Inbound transfers to a savings account\n- TRANSFER_IN_TRANSFER_IN_FROM_APPS | Transfer in from apps | Money transferred into the account from another application\n- TRANSFER_IN_WIRE | Wire | Money transferred into the account from a wire transfer from another bank\n- TRANSFER_OUT_ACCOUNT_TRANSFER | Account transfer | General outbound transfers to another account\n- TRANSFER_OUT_CRYPTO | Crypto | Outbound transfers of cryptocurrency\n- TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS | Investment and retirement funds | Transfers to an investment or retirement account, including investment apps such as Acorns, Betterment\n- TRANSFER_OUT_OTHER_TRANSFER_OUT | Other transfer out | Other miscellaneous outbound transactions\n- TRANSFER_OUT_SAVINGS | Savings | Outbound transfers to savings accounts\n- TRANSFER_OUT_TRANSFER_OUT_FROM_APPS | Transfer out from apps | Money transferred out of the account into another application\n- TRANSFER_OUT_WIRE | Wire | Money transferred out of the account from a wire transfer to another bank\n- TRANSFER_OUT_WITHDRAWAL | Withdrawal | Withdrawals from a bank account\n- TRANSPORTATION_BIKES_AND_SCOOTERS | Bikes and scooters | Bike and scooter rentals\n- TRANSPORTATION_GAS | Gas | Purchases at a gas station\n- TRANSPORTATION_OTHER_TRANSPORTATION | Other transportation | Other miscellaneous transportation expenses\n- TRANSPORTATION_PARKING | Parking | Parking fees and expenses\n- TRANSPORTATION_PUBLIC_TRANSIT | Public transit | Public transportation, including rail and train, buses, and metro\n- TRANSPORTATION_TAXIS_AND_RIDE_SHARES | Taxis and ride shares | Taxi and ride share services\n- TRANSPORTATION_TOLLS | Tolls | Toll expenses\n- TRAVEL_FLIGHTS | Flights | Airline expenses\n- TRAVEL_LODGING | Lodging | Hotels, motels, and hosted accommodation such as Airbnb\n- TRAVEL_OTHER_TRAVEL | Other travel | Other miscellaneous travel expenses\n- TRAVEL_RENTAL_CARS | Rental cars | Rental cars, charter buses, and trucks",
+  "savings_system_prompt": "You help one person save toward a financial goal. You receive aggregated spending data only:\nmonthly totals per category (oldest month first), recurring charges described by category and\ncadence with an essentiality label, the goal target, the months left and the monthly gap that\nmust still be saved. Merchant names, account names and personal details are never provided,\nand you must not guess or invent them.\n\nEssentiality labels: essential means needed to live or work; flexible means needed but could\nbe made cheaper; discretionary means could be cut.\n\nRules:\n- Ground every suggestion in the numbers provided. Refer to categories by their label and to\n  amounts as dollars per month. Do not cite figures that are not in the input.\n- Favor discretionary and flexible spending. Never suggest cutting essential spending, except\n  to compare prices for the same service.\n- Each suggestion is one or two sentences, specific and actionable, and states a realistic\n  estimated monthly saving in dollars when the data supports one; otherwise leave it empty.\n- category_label must be one of the provided category labels, or empty if the suggestion\n  spans several categories.\n- Do not repeat or rephrase any suggestion listed under excluded_suggestions; the owner has\n  already dismissed those.\n- If the monthly gap is zero or negative, the goal is on track: say so briefly and give at\n  most one optional idea. Otherwise return between 3 and 6 suggestions, highest saving first.\n",
+  "classification_batch_schema": {
+    "$defs": {
+      "ClassifiedMerchant": {
+        "properties": {
+          "merchant_key": {
+            "title": "Merchant Key",
+            "type": "string"
+          },
+          "detailed_category": {
+            "title": "Detailed Category",
+            "type": "string"
+          },
+          "essentiality": {
+            "$ref": "#/$defs/Essentiality"
+          },
+          "confidence": {
+            "$ref": "#/$defs/Confidence"
+          }
+        },
+        "required": [
+          "merchant_key",
+          "detailed_category",
+          "essentiality",
+          "confidence"
+        ],
+        "title": "ClassifiedMerchant",
+        "type": "object"
+      },
+      "Confidence": {
+        "description": "Mirrors Plaid's confidence levels.",
+        "enum": [
+          "very_high",
+          "high",
+          "medium",
+          "low",
+          "unknown"
+        ],
+        "title": "Confidence",
+        "type": "string"
+      },
+      "Essentiality": {
+        "enum": [
+          "essential",
+          "flexible",
+          "discretionary"
+        ],
+        "title": "Essentiality",
+        "type": "string"
+      }
+    },
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/$defs/ClassifiedMerchant"
+        },
+        "title": "Items",
+        "type": "array"
+      }
+    },
+    "required": [
+      "items"
+    ],
+    "title": "ClassificationBatch",
+    "type": "object"
+  },
+  "suggestion_batch_schema": {
+    "$defs": {
+      "SuggestedSaving": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "category_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Label"
+          },
+          "estimated_monthly_saving": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Monthly Saving"
+          }
+        },
+        "required": [
+          "text",
+          "category_label",
+          "estimated_monthly_saving"
+        ],
+        "title": "SuggestedSaving",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "suggestions": {
+        "items": {
+          "$ref": "#/$defs/SuggestedSaving"
+        },
+        "title": "Suggestions",
+        "type": "array"
+      }
+    },
+    "required": [
+      "suggestions"
+    ],
+    "title": "SuggestionBatch",
+    "type": "object"
+  },
+  "claude_output_schemas": {
+    "ClassificationBatch": {
+      "$defs": {
+        "ClassifiedMerchant": {
+          "type": "object",
+          "title": "ClassifiedMerchant",
+          "properties": {
+            "merchant_key": {
+              "type": "string",
+              "title": "Merchant Key"
+            },
+            "detailed_category": {
+              "type": "string",
+              "title": "Detailed Category"
+            },
+            "essentiality": {
+              "$ref": "#/$defs/Essentiality"
+            },
+            "confidence": {
+              "$ref": "#/$defs/Confidence"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "merchant_key",
+            "detailed_category",
+            "essentiality",
+            "confidence"
+          ]
+        },
+        "Confidence": {
+          "type": "string",
+          "enum": [
+            "very_high",
+            "high",
+            "medium",
+            "low",
+            "unknown"
+          ],
+          "description": "Mirrors Plaid's confidence levels.",
+          "title": "Confidence"
+        },
+        "Essentiality": {
+          "type": "string",
+          "enum": [
+            "essential",
+            "flexible",
+            "discretionary"
+          ],
+          "title": "Essentiality"
+        }
+      },
+      "type": "object",
+      "title": "ClassificationBatch",
+      "properties": {
+        "items": {
+          "type": "array",
+          "title": "Items",
+          "items": {
+            "$ref": "#/$defs/ClassifiedMerchant"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ]
+    },
+    "SuggestionBatch": {
+      "$defs": {
+        "SuggestedSaving": {
+          "type": "object",
+          "title": "SuggestedSaving",
+          "properties": {
+            "text": {
+              "type": "string",
+              "title": "Text"
+            },
+            "category_label": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Label"
+            },
+            "estimated_monthly_saving": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estimated Monthly Saving"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "text",
+            "category_label",
+            "estimated_monthly_saving"
+          ]
+        }
+      },
+      "type": "object",
+      "title": "SuggestionBatch",
+      "properties": {
+        "suggestions": {
+          "type": "array",
+          "title": "Suggestions",
+          "items": {
+            "$ref": "#/$defs/SuggestedSaving"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "suggestions"
+      ]
+    }
+  },
+  "classify_user_messages": [
+    {
+      "items": [
+        [
+          "BLUE BOTTLE COFFEE OAKLAND CA",
+          "<10",
+          "outflow",
+          "credit"
+        ],
+        [
+          "ACME CORP PAYROLL",
+          ">1000",
+          "inflow",
+          "checking"
+        ]
+      ],
+      "text": "Classify these merchants:\n[\n {\n  \"merchant_key\": \"BLUE BOTTLE COFFEE OAKLAND CA\",\n  \"amount_bucket\": \"under $10\",\n  \"direction\": \"outflow\",\n  \"account_kind\": \"credit\"\n },\n {\n  \"merchant_key\": \"ACME CORP PAYROLL\",\n  \"amount_bucket\": \"over $1k\",\n  \"direction\": \"inflow\",\n  \"account_kind\": \"checking\"\n }\n]"
+    },
+    {
+      "items": [
+        [
+          "CAFÉ RÖMER MÜNCHEN",
+          "10-50",
+          "outflow",
+          "credit"
+        ],
+        [
+          "QUOTE \"AND\" BACKSLASH \\ SLASH /",
+          "50-200",
+          "outflow",
+          "savings"
+        ],
+        [
+          "TAB\tNEWLINE\nCTRL\u0001DEL\u001f",
+          "200-1000",
+          "inflow",
+          "loan"
+        ],
+        [
+          "EMOJI 😀 CJK 北京   ﻿",
+          ">1000",
+          "outflow",
+          "other"
+        ]
+      ],
+      "text": "Classify these merchants:\n[\n {\n  \"merchant_key\": \"CAF\\u00c9 R\\u00d6MER M\\u00dcNCHEN\",\n  \"amount_bucket\": \"$10 to $50\",\n  \"direction\": \"outflow\",\n  \"account_kind\": \"credit\"\n },\n {\n  \"merchant_key\": \"QUOTE \\\"AND\\\" BACKSLASH \\\\ SLASH /\",\n  \"amount_bucket\": \"$50 to $200\",\n  \"direction\": \"outflow\",\n  \"account_kind\": \"savings\"\n },\n {\n  \"merchant_key\": \"TAB\\tNEWLINE\\nCTRL\\u0001DEL\\u007f\\u001f\",\n  \"amount_bucket\": \"$200 to $1k\",\n  \"direction\": \"inflow\",\n  \"account_kind\": \"loan\"\n },\n {\n  \"merchant_key\": \"EMOJI \\ud83d\\ude00 CJK \\u5317\\u4eac \\u2028 \\ufeff\",\n  \"amount_bucket\": \"over $1k\",\n  \"direction\": \"outflow\",\n  \"account_kind\": \"other\"\n }\n]"
+    },
+    {
+      "items": [],
+      "text": "Classify these merchants:\n[]"
+    }
+  ],
+  "savings_user_messages": [
+    {
+      "context": {
+        "goal_target": 500000,
+        "months_left": 6,
+        "monthly_gap": 30000,
+        "categories": [
+          [
+            "Restaurants",
+            [
+              20000,
+              25050
+            ]
+          ]
+        ],
+        "recurring": [
+          [
+            "TV and movies",
+            1549,
+            "monthly",
+            "discretionary"
+          ]
+        ],
+        "excluded": [
+          "Cancel Netflix"
+        ]
+      },
+      "text": "Suggest savings for this situation:\n{\n \"goal_target\": \"5000.00\",\n \"months_left\": 6,\n \"monthly_gap\": \"300.00\",\n \"categories\": [\n  {\n   \"label\": \"Restaurants\",\n   \"monthly_totals\": [\n    \"200.00\",\n    \"250.50\"\n   ]\n  }\n ],\n \"recurring\": [\n  {\n   \"category_label\": \"TV and movies\",\n   \"amount\": \"15.49\",\n   \"cadence\": \"monthly\",\n   \"essentiality\": \"discretionary\"\n  }\n ],\n \"excluded_suggestions\": [\n  \"Cancel Netflix\"\n ]\n}"
+    },
+    {
+      "context": {
+        "goal_target": 1250,
+        "months_left": 0,
+        "monthly_gap": -30000,
+        "categories": [
+          [
+            "Coffee",
+            [
+              0,
+              1,
+              -5,
+              1050,
+              123456789
+            ]
+          ],
+          [
+            "Café ünïcode",
+            []
+          ]
+        ],
+        "recurring": [
+          [
+            "Gym",
+            0,
+            "yearly",
+            "flexible"
+          ],
+          [
+            "Music and audio",
+            999,
+            "weekly",
+            "discretionary"
+          ]
+        ],
+        "excluded": [
+          "Don't \"quote\" me",
+          "ünïcode 😀"
+        ]
+      },
+      "text": "Suggest savings for this situation:\n{\n \"goal_target\": \"12.50\",\n \"months_left\": 0,\n \"monthly_gap\": \"-300.00\",\n \"categories\": [\n  {\n   \"label\": \"Coffee\",\n   \"monthly_totals\": [\n    \"0.00\",\n    \"0.01\",\n    \"-0.05\",\n    \"10.50\",\n    \"1234567.89\"\n   ]\n  },\n  {\n   \"label\": \"Caf\\u00e9 \\u00fcn\\u00efcode\",\n   \"monthly_totals\": []\n  }\n ],\n \"recurring\": [\n  {\n   \"category_label\": \"Gym\",\n   \"amount\": \"0.00\",\n   \"cadence\": \"yearly\",\n   \"essentiality\": \"flexible\"\n  },\n  {\n   \"category_label\": \"Music and audio\",\n   \"amount\": \"9.99\",\n   \"cadence\": \"weekly\",\n   \"essentiality\": \"discretionary\"\n  }\n ],\n \"excluded_suggestions\": [\n  \"Don't \\\"quote\\\" me\",\n  \"\\u00fcn\\u00efcode \\ud83d\\ude00\"\n ]\n}"
+    },
+    {
+      "context": {
+        "goal_target": 0,
+        "months_left": -2,
+        "monthly_gap": 0,
+        "categories": [],
+        "recurring": [],
+        "excluded": []
+      },
+      "text": "Suggest savings for this situation:\n{\n \"goal_target\": \"0.00\",\n \"months_left\": -2,\n \"monthly_gap\": \"0.00\",\n \"categories\": [],\n \"recurring\": [],\n \"excluded_suggestions\": []\n}"
+    }
+  ],
+  "to_suggestions": [
+    {
+      "value": 40.5,
+      "decimal": "40.5",
+      "stored": "40.50",
+      "cents": 4050
+    },
+    {
+      "value": 20.0,
+      "decimal": "20.0",
+      "stored": "20.00",
+      "cents": 2000
+    },
+    {
+      "value": 0.125,
+      "decimal": "0.12",
+      "stored": "0.12",
+      "cents": 12
+    },
+    {
+      "value": 0.375,
+      "decimal": "0.38",
+      "stored": "0.38",
+      "cents": 38
+    },
+    {
+      "value": 2.675,
+      "decimal": "2.67",
+      "stored": "2.67",
+      "cents": 267
+    },
+    {
+      "value": -0.125,
+      "decimal": "-0.12",
+      "stored": "-0.12",
+      "cents": -12
+    },
+    {
+      "value": 0.005,
+      "decimal": "0.01",
+      "stored": "0.01",
+      "cents": 1
+    },
+    {
+      "value": 1.005,
+      "decimal": "1.0",
+      "stored": "1.00",
+      "cents": 100
+    },
+    {
+      "value": -2.5,
+      "decimal": "-2.5",
+      "stored": "-2.50",
+      "cents": -250
+    },
+    {
+      "value": 15.49,
+      "decimal": "15.49",
+      "stored": "15.49",
+      "cents": 1549
+    },
+    {
+      "value": 1e-09,
+      "decimal": "0.0",
+      "stored": "0.00",
+      "cents": 0
+    },
+    {
+      "value": -1e-09,
+      "decimal": "-0.0",
+      "stored": "-0.00",
+      "cents": 0
+    },
+    {
+      "value": 0.0,
+      "decimal": "0.0",
+      "stored": "0.00",
+      "cents": 0
+    },
+    {
+      "value": -0.0,
+      "decimal": "-0.0",
+      "stored": "-0.00",
+      "cents": 0
+    },
+    {
+      "value": 123456789.125,
+      "decimal": "123456789.12",
+      "stored": "123456789.12",
+      "cents": 12345678912
+    },
+    {
+      "value": 99.995,
+      "decimal": "100.0",
+      "stored": "100.00",
+      "cents": 10000
+    },
+    {
+      "value": 0.015,
+      "decimal": "0.01",
+      "stored": "0.01",
+      "cents": 1
+    },
+    {
+      "value": 0.025,
+      "decimal": "0.03",
+      "stored": "0.03",
+      "cents": 3
+    },
+    {
+      "value": 1234.5678,
+      "decimal": "1234.57",
+      "stored": "1234.57",
+      "cents": 123457
+    },
+    {
+      "value": 7,
+      "decimal": "7.0",
+      "stored": "7.00",
+      "cents": 700
+    },
+    {
+      "value": 3.14159,
+      "decimal": "3.14",
+      "stored": "3.14",
+      "cents": 314
+    },
+    {
+      "value": -0.004,
+      "decimal": "-0.0",
+      "stored": "-0.00",
+      "cents": 0
+    }
+  ]
+}
