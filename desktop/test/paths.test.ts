@@ -1,6 +1,6 @@
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { resolvePaths } from '../src/lib/paths.js'
+import { resolvePaths, userDataDir } from '../src/lib/paths.js'
 
 const userDataPath = '/Users/someone/Library/Application Support/Plutus'
 
@@ -31,5 +31,17 @@ describe('resolvePaths', () => {
       expect(paths.dataDir).toBe(userDataPath)
       expect(paths.databasePath).toBe(join(userDataPath, 'plutus.sqlite'))
     }
+  })
+})
+
+describe('userDataDir', () => {
+  const appDataPath = '/Users/someone/Library/Application Support'
+
+  it('is Plutus under the OS app data folder when packaged', () => {
+    expect(userDataDir({ isPackaged: true, appDataPath })).toBe(join(appDataPath, 'Plutus'))
+  })
+
+  it('is a separate folder in development, so a dev run never migrates the real database', () => {
+    expect(userDataDir({ isPackaged: false, appDataPath })).toBe(join(appDataPath, 'Plutus Dev'))
   })
 })
