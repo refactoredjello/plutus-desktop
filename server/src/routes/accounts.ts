@@ -1,10 +1,11 @@
-/** Accounts with their latest balance snapshot. Ports app/routers/accounts.py (stub). */
+/** Accounts with their latest balance snapshot. Ports app/routers/accounts.py. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
 import { AccountRead } from '../schemas/accounts.js'
 import { responseList } from '../schemas/model.js'
-import { json, notImplemented } from './openapi.js'
+import * as service from '../services/accounts.js'
+import { json } from './openapi.js'
 
 const listAccounts = createRoute({
   method: 'get',
@@ -16,5 +17,5 @@ const listAccounts = createRoute({
 })
 
 export function registerAccounts(app: App): void {
-  app.openapi(listAccounts, notImplemented)
+  app.openapi(listAccounts, (c) => c.json(service.listAccounts(c.var.db), 200))
 }
