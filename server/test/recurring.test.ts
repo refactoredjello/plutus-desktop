@@ -2,13 +2,20 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from '../src/db/index.js'
-import { type Essentiality, categorizations, recurrences, transactions } from '../src/db/schema.js'
+import {
+  type Cadence,
+  type Essentiality,
+  type RecurrenceStatus,
+  categorizations,
+  recurrences,
+  transactions,
+} from '../src/db/schema.js'
 import { type PlainDate, addDays, plainDate, utcNow } from '../src/lib/dates.js'
 import { parseMoney } from '../src/lib/money.js'
 import { detectRecurring } from '../src/services/recurring.js'
 import { addMonths, nextAfter } from '../src/services/schedule.js'
 import { type Account, categoryId, makeAccount, makeTx } from './factories.js'
-import { makeDb } from './setup.js'
+import { makeApp, makeDb } from './setup.js'
 
 const d = (s: string): PlainDate => plainDate(s)
 const money = parseMoney
@@ -293,5 +300,136 @@ describe('semimonthly detection', () => {
     expect(nextAfter(d('2026-12-31'), 'semimonthly')).toBe('2027-01-15')
     expect(nextAfter(d('2026-09-01'), 'semimonthly')).toBe('2026-09-16')
     expect(nextAfter(d('2026-09-16'), 'semimonthly')).toBe('2026-10-01')
+  })
+})
+
+// Routes: ports the client tests of test_recurring.py.
+
+type Row = Record<string, unknown>
+
+function makeCharge(db: Db, key: string, amount: string, status: RecurrenceStatus, cadence: Cadence = 'monthly') {
+  const acct = makeAccount(db)
+  return db
+    .insert(recurrences)
+    .values({
+      merchant_key: key,
+      account_id: acct.id,
+      amount: money(amount),
+      cadence,
+      next_expected_date: d('2026-10-20'),
+      last_seen_on: d('2026-09-20'),
+      status,
+    })
+    .returning()
+    .get()
+}
+
+function client() {
+  const { app } = makeApp({ db })
+  const send = (method: string, path: string, body?: unknown) =>
+    app.request(path, {
+      method,
+      ...(body === undefined ? {} : { body: JSON.stringify(body), headers: { 'content-type': 'application/json' } }),
+    })
+  return {
+    get: (path: string) => send('GET', path),
+    post: (path: string, body: unknown) => send('POST', path, body),
+    patch: (path: string, body: unknown) => send('PATCH', path, body),
+  }
+}
+
+describe('recurring routes', () => {
+  it('lists proposed and confirmed by default', async () => {
+    makeCharge(db, 'a', '-10.00', 'proposed')
+    makeCharge(db, 'b', '-20.00', 'confirmed')
+    makeCharge(db, 'c', '-30.00', 'dismissed')
+    const c = client()
+    const body = (await (await c.get('/api/recurring')).json()) as Row[]
+    expect(body.map((r) => r.merchant_key).sort()).toEqual(['a', 'b'])
+    const onlyDismissed = (await (await c.get('/api/recurring?status=dismissed')).json()) as Row[]
+    expect(onlyDismissed.map((r) => r.merchant_key)).toEqual(['c'])
+  })
+
+  it('signs the annual cost', async () => {
+    makeCharge(db, 'rent', '-100.00', 'confirmed', 'monthly')
+    makeCharge(db, 'pay', '1000.00', 'confirmed', 'biweekly')
+    makeCharge(db, 'gym', '-5.00', 'confirmed', 'weekly')
+    makeCharge(db, 'ins', '-300.00', 'confirmed', 'yearly')
+    const body = (await (await client().get('/api/recurring')).json()) as Row[]
+    const costs = Object.fromEntries(body.map((r) => [r.merchant_key, r.annual_cost]))
+    expect(costs).toEqual({ rent: '-1200.00', pay: '26000.00', gym: '-260.00', ins: '-300.00' })
+  })
+
+  it('patch updates fields', async () => {
+    const charge = makeCharge(db, 'a', '-10.00', 'proposed')
+    const c = client()
+    const resp = await c.patch(`/api/recurring/${charge.id}`, {
+      status: 'confirmed',
+      essentiality: 'flexible',
+      amount: '-12.50',
+    })
+    expect(resp.status).toBe(200)
+    const body = (await resp.json()) as Row
+    expect([body.status, body.essentiality, body.amount]).toEqual(['confirmed', 'flexible', '-12.50'])
+    expect(body.next_expected_date).toBe('2026-10-20') // unchanged without a cadence change
+    const cleared = (await (await c.patch(`/api/recurring/${charge.id}`, { essentiality: null })).json()) as Row
+    expect(cleared.essentiality).toBeNull()
+  })
+
+  it('patch cadence recomputes the next date', async () => {
+    const charge = makeCharge(db, 'a', '-10.00', 'confirmed')
+    const body = (await (await client().patch(`/api/recurring/${charge.id}`, { cadence: 'weekly' })).json()) as Row
+    expect(body.cadence).toBe('weekly')
+    expect(body.next_expected_date).toBe('2026-09-27')
+  })
+
+  it('patch unknown is 404', async () => {
+    expect((await client().patch('/api/recurring/999999', { status: 'confirmed' })).status).toBe(404)
+  })
+
+  it('marks a yearly fee as recurring and keeps it current', async () => {
+    const acct = makeAccount(db, 'credit')
+    const fee = makeTx(db, acct, '-325.00', 'RENEWAL MEMBERSHIP FEE', '2026-09-16', {
+      merchant_key: 'RENEWAL MEMBERSHIP FEE',
+    })
+    const res = await client().post('/api/recurring', { transaction_id: fee.id, cadence: 'yearly' })
+    expect(res.status).toBe(201)
+    const body = (await res.json()) as Row
+    expect([body.status, body.cadence, body.amount]).toEqual(['confirmed', 'yearly', '-325.00'])
+    expect(body.next_expected_date).toBe('2027-09-16')
+    expect(body.annual_cost).toBe('-325.00')
+    // Next year's renewal: one occurrence isn't detectable, but the confirmed row stays current.
+    makeTx(db, acct, '-350.00', 'RENEWAL MEMBERSHIP FEE', '2027-09-15', { merchant_key: 'RENEWAL MEMBERSHIP FEE' })
+    detectRecurring(db)
+    const row = only(db)
+    expect(row.last_seen_on).toBe('2027-09-15')
+    expect(row.next_expected_date).toBe('2028-09-15')
+    expect(row.status).toBe('confirmed')
+  })
+
+  it('mark confirms a dismissed one and rejects transfers', async () => {
+    vi.stubEnv('PLUTUS_TODAY', '2026-09-20')
+    const acct = makeAccount(db)
+    const tx = makeTx(db, acct, '-4.99', 'AMAZON PRIME', '2026-09-03', { merchant_key: 'AMAZON PRIME' })
+    db.insert(recurrences)
+      .values({
+        merchant_key: 'AMAZON PRIME',
+        account_id: acct.id,
+        amount: money('-4.99'),
+        cadence: 'monthly',
+        next_expected_date: d('2026-10-03'),
+        status: 'dismissed',
+      })
+      .run()
+    const transfer = makeTx(db, acct, '-500.00', 'TO SAVINGS', '2026-09-05', {
+      is_transfer: true,
+      merchant_key: 'TO SAVINGS',
+    })
+    const c = client()
+    const body = (await (await c.post('/api/recurring', { transaction_id: tx.id, cadence: 'monthly' })).json()) as Row
+    expect(body.status).toBe('confirmed')
+    expect(body.next_expected_date).toBe('2026-10-03')
+    expect((await c.post('/api/recurring', { transaction_id: transfer.id, cadence: 'monthly' })).status).toBe(400)
+    expect((await c.post('/api/recurring', { transaction_id: 999999, cadence: 'monthly' })).status).toBe(404)
   })
 })
