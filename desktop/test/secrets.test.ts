@@ -49,11 +49,22 @@ describe('SafeStorageSecretStore', () => {
     expect(safeStorage.encryptString).not.toHaveBeenCalled()
   })
 
-  it('reports an unavailable OS store on decrypt too', () => {
+  // services/app_settings turns SecretDecryptError into a 400; any other error is a 500.
+  it('raises SecretDecryptError when OS encryption is unavailable at decrypt time', () => {
     const blob = new SafeStorageSecretStore(fakeSafeStorage()).encrypt(accessUrl)
-    expect(() => new SafeStorageSecretStore(fakeSafeStorage(false)).decrypt(blob)).toThrow(
-      /encryption is not available/i,
-    )
+    const store = new SafeStorageSecretStore(fakeSafeStorage(false))
+    expect(() => store.decrypt(blob)).toThrow(SecretDecryptError)
+    expect(() => store.decrypt(blob)).toThrow(/encryption is not available/i)
+  })
+
+  it('raises SecretDecryptError, not the raw error, when safeStorage throws on decrypt', () => {
+    const safeStorage = fakeSafeStorage()
+    const store = new SafeStorageSecretStore(safeStorage)
+    const blob = store.encrypt(accessUrl)
+    safeStorage.decryptString.mockImplementation(() => {
+      throw new TypeError('keychain locked')
+    })
+    expect(() => store.decrypt(blob)).toThrow(SecretDecryptError)
   })
 
   it('raises SecretDecryptError for a blob it did not write', () => {
