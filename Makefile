@@ -21,7 +21,7 @@ revision: ## Orchestrator only: autogenerate a migration, e.g. make revision m="
 test: test-api test-web ## Run all tests
 
 test-api: ## Backend tests against the compose Postgres
-	docker compose up -d db
+	@nc -z localhost 5432 2>/dev/null || docker compose up -d db
 	cd api && uv run pytest
 
 test-web: ## Frontend tests
