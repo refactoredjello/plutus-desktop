@@ -15,6 +15,7 @@ describe('stableJson (json.dumps(indent=2, sort_keys=True) + "\\n")', () => {
   })
 
   it('escapes non-ASCII like ensure_ascii', () => {
+    expect(stableJson({ d: '\u007f' })).toBe('{\n  "d": "\\u007f"\n}\n')
     expect(stableJson({ s: 'child’s café 😀' })).toBe('{\n  "s": "child\\u2019s caf\\u00e9 \\ud83d\\ude00"\n}\n')
   })
 
