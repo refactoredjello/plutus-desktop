@@ -1,11 +1,12 @@
-/** Categories and rules. Ports app/routers/categories.py (stub). */
+/** Categories and rules. Ports app/routers/categories.py. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
 import { CategoryCreate, CategoryRead, CategoryUpdate, RuleRead } from '../schemas/categories.js'
 import { params, responseList } from '../schemas/model.js'
 import { pathInt, queryBool } from '../schemas/params.js'
-import { json, jsonBody, noContent, notImplemented } from './openapi.js'
+import * as service from '../services/categories.js'
+import { json, jsonBody, noContent } from './openapi.js'
 
 const listCategories = createRoute({
   method: 'get',
@@ -57,9 +58,14 @@ const deleteRule = createRoute({
 })
 
 export function registerCategories(app: App): void {
-  app.openapi(listCategories, notImplemented)
-  app.openapi(createCategory, notImplemented)
-  app.openapi(updateCategory, notImplemented)
-  app.openapi(listRules, notImplemented)
-  app.openapi(deleteRule, notImplemented)
+  app.openapi(listCategories, (c) => c.json(service.listCategories(c.var.db, c.req.valid('query').include_hidden), 200))
+  app.openapi(createCategory, (c) => c.json(service.createCategory(c.var.db, c.req.valid('json')), 201))
+  app.openapi(updateCategory, (c) =>
+    c.json(service.updateCategory(c.var.db, c.req.valid('param').category_id, c.req.valid('json')), 200),
+  )
+  app.openapi(listRules, (c) => c.json(service.listRules(c.var.db), 200))
+  app.openapi(deleteRule, (c) => {
+    service.deleteRule(c.var.db, c.req.valid('param').rule_id)
+    return c.body(null, 204)
+  })
 }
