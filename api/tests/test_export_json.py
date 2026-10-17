@@ -255,3 +255,24 @@ def test_write_export_is_owner_only_and_never_overwrites(db: Session, tmp_path: 
     assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
     with pytest.raises(FileExistsError):
         write_export(db, _settings(), out)
+
+
+def test_sequences_record_the_highest_id_ever_handed_out(db: Session) -> None:
+    account = make_account(db)
+    kept = make_tx(db, account, "-1.00")
+    dropped = make_tx(db, account, "-2.00")
+    db.delete(dropped)
+    db.flush()
+
+    data = export_data(db, _settings())
+    sequences = data["sequences"]
+    assert isinstance(sequences, dict)
+
+    with_id = [name for name in TABLES if "id" in Base.metadata.tables[name].columns]
+    assert list(sequences) == with_id
+    assert "categorizations" not in sequences
+    assert max(int(str(r["id"])) for r in _rows(data, "transactions")) == kept.id
+    # Ids are never reused: a deleted row's id stays taken, and the importer keeps it so.
+    assert sequences["transactions"] >= dropped.id
+    assert sequences["accounts"] >= account.id
+    assert sequences["categories"] >= 1
