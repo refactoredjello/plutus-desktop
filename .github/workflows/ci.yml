@@ -41,8 +41,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
+        working-directory: .
       - name: Generated client is current
         run: npm run gen:api && git diff --exit-code src/api/schema.d.ts
       - run: npm run lint
@@ -50,9 +51,26 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+        working-directory: .
+      - run: npm run check
+
+  # The web image no longer builds here: web/ has no lockfile of its own since the root
+  # workspace. Docker goes away at cutover (docs/DESKTOP_PLAN.md, brief 5A).
   images:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - run: docker build ./api
-      - run: docker build ./web
