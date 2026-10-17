@@ -5,8 +5,10 @@
  *    fixture, and stores a fake SimpleFIN access URL encrypted with a throwaway SECRET_KEY.
  * 2. Starts the Python API and runs the parity write steps that fill the tables the demo
  *    leaves empty (rules, goals, manual entries, suggestions, dismissals, a custom category).
+ *    The export runs with a fake ANTHROPIC_API_KEY so the runtime config carries a secret.
  * 3. Exports with `python -m app.export_json`, imports with server/scripts/import-json.ts into
- *    a temp SQLite file, and compares row counts per table: Postgres, the file, SQLite.
+ *    a temp SQLite file, and compares row counts per table: Postgres, the file, SQLite (whose
+ *    app_settings count leaves out the runtime config rows), and the runtime config itself.
  * 4. Starts the TypeScript server on the imported file and compares GET /api/reports/monthly
  *    with the Python API, both with the same PLUTUS_TODAY.
  *
@@ -24,7 +26,9 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { IMPORT_TABLES } from '../../server/scripts/import-json.ts'
 import { openDb } from '../../server/src/db/index.ts'
+import { loadConfig } from '../../server/src/config.ts'
 import { KeySecretStore } from '../../server/src/secrets.ts'
+import { CONFIG_KEYS, CONFIG_SEEDED_AT, runtimeConfig } from '../../server/src/services/config.ts'
 import {
   API_DIR,
   type AppProcess,
@@ -107,6 +111,7 @@ export function renderCounts(rows: readonly CountRow[]): string {
 
 const DB = 'plutus_export'
 const FAKE_ACCESS_URL = 'https://demo-user:demo-pass@bridge.invalid/simplefin'
+const FAKE_API_KEY = 'sk-ant-fake-import-check-not-a-key'
 // Every months value the parity harness uses except 0, a validation error that reads no data
 // (its 422 body differs by design: plan section 5.5).
 const MONTHLY = ['', '?months=1', '?months=6', '?months=24'].map((q) => `/api/reports/monthly${q}`)
@@ -176,9 +181,13 @@ async function main(): Promise<number> {
     }
     log(`${SEED_STEP_NAMES.length} write steps on the Python API`)
 
-    python(['-m', 'app.export_json', exportFile], pyEnv)
+    // A fake API key in the export's environment exercises the runtime config's secret.
+    python(['-m', 'app.export_json', exportFile], { ...pyEnv, ANTHROPIC_API_KEY: FAKE_API_KEY })
     const postgres = JSON.parse(python(['-c', COUNT, ...IMPORT_TABLES], pyEnv)) as Record<string, number>
-    const file = JSON.parse(readFileSync(exportFile, 'utf8')) as { tables: Record<string, unknown[]> }
+    const file = JSON.parse(readFileSync(exportFile, 'utf8')) as {
+      tables: Record<string, unknown[]>
+      runtime_config: Record<string, unknown>
+    }
     const exported = Object.fromEntries(Object.entries(file.tables).map(([t, rows]) => [t, rows.length]))
 
     const dbPath = ts.PLUTUS_DB_PATH ?? join(work, 'plutus.sqlite')
@@ -193,22 +202,55 @@ async function main(): Promise<number> {
     const db = openDb(dbPath)
     const sqlite: Record<string, number> = {}
     let secretOk = false
+    let configOk = false
+    let configRows = 0
+    const configKeys = [...Object.values(CONFIG_KEYS), CONFIG_SEEDED_AT]
+    const secrets = new KeySecretStore(ts.PLUTUS_SECRET_KEY ?? '')
     try {
       for (const t of IMPORT_TABLES) {
         sqlite[t] = db.$client.prepare(`SELECT count(*) FROM "${t}"`).pluck().get() as number
       }
+      // The runtime config rows are not in Postgres's app_settings: count them apart.
+      configRows = db.$client
+        .prepare(`SELECT count(*) FROM app_settings WHERE key IN (${configKeys.map(() => '?').join(', ')})`)
+        .pluck()
+        .get(...configKeys) as number
+      sqlite.app_settings = (sqlite.app_settings ?? 0) - configRows
+      const rc = file.runtime_config
+      const config = runtimeConfig(db, secrets, loadConfig({}).defaults)
+      const storedKey = db.$client
+        .prepare('SELECT value FROM app_settings WHERE key = ? AND is_encrypted = 1')
+        .pluck()
+        .get(CONFIG_KEYS.anthropicApiKey) as string | undefined
+      configOk =
+        JSON.stringify(config) ===
+          JSON.stringify({
+            llmProvider: rc.llm_provider,
+            llmModel: rc.llm_model,
+            anthropicApiKeySet: true,
+            ollamaBaseUrl: rc.ollama_base_url,
+            ownerNameTokens: rc.owner_name_tokens,
+            syncIntervalHours: rc.sync_interval_hours,
+            syncFirstHistoryDays: rc.sync_first_history_days,
+            schedulerEnabled: rc.scheduler_enabled,
+          }) &&
+        storedKey !== undefined &&
+        secrets.decrypt(storedKey) === FAKE_API_KEY
+      log(`runtime config in SQLite: ${JSON.stringify(config)}`)
       const blob = db.$client
         .prepare("SELECT value FROM app_settings WHERE key = 'simplefin_access_url' AND is_encrypted = 1")
         .pluck()
         .get() as string | undefined
-      secretOk = blob !== undefined && new KeySecretStore(ts.PLUTUS_SECRET_KEY ?? '').decrypt(blob) === FAKE_ACCESS_URL
+      secretOk = blob !== undefined && secrets.decrypt(blob) === FAKE_ACCESS_URL
     } finally {
       db.$client.close()
     }
 
     const counts = compareCounts(IMPORT_TABLES, postgres, exported, sqlite)
     process.stdout.write(`${renderCounts(counts.rows)}\n`)
+    log(`app_settings in SQLite also holds ${configRows} runtime config rows (not counted above)`)
     log(`SimpleFIN access URL re-encrypted and readable with the new key: ${secretOk ? 'yes' : 'NO'}`)
+    log(`runtime config equal to the export, API key encrypted with the new key: ${configOk ? 'yes' : 'NO'}`)
 
     const tsApp = await startTs('TypeScript', ts, join(work, 'typescript.log'))
     apps.push(tsApp)
@@ -238,7 +280,7 @@ async function main(): Promise<number> {
       }
     }
 
-    const ok = counts.ok && secretOk && monthlyOk
+    const ok = counts.ok && secretOk && configOk && monthlyOk
     log(ok ? 'PASS: equal counts for every table and an equal monthly report' : 'FAIL')
     return ok ? 0 : 1
   } finally {
