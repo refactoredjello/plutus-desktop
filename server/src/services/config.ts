@@ -21,6 +21,9 @@ import { type LLMProviderName, LLM_PROVIDERS, type RuntimeDefaults, loadConfig }
 import type { Db } from '../db/index.js'
 import { appSettings } from '../db/schema.js'
 import { utcNow } from '../lib/dates.js'
+import type { Logger } from '../lib/log.js'
+import { type LlmSettings, getLlmProvider } from '../providers/llm/index.js'
+import type { LLMProvider } from '../providers/llm/types.js'
 import type { SecretStore } from '../secrets.js'
 import { deleteSetting, getSetting, setSetting } from './app_settings.js'
 
@@ -63,13 +66,7 @@ export interface RuntimeConfig {
   schedulerEnabled: boolean
 }
 
-/** What the LLM provider factory (brief 1D) takes. */
-export interface LlmSettings {
-  llm_provider: LLMProviderName
-  llm_model: string
-  anthropic_api_key: string | null
-  ollama_base_url: string
-}
+export type { LlmSettings }
 
 /** What GET /settings/llm reports (LLMStatus). */
 export interface LlmStatus {
@@ -217,6 +214,11 @@ export function llmSettings(db: Db, secrets: SecretStore, defaults: RuntimeDefau
     anthropic_api_key: getSetting(db, secrets, CONFIG_KEYS.anthropicApiKey),
     ollama_base_url: config.ollamaBaseUrl,
   }
+}
+
+/** The LLM provider the runtime config names: the one way services get a provider. */
+export function llmProvider(db: Db, secrets: SecretStore, defaults: RuntimeDefaults, log?: Logger): LLMProvider {
+  return getLlmProvider(llmSettings(db, secrets, defaults), log)
 }
 
 /** app/routers/settings.py get_llm_status: Claude is configured only with a non-blank key. */

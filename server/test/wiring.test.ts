@@ -44,7 +44,7 @@ describe('llmProvider: the factory reads the runtime config', () => {
 
 describe('POST /api/settings/simplefin uses the real claim', () => {
   it('rejects a token that holds no claim URL as an upstream provider error, without the network', async () => {
-    const app = makeApp()
+    const { app } = makeApp()
     const res = await app.request('/api/settings/simplefin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -5,21 +5,16 @@
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
-import { NotImplementedYetError } from '../lib/errors.js'
+import { claimSetupToken } from '../providers/bank/simplefin.js'
 import { ConfigRead, ConfigUpdate } from '../schemas/settings.js'
 import { LLMStatus, SimpleFINConnect, SimpleFINStatus } from '../schemas/sync.js'
 import * as appSettings from '../services/app_settings.js'
 import * as config from '../services/config.js'
 import { json, jsonBody, noContent } from './openapi.js'
 
-/**
- * The SimpleFIN claim the connect route uses, looked up per request so tests can swap it.
- * Until brief 1D's providers/bank/simplefin.ts is wired in, connecting answers 501 like the stub.
- */
+/** The SimpleFIN claim the connect route uses, looked up per request so tests can swap it. */
 export const simplefinClaim: { claim: appSettings.ClaimSetupToken } = {
-  claim: async () => {
-    throw new NotImplementedYetError()
-  },
+  claim: (setupToken) => claimSetupToken(setupToken),
 }
 
 function read(c: config.RuntimeConfig): ConfigRead {

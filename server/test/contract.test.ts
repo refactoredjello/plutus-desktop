@@ -383,9 +383,10 @@ async function call(method: string, url: string, body?: unknown): Promise<Respon
 /**
  * A valid request for every operation. Wave 0 stubs answer 501 problem+json; a route its brief
  * has implemented answers anything but a validation error or a server error (on an empty
- * database that is often 404). Wave 3's gate is that no 501 remains.
+ * database that is often 404; a fake SimpleFIN token is a 502 upstream provider error, decided
+ * without the network). Wave 3's gate is that no 501 remains.
  */
-const parsed = (status: number) => status !== 422 && (status < 500 || status === 501)
+const parsed = (status: number) => status !== 422 && (status < 500 || status === 501 || status === 502)
 
 describe('every operation accepts its sample request; stubs answer 501 problem+json', () => {
   const ops = [...serverOps].filter(([, op]) => op.operationId !== 'get_health')

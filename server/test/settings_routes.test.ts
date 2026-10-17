@@ -4,8 +4,8 @@
  * new GET/PUT /api/settings/config contract (plan 5.7) and the privacy guarantees: the access
  * URL and the API key are never returned and never logged.
  *
- * SimpleFIN's claim is a fake until brief 1D's simplefin.ts is wired in: like Python's
- * mocked_simplefin, it decodes the token and answers with ACCESS_URL.
+ * SimpleFIN's claim is swapped for a fake, like Python's mocked_simplefin: it decodes the token
+ * and answers with ACCESS_URL. test/wiring.test.ts covers the real claim's default.
  */
 
 import { Writable } from 'node:stream'
