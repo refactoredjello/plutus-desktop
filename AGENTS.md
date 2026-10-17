@@ -73,6 +73,8 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - Docker Compose expands `$` in `.env`: quote values containing `$` (the argon2 hash) in single quotes.
 - Bank merchant names vary (e.g. `SEAMLESS` vs `SEAMLSS`); prefer prefix or contains rules, and check variants in the data before writing one.
 - Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
+- Agent file writes can turn `\uXXXX` escapes in source into literal characters (a literal U+2028 broke a regex class). Keep sources ASCII: `LC_ALL=C grep -nP '[^\x00-\x7F]' <file>` finds strays.
+- Python `re` is Unicode-aware where JS `RegExp` is not (`\b`, `\d`, `\s`, `.`); `services/scrub.ts` shows the rewrites.
 - In zsh, unquoted variables don't word-split; loop over query results with Python or `${=var}`.
 
 ## Multi-agent work
