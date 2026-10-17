@@ -11,6 +11,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { IMPORT_TABLES, ImportError, importExport, runCli } from '../../server/scripts/import-json.ts'
 import { type Db, MIGRATIONS_FOLDER, openDb } from '../../server/src/db/index.ts'
 import { KeySecretStore, type SecretStore } from '../../server/src/secrets.ts'
+import { loadConfig } from '../../server/src/config.ts'
+import { CONFIG_KEYS, CONFIG_SEEDED_AT, runtimeConfig, updateConfig } from '../../server/src/services/config.ts'
 import { SEED_STEP_NAMES, compareCounts, renderCounts, seedSteps } from './import_check.ts'
 import { WRITE_STEPS } from './writes.ts'
 
@@ -21,10 +23,12 @@ interface ExportFile {
   alembic_revision: string
   exported_at: string
   sequences: Record<string, number>
+  runtime_config: Record<string, string | number | boolean | string[] | null>
   tables: Record<string, Row[]>
 }
 
 const FAKE_ACCESS_URL = 'https://demo-user:demo-pass@bridge.invalid/simplefin'
+const FAKE_API_KEY = 'sk-ant-fake-not-a-key'
 const KEY = 'import-test-only-not-a-secret'
 const STAMP = '2026-10-17T23:06:07.214159+00:00'
 const STAMP_JS = '2026-10-17T23:06:07.214Z'
@@ -61,7 +65,7 @@ function sample(): ExportFile {
   })
   return {
     format: 'plutus-export',
-    format_version: 1,
+    format_version: 2,
     alembic_revision: '0006',
     exported_at: '2026-10-17T23:10:00.000001+00:00',
     sequences: {
@@ -75,6 +79,16 @@ function sample(): ExportFile {
       manual_entries: 4,
       recurrences: 1,
       suggestions: 1,
+    },
+    runtime_config: {
+      llm_provider: 'claude',
+      llm_model: 'claude-haiku-4-5',
+      anthropic_api_key: FAKE_API_KEY,
+      ollama_base_url: 'http://localhost:11434',
+      owner_name_tokens: ['ALEX', 'SAMPLE'],
+      sync_interval_hours: 12,
+      sync_first_history_days: 90,
+      scheduler_enabled: false,
     },
     tables: {
       accounts: [
@@ -141,6 +155,13 @@ const one = (db: Db, sql: string, ...params: unknown[]) =>
   db.$client.prepare(sql).get(...params) as Record<string, unknown>
 const count = (db: Db, table: string) => db.$client.prepare(`SELECT count(*) FROM "${table}"`).pluck().get() as number
 
+const CONFIG_ROW_KEYS: string[] = [...Object.values(CONFIG_KEYS), CONFIG_SEEDED_AT]
+const nonConfigSettings = (db: Db) =>
+  db.$client
+    .prepare(`SELECT count(*) FROM app_settings WHERE key NOT IN (${CONFIG_ROW_KEYS.map(() => '?').join(', ')})`)
+    .pluck()
+    .get(...CONFIG_ROW_KEYS) as number
+
 function imported(data: ExportFile = sample(), secrets: SecretStore = store()): Db {
   const db = freshDb()
   importExport(db, data, secrets)
@@ -172,7 +193,12 @@ describe('importExport', () => {
     ])
     const expected = Object.fromEntries(IMPORT_TABLES.map((t) => [t, data.tables[t]?.length]))
     expect(counts).toEqual(expected)
-    for (const table of IMPORT_TABLES) expect(count(db, table)).toBe(expected[table])
+    for (const table of IMPORT_TABLES) {
+      if (table === 'app_settings') continue
+      expect(count(db, table), table).toBe(expected[table])
+    }
+    // app_settings also holds the runtime config rows, written after the count check.
+    expect(nonConfigSettings(db)).toBe(expected.app_settings)
     expect(all(db, 'PRAGMA foreign_key_check')).toEqual([])
   })
 
@@ -346,7 +372,7 @@ describe('importExport', () => {
   it('refuses a database with one row beyond the seed, and changes nothing', () => {
     const db = freshDb()
     db.$client
-      .prepare("INSERT INTO app_settings (key, value, is_encrypted, updated_at) VALUES ('llm_provider', 'fake', 0, ?)")
+      .prepare("INSERT INTO app_settings (key, value, is_encrypted, updated_at) VALUES ('simplefin_connected_at', 'x', 0, ?)")
       .run(STAMP_JS)
 
     expect(() => importExport(db, sample(), store())).toThrow(/app_settings/)
@@ -409,9 +435,110 @@ describe('importExport', () => {
     expect(() => importExport(freshDb(), data, store())).toThrow(/transactions.*posted_on/)
   })
 
+  it('stores the runtime config through the config service, the API key encrypted', () => {
+    const db = imported()
+
+    expect(runtimeConfig(db, store(), loadConfig({}).defaults)).toEqual({
+      llmProvider: 'claude',
+      llmModel: 'claude-haiku-4-5',
+      anthropicApiKeySet: true,
+      ollamaBaseUrl: 'http://localhost:11434',
+      ownerNameTokens: ['ALEX', 'SAMPLE'],
+      syncIntervalHours: 12,
+      syncFirstHistoryDays: 90,
+      schedulerEnabled: false,
+    })
+    const key = one(db, 'SELECT value, is_encrypted FROM app_settings WHERE key = ?', CONFIG_KEYS.anthropicApiKey)
+    expect(key.is_encrypted).toBe(1)
+    expect(key.value).not.toContain(FAKE_API_KEY)
+    expect(store().decrypt(String(key.value))).toBe(FAKE_API_KEY)
+    expect(one(db, 'SELECT count(*) AS n FROM app_settings WHERE key = ?', CONFIG_SEEDED_AT)).toEqual({ n: 1 })
+  })
+
+  it('marks the database seeded, so env defaults never override the imported config', () => {
+    const db = imported()
+    const env = loadConfig({ LLM_PROVIDER: 'ollama', OWNER_NAME_TOKENS: '["SOMEONE"]', ANTHROPIC_API_KEY: 'sk-env' }).defaults
+
+    const config = runtimeConfig(db, store(), env)
+
+    expect(config.llmProvider).toBe('claude')
+    expect(config.ownerNameTokens).toEqual(['ALEX', 'SAMPLE'])
+    const key = one(db, 'SELECT value FROM app_settings WHERE key = ?', CONFIG_KEYS.anthropicApiKey)
+    expect(store().decrypt(String(key.value))).toBe(FAKE_API_KEY)
+  })
+
+  it('a null API key leaves no key, even when the env defaults have one', () => {
+    const data = sample()
+    data.runtime_config.anthropic_api_key = null
+    const db = freshDb()
+    const defaults = loadConfig({ ANTHROPIC_API_KEY: 'sk-env' }).defaults
+
+    importExport(db, data, store(), { defaults })
+
+    expect(runtimeConfig(db, store(), defaults).anthropicApiKeySet).toBe(false)
+  })
+
+  it('encrypts the API key with the given SecretStore', () => {
+    const tagging: SecretStore = { encrypt: (plain) => `sealed:${plain.length}`, decrypt: () => '' }
+    const db = imported(sample(), tagging)
+
+    expect(one(db, 'SELECT value FROM app_settings WHERE key = ?', CONFIG_KEYS.anthropicApiKey)).toEqual({
+      value: `sealed:${FAKE_API_KEY.length}`,
+    })
+  })
+
+  it('imports into a desktop database that seeded its config once, replacing those rows', () => {
+    const db = freshDb()
+    const defaults = loadConfig({ OWNER_NAME_TOKENS: '["SOMEONE"]', ANTHROPIC_API_KEY: 'sk-desktop' }).defaults
+    runtimeConfig(db, store(), defaults)
+    updateConfig(db, store(), defaults, { llm_model: 'claude-sonnet' })
+    expect(count(db, 'app_settings')).toBeGreaterThan(0)
+
+    const counts = importExport(db, sample(), store(), { defaults })
+
+    expect(counts.app_settings).toBe(2)
+    expect(nonConfigSettings(db)).toBe(2)
+    const config = runtimeConfig(db, store(), defaults)
+    expect(config.ownerNameTokens).toEqual(['ALEX', 'SAMPLE'])
+    expect(config.llmModel).toBe('claude-haiku-4-5')
+    const key = one(db, 'SELECT value FROM app_settings WHERE key = ?', CONFIG_KEYS.anthropicApiKey)
+    expect(store().decrypt(String(key.value))).toBe(FAKE_API_KEY)
+  })
+
+  it('still refuses a seeded desktop database that holds any other setting', () => {
+    const db = freshDb()
+    runtimeConfig(db, store(), loadConfig({}).defaults)
+    db.$client
+      .prepare("INSERT INTO app_settings (key, value, is_encrypted, updated_at) VALUES ('simplefin_connected_at', 'x', 0, ?)")
+      .run(STAMP_JS)
+    const before = count(db, 'app_settings')
+
+    expect(() => importExport(db, sample(), store())).toThrow(/app_settings/)
+    expect(count(db, 'app_settings')).toBe(before)
+    expect(count(db, 'accounts')).toBe(0)
+  })
+
+  it('rolls back the config when the import fails', () => {
+    const db = freshDb()
+    const defaults = loadConfig({ OWNER_NAME_TOKENS: '["SOMEONE"]' }).defaults
+    runtimeConfig(db, store(), defaults)
+    const data = sample()
+    const suggestion = data.tables.suggestions?.[0]
+    if (suggestion) suggestion.goal_id = 99
+
+    expect(() => importExport(db, data, store(), { defaults })).toThrow()
+    expect(runtimeConfig(db, store(), defaults).ownerNameTokens).toEqual(['SOMEONE'])
+    expect(count(db, 'accounts')).toBe(0)
+  })
+
   it.each([
     ['format', (d: ExportFile) => void (d.format = 'something-else'), /format/],
-    ['format version', (d: ExportFile) => void (d.format_version = 2), /format_version/],
+    ['format version 1', (d: ExportFile) => void (d.format_version = 1), /format_version/],
+    ['format version 3', (d: ExportFile) => void (d.format_version = 3), /format_version/],
+    ['missing runtime config', (d: ExportFile) => void delete (d as Partial<ExportFile>).runtime_config, /runtime_config/],
+    ['runtime config without a knob', (d: ExportFile) => void delete d.runtime_config.owner_name_tokens, /runtime_config.*owner_name_tokens/],
+    ['runtime config with an unknown knob', (d: ExportFile) => void (d.runtime_config.colour = 'blue'), /runtime_config.*colour/],
+    ['runtime config provider', (d: ExportFile) => void (d.runtime_config.llm_provider = 'gpt'), /runtime_config.*llm_provider/],
     ['Alembic revision', (d: ExportFile) => void (d.alembic_revision = '0007'), /revision/],
     ['missing table', (d: ExportFile) => void delete d.tables.goals, /goals/],
     ['extra table', (d: ExportFile) => void (d.tables.users = []), /users/],
@@ -456,6 +583,19 @@ describe('runCli', () => {
     expect(count(db, 'transactions')).toBe(3)
     const { value } = one(db, "SELECT value FROM app_settings WHERE key = 'simplefin_access_url'")
     expect(store().decrypt(String(value))).toBe(FAKE_ACCESS_URL)
+  })
+
+  it('keeps the imported config over the environment', () => {
+    const { dir, file } = writeSample()
+    const target = join(dir, 'cfg.sqlite')
+
+    expect(runCli([file, '--db', target], { PLUTUS_SECRET_KEY: KEY, OWNER_NAME_TOKENS: '["SOMEONE"]' }, quiet)).toBe(0)
+    const db = openDb(target)
+    dbs.push(db)
+    expect(runtimeConfig(db, store(), loadConfig({ OWNER_NAME_TOKENS: '["SOMEONE"]' }).defaults).ownerNameTokens).toEqual([
+      'ALEX',
+      'SAMPLE',
+    ])
   })
 
   it('uses PLUTUS_DB_PATH when --db is not given', () => {
