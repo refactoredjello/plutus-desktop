@@ -6,8 +6,10 @@
  */
 
 import { readFileSync } from 'node:fs'
+import { HTTPException } from 'hono/http-exception'
 import { describe, expect, it } from 'vitest'
 import { renderOpenApi } from '../scripts/export-openapi.js'
+import { MoneyInput, PositiveMoneyInput } from '../src/schemas/common.js'
 import { FIXTURES, makeApp } from './setup.js'
 
 type Schema = { [key: string]: unknown }
@@ -54,12 +56,6 @@ const NOT_PORTED_COMPONENTS: Record<string, string> = {
   ValidationError: "FastAPI's 422 body; the server answers 422 problem+json (plan 5.5)",
 }
 
-/**
- * Components from brief 0A (schemas/common.ts and schemas/health.ts, orchestrator-owned) that
- * do not yet carry Pydantic's titles; their titles are skipped until those files add them.
- */
-const TITLES_PENDING = new Set(['HealthRead', 'Page_TransactionRead_'])
-
 function operations(spec: Spec): Array<[string, Operation]> {
   return Object.entries(spec.paths).flatMap(([path, ops]) =>
     Object.entries(ops)
@@ -87,15 +83,12 @@ function serverSchema(name: string): Schema {
 
 /** The Money regex from schemas/common.ts, as it appears in the spec. */
 const MONEY_PATTERN = '^-?\\d+\\.\\d{2}$'
-/** Pydantic's pattern for a Decimal given as a string. */
-const DECIMAL_PATTERN = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 
 /**
  * A canonical form of a JSON schema so FastAPI's and zod-openapi's spellings of the same type
  * compare equal: `anyOf [X, null]`, `type [X, "null"]`, and `allOf [$ref, {default}]` all
- * become X plus `nullable` or `default`. Money is a plain string on both sides: Pydantic
- * documented a Decimal input as `number | decimal string` and a Money output as a string; the
- * server documents `Money` (plan 5.2) everywhere.
+ * become X plus `nullable` or `default`. Response money is a plain string on both sides:
+ * Pydantic documented a Money output as a string; the server adds the `Money` pattern (plan 5.2).
  */
 function canonical(schema: Schema): Schema {
   let out: Schema = { ...schema }
@@ -105,10 +98,7 @@ function canonical(schema: Schema): Schema {
     const all = anyOf as Schema[]
     const branches = all.filter((b) => b.type !== 'null')
     nullable = branches.length < all.length
-    const isDecimal =
-      branches.length === 2 && branches[0]?.type === 'number' && branches[1]?.pattern === DECIMAL_PATTERN
-    if (isDecimal) out = { ...rest, type: 'string' }
-    else if (branches.length === 1) out = { ...rest, ...branches[0] }
+    if (branches.length === 1) out = { ...rest, ...branches[0] }
     else out = { ...rest, anyOf: branches.map(canonical) }
   }
   if (Array.isArray(out.allOf)) {
@@ -214,16 +204,14 @@ describe('component schemas match FastAPI', () => {
   })
 
   it.each(ported)('%s has the same title, description, properties, and enum values', (name) => {
-    const untitled = TITLES_PENDING.has(name)
-    const strip = ({ title, ...rest }: Schema): Schema => (untitled ? rest : { title, ...rest })
     const shape = (s: Schema | undefined) => ({
-      title: untitled ? undefined : s?.title,
+      title: s?.title,
       description: s?.description,
       type: s?.type,
       enum: s?.enum,
       default: s?.default,
       additionalProperties: s?.additionalProperties,
-      properties: Object.fromEntries(Object.entries(canonicalProperties(s ?? {})).map(([k, v]) => [k, strip(v)])),
+      properties: canonicalProperties(s ?? {}),
     })
     expect(shape(serverSchema(name))).toEqual(shape(FASTAPI.components.schemas[name]))
   })
@@ -276,6 +264,9 @@ describe('the new config contract (schemas/settings.ts)', () => {
     )
     expect(properties.anthropic_api_key).toMatchObject({ type: 'string', nullable: true })
     expect(properties.llm_model?.nullable).toBeUndefined()
+    expect(properties.llm_model).toMatchObject({ type: 'string', minLength: 1 })
+    expect(properties.sync_interval_hours).toMatchObject({ type: 'integer', minimum: 1 })
+    expect(properties.sync_first_history_days).toMatchObject({ type: 'integer', minimum: 1 })
   })
 
   it('is served at GET and PUT /api/settings/config', () => {
@@ -489,9 +480,99 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
     expect(await status('PUT', '/api/settings/config', { llm_model: null })).toBe(422)
   })
 
-  it('takes money as a string with two decimals (plan 5.2)', async () => {
+  it('bounds the config knobs', async () => {
+    expect(await status('PUT', '/api/settings/config', { llm_model: '' })).toBe(422)
+    expect(await status('PUT', '/api/settings/config', { sync_interval_hours: 0 })).toBe(422)
+    expect(await status('PUT', '/api/settings/config', { sync_first_history_days: 0 })).toBe(422)
+    expect(
+      await status('PUT', '/api/settings/config', { llm_model: 'x', sync_interval_hours: 1, sync_first_history_days: 1 }),
+    ).toBe(501)
+  })
+
+  it('takes request money as Pydantic took a Decimal: a number or a decimal string', async () => {
     const entry = { description: 'Rent', due_date: '2026-11-01' }
-    expect(await status('POST', '/api/manual-entries', { ...entry, amount: '-15.49' })).toBe(501)
-    expect(await status('POST', '/api/manual-entries', { ...entry, amount: -15.49 })).toBe(422)
+    for (const amount of ['-15.49', '1000', '15.5', 15.5, -1200]) {
+      expect(await status('POST', '/api/manual-entries', { ...entry, amount })).toBe(501)
+      expect(await status('PATCH', '/api/manual-entries/1', { amount })).toBe(501)
+      expect(await status('PATCH', '/api/recurring/1', { amount })).toBe(501)
+    }
+    expect(await status('PATCH', '/api/manual-entries/1', { amount: null })).toBe(501)
+    expect(await status('POST', '/api/manual-entries', { ...entry, amount: '1e3' })).toBe(422)
+    expect(await status('POST', '/api/goals', { name: 'Trip', target_amount: 1000, target_date: '2027-06-01' })).toBe(501)
+    expect(await status('PATCH', '/api/goals/1', { target_amount: '0' })).toBe(422)
+  })
+})
+
+describe('MoneyInput (Pydantic Decimal, stored as NUMERIC(14,2))', () => {
+  it.each([
+    ['1000', 100000],
+    ['15.5', 1550],
+    ['-15.49', -1549],
+    [15.5, 1550],
+    [1000, 100000],
+    [-15.49, -1549],
+    ['0.005', 1], // Postgres NUMERIC coercion rounds half away from zero
+    ['-0.005', -1],
+    ['0.004', 0],
+    ['+7', 700],
+    ['1.', 100],
+    ['.5', 50],
+    ['007.10', 710],
+    ['90071992547409.91', Number.MAX_SAFE_INTEGER],
+  ])('parses %j to %d cents', (input, expected) => {
+    const result = MoneyInput.safeParse(input)
+    expect(result.success).toBe(true)
+    expect(result.data).toBe(expected)
+  })
+
+  it.each(['abc', '1e3', '', '.', '+', '-', '1,000.00', ' 1', '1.2.3', 1e21, 1e-7, '90071992547409.92', null, true])(
+    'rejects %j',
+    (input) => {
+      expect(MoneyInput.safeParse(input).success).toBe(false)
+    },
+  )
+
+  it('is nullable where Pydantic allowed None', () => {
+    expect(MoneyInput.nullable().safeParse(null)).toEqual({ success: true, data: null })
+  })
+
+  it.each([['1000', 100000], [0.5, 50], ['0.01', 1]])('PositiveMoneyInput (gt=0) parses %j', (input, expected) => {
+    expect(PositiveMoneyInput.safeParse(input).data).toBe(expected)
+  })
+
+  it.each(['0', '-1', 0, -1, '0.00', '-0.5', -0.01])('PositiveMoneyInput (gt=0) rejects %j', (input) => {
+    expect(PositiveMoneyInput.safeParse(input).success).toBe(false)
+  })
+})
+
+/** Hono's json validator answers 415 or 400 text/plain; FastAPI answered 422 (plan 5.5). */
+describe('JSON body errors are 422 problem+json', () => {
+  const goal = JSON.stringify({ name: 'Trip', target_amount: '1000.00', target_date: '2027-06-01' })
+
+  it.each<[string, RequestInit]>([
+    ['a missing Content-Type', { method: 'POST', body: goal }],
+    ['a wrong Content-Type', { method: 'POST', body: goal, headers: { 'Content-Type': 'text/plain' } }],
+    ['malformed JSON', { method: 'POST', body: '{', headers: { 'Content-Type': 'application/json' } }],
+    ['an empty body', { method: 'POST', headers: { 'Content-Type': 'application/json' } }],
+  ])('%s', async (_, init) => {
+    const { app } = makeApp()
+    const res = await app.request('/api/goals', init)
+    expect(res.status).toBe(422)
+    expect(res.headers.get('content-type')).toBe('application/problem+json')
+    const body = (await res.json()) as Record<string, unknown>
+    expect(body).toMatchObject({ type: 'about:blank', title: 'Validation error', status: 422, instance: '/api/goals' })
+    expect(body.detail).toMatch(/^body: \S/)
+  })
+
+  it('leaves other HTTP exceptions alone', async () => {
+    const { app } = makeApp()
+    app.get('/api/test/bad-request', () => {
+      throw new HTTPException(400, { message: 'Malformed something else' })
+    })
+    app.get('/api/test/unsupported', () => {
+      throw new HTTPException(406, { message: 'Not acceptable' })
+    })
+    expect((await app.request('/api/test/bad-request')).status).toBe(400)
+    expect((await app.request('/api/test/unsupported')).status).toBe(406)
   })
 })
