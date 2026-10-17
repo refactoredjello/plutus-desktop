@@ -380,27 +380,11 @@ async function call(method: string, url: string, body?: unknown): Promise<Respon
   return app.request(url, init)
 }
 
-/**
- * Operations whose stub a feature brief has replaced. Their behaviour is tested in the brief's
- * own test files; here their sample request must still parse and succeed.
- */
-const IMPLEMENTED = new Set(['get_monthly_summary', 'get_spending_by_category', 'get_balance_history'])
-
 describe('every stub answers 501 problem+json', () => {
-  const ops = [...serverOps].filter(([, op]) => op.operationId !== 'get_health')
-  const stubs = ops.filter(([, op]) => !IMPLEMENTED.has(op.operationId))
-  const implemented = ops.filter(([, op]) => IMPLEMENTED.has(op.operationId))
+  const stubs = [...serverOps].filter(([, op]) => op.operationId !== 'get_health')
 
   it('has a sample request for every stub', () => {
-    expect(ops.map(([, op]) => op.operationId).sort()).toEqual(Object.keys(SAMPLES).sort())
-    expect(implemented.length).toBe(IMPLEMENTED.size)
-  })
-
-  it.each(implemented)('%s (implemented) answers its sample request', async (key, op) => {
-    const [method = '', path = ''] = key.split(' ')
-    const sample = SAMPLES[op.operationId] ?? {}
-    const res = await call(method, sampleUrl(path, sample.query), sample.body)
-    expect(res.status).toBeLessThan(300)
+    expect(stubs.map(([, op]) => op.operationId).sort()).toEqual(Object.keys(SAMPLES).sort())
   })
 
   it.each(stubs)('%s', async (key, op) => {
