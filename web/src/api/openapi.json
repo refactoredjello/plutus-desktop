@@ -1,5 +1,6 @@
 {
   "components": {
+    "parameters": {},
     "schemas": {
       "AccountBalanceSeries": {
         "properties": {
@@ -30,26 +31,20 @@
       "AccountRead": {
         "properties": {
           "available": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Available"
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Available",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "balance": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Balance"
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Balance",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "balance_as_of": {
             "anyOf": [
@@ -72,15 +67,11 @@
             "type": "integer"
           },
           "institution_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution Name"
+            "title": "Institution Name",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "is_active": {
             "title": "Is Active",
@@ -122,6 +113,7 @@
       "BalancePoint": {
         "properties": {
           "balance": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Balance",
             "type": "string"
           },
@@ -185,15 +177,11 @@
         "additionalProperties": false,
         "properties": {
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "label": {
             "maxLength": 100,
@@ -218,15 +206,11 @@
       "CategoryRead": {
         "properties": {
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "detailed": {
             "title": "Detailed",
@@ -268,15 +252,11 @@
       "CategoryTotal": {
         "properties": {
           "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
+            "title": "Category Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "count": {
             "title": "Count",
@@ -287,17 +267,14 @@
             "type": "string"
           },
           "primary": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Primary"
+            "title": "Primary",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "total": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Total",
             "type": "string"
           }
@@ -316,28 +293,20 @@
         "additionalProperties": false,
         "properties": {
           "is_hidden": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Hidden"
+            "title": "Is Hidden",
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "label": {
-            "anyOf": [
-              {
-                "maxLength": 100,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label"
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "title": "CategoryUpdate",
@@ -346,15 +315,12 @@
       "ChangeItem": {
         "properties": {
           "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Amount",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "href": {
             "title": "Href",
@@ -437,6 +403,115 @@
         "title": "Confidence",
         "type": "string"
       },
+      "ConfigRead": {
+        "properties": {
+          "anthropic_api_key_set": {
+            "title": "Anthropic Api Key Set",
+            "type": "boolean"
+          },
+          "llm_model": {
+            "title": "Llm Model",
+            "type": "string"
+          },
+          "llm_provider": {
+            "enum": [
+              "claude",
+              "ollama",
+              "fake"
+            ],
+            "title": "Llm Provider",
+            "type": "string"
+          },
+          "ollama_base_url": {
+            "title": "Ollama Base Url",
+            "type": "string"
+          },
+          "owner_name_tokens": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Owner Name Tokens",
+            "type": "array"
+          },
+          "scheduler_enabled": {
+            "title": "Scheduler Enabled",
+            "type": "boolean"
+          },
+          "sync_first_history_days": {
+            "title": "Sync First History Days",
+            "type": "integer"
+          },
+          "sync_interval_hours": {
+            "title": "Sync Interval Hours",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "llm_provider",
+          "llm_model",
+          "anthropic_api_key_set",
+          "ollama_base_url",
+          "owner_name_tokens",
+          "sync_interval_hours",
+          "sync_first_history_days",
+          "scheduler_enabled"
+        ],
+        "title": "ConfigRead",
+        "type": "object"
+      },
+      "ConfigUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "anthropic_api_key": {
+            "title": "Anthropic Api Key",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "llm_model": {
+            "minLength": 1,
+            "title": "Llm Model",
+            "type": "string"
+          },
+          "llm_provider": {
+            "enum": [
+              "claude",
+              "ollama",
+              "fake"
+            ],
+            "title": "Llm Provider",
+            "type": "string"
+          },
+          "ollama_base_url": {
+            "title": "Ollama Base Url",
+            "type": "string"
+          },
+          "owner_name_tokens": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Owner Name Tokens",
+            "type": "array"
+          },
+          "scheduler_enabled": {
+            "title": "Scheduler Enabled",
+            "type": "boolean"
+          },
+          "sync_first_history_days": {
+            "minimum": 1,
+            "title": "Sync First History Days",
+            "type": "integer"
+          },
+          "sync_interval_hours": {
+            "minimum": 1,
+            "title": "Sync Interval Hours",
+            "type": "integer"
+          }
+        },
+        "title": "ConfigUpdate",
+        "type": "object"
+      },
       "DismissChange": {
         "additionalProperties": false,
         "properties": {
@@ -483,6 +558,7 @@
             "type": "number"
           },
           "total": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Total",
             "type": "string"
           }
@@ -507,7 +583,7 @@
           "target_amount": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "number"
               },
               {
@@ -534,6 +610,7 @@
       "GoalProgress": {
         "properties": {
           "actual_monthly_average": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Actual Monthly Average",
             "type": "string"
           },
@@ -546,14 +623,17 @@
             "type": "boolean"
           },
           "remaining": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Remaining",
             "type": "string"
           },
           "required_monthly": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Required Monthly",
             "type": "string"
           },
           "saved_so_far": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Saved So Far",
             "type": "string"
           }
@@ -594,10 +674,12 @@
             ]
           },
           "starting_amount": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Starting Amount",
             "type": "string"
           },
           "target_amount": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Target Amount",
             "type": "string"
           },
@@ -623,33 +705,25 @@
         "additionalProperties": false,
         "properties": {
           "is_active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Active"
+            "title": "Is Active",
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "name": {
-            "anyOf": [
-              {
-                "maxLength": 255,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "target_amount": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0.0,
+                "exclusiveMinimum": 0,
                 "type": "number"
               },
               {
@@ -676,19 +750,6 @@
           }
         },
         "title": "GoalUpdate",
-        "type": "object"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
-          }
-        },
-        "title": "HTTPValidationError",
         "type": "object"
       },
       "HealthRead": {
@@ -745,20 +806,6 @@
         "title": "LLMStatus",
         "type": "object"
       },
-      "LoginRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "password": {
-            "title": "Password",
-            "type": "string"
-          }
-        },
-        "required": [
-          "password"
-        ],
-        "title": "LoginRequest",
-        "type": "object"
-      },
       "ManualEntryCreate": {
         "additionalProperties": false,
         "properties": {
@@ -775,15 +822,11 @@
             "title": "Amount"
           },
           "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
+            "title": "Category Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "description": {
             "maxLength": 255,
@@ -824,19 +867,16 @@
       "ManualEntryRead": {
         "properties": {
           "amount": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Amount",
             "type": "string"
           },
           "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
+            "title": "Category Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "description": {
             "title": "Description",
@@ -860,15 +900,11 @@
             "title": "End Date"
           },
           "fulfilled_transaction_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fulfilled Transaction Id"
+            "title": "Fulfilled Transaction Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "id": {
             "title": "Id",
@@ -910,28 +946,20 @@
             "title": "Amount"
           },
           "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
+            "title": "Category Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "description": {
-            "anyOf": [
-              {
-                "maxLength": 255,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "due_date": {
             "anyOf": [
@@ -958,15 +986,11 @@
             "title": "End Date"
           },
           "fulfilled_transaction_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fulfilled Transaction Id"
+            "title": "Fulfilled Transaction Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "recurrence": {
             "anyOf": [
@@ -985,26 +1009,19 @@
       "MonthCategory": {
         "properties": {
           "average": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Average"
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Average",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
+            "title": "Category Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "count": {
             "title": "Count",
@@ -1015,17 +1032,14 @@
             "type": "string"
           },
           "primary": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Primary"
+            "title": "Primary",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "total": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Total",
             "type": "string"
           }
@@ -1071,34 +1085,30 @@
             "type": "array"
           },
           "expenses": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Expenses",
             "type": "string"
           },
           "expenses_average": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expenses Average"
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Expenses Average",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "income": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Income",
             "type": "string"
           },
           "income_average": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Income Average"
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Income Average",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "is_complete": {
             "title": "Is Complete",
@@ -1116,45 +1126,35 @@
             "type": "string"
           },
           "net": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Net",
             "type": "string"
           },
           "net_average": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Net Average"
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Net Average",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "review_count": {
             "title": "Review Count",
             "type": "integer"
           },
           "savings_rate": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Savings Rate"
+            "title": "Savings Rate",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "savings_rate_average": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Savings Rate Average"
+            "title": "Savings Rate Average",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "transaction_count": {
             "title": "Transaction Count",
@@ -1188,22 +1188,27 @@
         "description": "Totals for one calendar month. Transfers excluded. Expenses are positive numbers.",
         "properties": {
           "discretionary": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Discretionary",
             "type": "string"
           },
           "essential": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Essential",
             "type": "string"
           },
           "expenses": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Expenses",
             "type": "string"
           },
           "flexible": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Flexible",
             "type": "string"
           },
           "income": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Income",
             "type": "string"
           },
@@ -1212,10 +1217,12 @@
             "type": "string"
           },
           "net": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Net",
             "type": "string"
           },
           "uncategorized": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Uncategorized",
             "type": "string"
           }
@@ -1267,10 +1274,12 @@
       "ProjectedMonth": {
         "properties": {
           "manual_expenses": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Manual Expenses",
             "type": "string"
           },
           "manual_income": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Manual Income",
             "type": "string"
           },
@@ -1279,26 +1288,32 @@
             "type": "string"
           },
           "projected_end_balance": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Projected End Balance",
             "type": "string"
           },
           "recurring_expenses": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Recurring Expenses",
             "type": "string"
           },
           "recurring_income": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Recurring Income",
             "type": "string"
           },
           "starting_balance": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Starting Balance",
             "type": "string"
           },
           "variable_income": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Variable Income",
             "type": "string"
           },
           "variable_spending": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Variable Spending",
             "type": "string"
           }
@@ -1332,6 +1347,7 @@
             "type": "array"
           },
           "current_balance": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Current Balance",
             "type": "string"
           },
@@ -1398,10 +1414,12 @@
             "type": "integer"
           },
           "amount": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Amount",
             "type": "string"
           },
           "annual_cost": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Annual Cost",
             "type": "string"
           },
@@ -1567,19 +1585,6 @@
         "title": "RuleRead",
         "type": "object"
       },
-      "SessionRead": {
-        "properties": {
-          "authenticated": {
-            "title": "Authenticated",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "authenticated"
-        ],
-        "title": "SessionRead",
-        "type": "object"
-      },
       "SimpleFINConnect": {
         "additionalProperties": false,
         "properties": {
@@ -1624,15 +1629,11 @@
       "SuggestionRead": {
         "properties": {
           "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
+            "title": "Category Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "created_at": {
             "format": "date-time",
@@ -1640,15 +1641,12 @@
             "type": "string"
           },
           "estimated_monthly_saving": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Estimated Monthly Saving"
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Estimated Monthly Saving",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "goal_id": {
             "title": "Goal Id",
@@ -1707,15 +1705,11 @@
             "type": "integer"
           },
           "error_text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Text"
+            "title": "Error Text",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "finished_at": {
             "anyOf": [
@@ -1827,6 +1821,7 @@
             "type": "integer"
           },
           "amount": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Amount",
             "type": "string"
           },
@@ -1849,41 +1844,29 @@
             "type": "boolean"
           },
           "merchant_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Merchant Key"
+            "title": "Merchant Key",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "one_time": {
             "title": "One Time",
             "type": "boolean"
           },
           "payee": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Payee"
+            "title": "Payee",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "pending": {
             "title": "Pending",
@@ -1921,15 +1904,11 @@
         "description": "Manual override. Setting save_as_rule also creates a rule for the merchant key.",
         "properties": {
           "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
+            "title": "Category Id",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "essentiality": {
             "anyOf": [
@@ -1942,27 +1921,19 @@
             ]
           },
           "note": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
+            "maxLength": 500,
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "one_time": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "One Time"
+            "title": "One Time",
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "rule_match_type": {
             "$ref": "#/components/schemas/RuleMatchType",
@@ -1975,46 +1946,6 @@
           }
         },
         "title": "TransactionUpdate",
-        "type": "object"
-      },
-      "ValidationError": {
-        "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
-          },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
         "type": "object"
       }
     }
@@ -2050,75 +1981,6 @@
         ]
       }
     },
-    "/api/auth/login": {
-      "post": {
-        "operationId": "login",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Login",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/logout": {
-      "post": {
-        "operationId": "logout",
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Logout",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/session": {
-      "get": {
-        "operationId": "get_session",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Session",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
     "/api/categories": {
       "get": {
         "operationId": "list_categories",
@@ -2148,16 +2010,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Categories",
@@ -2187,16 +2039,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Create Category",
@@ -2239,16 +2081,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Update Category",
@@ -2303,16 +2135,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Create Goal",
@@ -2345,16 +2167,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Goal",
@@ -2395,16 +2207,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Update Goal",
@@ -2441,16 +2243,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Suggestions",
@@ -2486,16 +2278,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Generate Suggestions",
@@ -2571,16 +2353,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Create Manual Entry",
@@ -2606,16 +2378,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Delete Manual Entry",
@@ -2656,16 +2418,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Update Manual Entry",
@@ -2701,16 +2453,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Projection",
@@ -2754,16 +2496,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Recurring",
@@ -2794,16 +2526,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Mark Recurring",
@@ -2846,16 +2568,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Update Recurring",
@@ -2873,16 +2585,12 @@
             "name": "start",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "format": "date",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Start"
+              "format": "date",
+              "title": "Start",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {
@@ -2890,16 +2598,12 @@
             "name": "end",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "format": "date",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "End"
+              "format": "date",
+              "title": "End",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         ],
@@ -2917,16 +2621,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Balance History",
@@ -2980,16 +2674,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Spending By Category",
@@ -3024,16 +2708,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Changes",
@@ -3058,16 +2732,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Dismiss Change",
@@ -3116,16 +2780,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Month Detail",
@@ -3165,16 +2819,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Monthly Summary",
@@ -3225,21 +2869,61 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Delete Rule",
         "tags": [
           "categories"
+        ]
+      }
+    },
+    "/api/settings/config": {
+      "get": {
+        "operationId": "get_config",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Config",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "update_config",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Update Config",
+        "tags": [
+          "settings"
         ]
       }
     },
@@ -3319,16 +3003,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Connect Simplefin",
@@ -3371,16 +3045,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Update Suggestion",
@@ -3442,16 +3106,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Sync Runs",
@@ -3484,16 +3138,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Get Sync Run",
@@ -3533,15 +3177,11 @@
             "name": "q",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Q"
+              "title": "Q",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {
@@ -3549,16 +3189,12 @@
             "name": "start",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "format": "date",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Start"
+              "format": "date",
+              "title": "Start",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {
@@ -3566,16 +3202,12 @@
             "name": "end",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "format": "date",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "End"
+              "format": "date",
+              "title": "End",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           {
@@ -3583,18 +3215,14 @@
             "name": "account_id",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "items": {
-                    "type": "integer"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Account Id"
+              "items": {
+                "type": "integer"
+              },
+              "title": "Account Id",
+              "type": [
+                "array",
+                "null"
+              ]
             }
           },
           {
@@ -3602,18 +3230,14 @@
             "name": "category_id",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "items": {
-                    "type": "integer"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Category Id"
+              "items": {
+                "type": "integer"
+              },
+              "title": "Category Id",
+              "type": [
+                "array",
+                "null"
+              ]
             }
           },
           {
@@ -3696,16 +3320,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "List Transactions",
@@ -3748,16 +3362,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Update Transaction",
@@ -3766,5 +3370,6 @@
         ]
       }
     }
-  }
+  },
+  "webhooks": {}
 }

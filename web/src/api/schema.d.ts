@@ -21,57 +21,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Login */
-        post: operations["login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Logout */
-        post: operations["logout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/session": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Session */
-        get: operations["get_session"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/categories": {
         parameters: {
             query?: never;
@@ -431,6 +380,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Config */
+        get: operations["get_config"];
+        /** Update Config */
+        put: operations["update_config"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/llm": {
         parameters: {
             query?: never;
@@ -740,6 +707,50 @@ export interface components {
          * @enum {string}
          */
         Confidence: "very_high" | "high" | "medium" | "low" | "unknown";
+        /** ConfigRead */
+        ConfigRead: {
+            /** Anthropic Api Key Set */
+            anthropic_api_key_set: boolean;
+            /** Llm Model */
+            llm_model: string;
+            /**
+             * Llm Provider
+             * @enum {string}
+             */
+            llm_provider: "claude" | "ollama" | "fake";
+            /** Ollama Base Url */
+            ollama_base_url: string;
+            /** Owner Name Tokens */
+            owner_name_tokens: string[];
+            /** Scheduler Enabled */
+            scheduler_enabled: boolean;
+            /** Sync First History Days */
+            sync_first_history_days: number;
+            /** Sync Interval Hours */
+            sync_interval_hours: number;
+        };
+        /** ConfigUpdate */
+        ConfigUpdate: {
+            /** Anthropic Api Key */
+            anthropic_api_key?: string | null;
+            /** Llm Model */
+            llm_model?: string;
+            /**
+             * Llm Provider
+             * @enum {string}
+             */
+            llm_provider?: "claude" | "ollama" | "fake";
+            /** Ollama Base Url */
+            ollama_base_url?: string;
+            /** Owner Name Tokens */
+            owner_name_tokens?: string[];
+            /** Scheduler Enabled */
+            scheduler_enabled?: boolean;
+            /** Sync First History Days */
+            sync_first_history_days?: number;
+            /** Sync Interval Hours */
+            sync_interval_hours?: number;
+        };
         /** DismissChange */
         DismissChange: {
             /** Key */
@@ -821,11 +832,6 @@ export interface components {
             /** Target Date */
             target_date?: string | null;
         };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
         /** HealthRead */
         HealthRead: {
             /**
@@ -849,11 +855,6 @@ export interface components {
             model: string;
             /** Provider */
             provider: string;
-        };
-        /** LoginRequest */
-        LoginRequest: {
-            /** Password */
-            password: string;
         };
         /** ManualEntryCreate */
         ManualEntryCreate: {
@@ -1106,11 +1107,6 @@ export interface components {
             /** Pattern */
             pattern: string;
         };
-        /** SessionRead */
-        SessionRead: {
-            /** Authenticated */
-            authenticated: boolean;
-        };
         /** SimpleFINConnect */
         SimpleFINConnect: {
             /** Setup Token */
@@ -1243,19 +1239,6 @@ export interface components {
              */
             save_as_rule?: boolean;
         };
-        /** ValidationError */
-        ValidationError: {
-            /** Context */
-            ctx?: Record<string, never>;
-            /** Input */
-            input?: unknown;
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-        };
     };
     responses: never;
     parameters: never;
@@ -1285,75 +1268,6 @@ export interface operations {
             };
         };
     };
-    login: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    logout: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_session: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SessionRead"];
-                };
-            };
-        };
-    };
     list_categories: {
         parameters: {
             query?: {
@@ -1372,15 +1286,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategoryRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1407,15 +1312,6 @@ export interface operations {
                     "application/json": components["schemas"]["CategoryRead"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     update_category: {
@@ -1440,15 +1336,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategoryRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1495,15 +1382,6 @@ export interface operations {
                     "application/json": components["schemas"]["GoalRead"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_goal: {
@@ -1524,15 +1402,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoalRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1561,15 +1430,6 @@ export interface operations {
                     "application/json": components["schemas"]["GoalRead"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     list_suggestions: {
@@ -1592,15 +1452,6 @@ export interface operations {
                     "application/json": components["schemas"]["SuggestionRead"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     generate_suggestions: {
@@ -1621,15 +1472,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuggestionRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1696,15 +1538,6 @@ export interface operations {
                     "application/json": components["schemas"]["ManualEntryRead"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     delete_manual_entry: {
@@ -1724,15 +1557,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
             };
         };
     };
@@ -1760,15 +1584,6 @@ export interface operations {
                     "application/json": components["schemas"]["ManualEntryRead"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_projection: {
@@ -1789,15 +1604,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectionRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1822,15 +1628,6 @@ export interface operations {
                     "application/json": components["schemas"]["RecurringChargeRead"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     mark_recurring: {
@@ -1853,15 +1650,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecurringChargeRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1890,15 +1678,6 @@ export interface operations {
                     "application/json": components["schemas"]["RecurringChargeRead"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_balance_history: {
@@ -1920,15 +1699,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountBalanceSeries"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1954,15 +1724,6 @@ export interface operations {
                     "application/json": components["schemas"]["CategoryTotal"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_changes: {
@@ -1983,15 +1744,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChangesRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2015,15 +1767,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
             };
         };
     };
@@ -2065,15 +1808,6 @@ export interface operations {
                     "application/json": components["schemas"]["MonthDetail"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_monthly_summary: {
@@ -2094,15 +1828,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonthlySummary"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2145,13 +1870,48 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
-            422: {
+        };
+    };
+    get_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ConfigRead"];
+                };
+            };
+        };
+    };
+    update_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigRead"];
                 };
             };
         };
@@ -2218,15 +1978,6 @@ export interface operations {
                     "application/json": components["schemas"]["SimpleFINStatus"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     disconnect_simplefin: {
@@ -2271,15 +2022,6 @@ export interface operations {
                     "application/json": components["schemas"]["SuggestionRead"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     start_sync: {
@@ -2322,15 +2064,6 @@ export interface operations {
                     "application/json": components["schemas"]["SyncRunRead"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_sync_run: {
@@ -2351,15 +2084,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncRunRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2414,15 +2138,6 @@ export interface operations {
                     "application/json": components["schemas"]["Page_TransactionRead_"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     update_transaction: {
@@ -2447,15 +2162,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransactionRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
