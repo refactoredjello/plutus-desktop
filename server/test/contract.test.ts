@@ -380,18 +380,26 @@ async function call(method: string, url: string, body?: unknown): Promise<Respon
   return app.request(url, init)
 }
 
-describe('every stub answers 501 problem+json', () => {
-  const stubs = [...serverOps].filter(([, op]) => op.operationId !== 'get_health')
+/**
+ * A valid request for every operation. Wave 0 stubs answer 501 problem+json; a route its brief
+ * has implemented answers anything but a validation error or a server error (on an empty
+ * database that is often 404). Wave 3's gate is that no 501 remains.
+ */
+const parsed = (status: number) => status !== 422 && (status < 500 || status === 501)
 
-  it('has a sample request for every stub', () => {
-    expect(stubs.map(([, op]) => op.operationId).sort()).toEqual(Object.keys(SAMPLES).sort())
+describe('every operation accepts its sample request; stubs answer 501 problem+json', () => {
+  const ops = [...serverOps].filter(([, op]) => op.operationId !== 'get_health')
+
+  it('has a sample request for every operation', () => {
+    expect(ops.map(([, op]) => op.operationId).sort()).toEqual(Object.keys(SAMPLES).sort())
   })
 
-  it.each(stubs)('%s', async (key, op) => {
+  it.each(ops)('%s', async (key, op) => {
     const [method = '', path = ''] = key.split(' ')
     const sample = SAMPLES[op.operationId] ?? {}
     const res = await call(method, sampleUrl(path, sample.query), sample.body)
-    expect(res.status).toBe(501)
+    expect(res.status).toSatisfy(parsed)
+    if (res.status !== 501) return
     expect(res.headers.get('content-type')).toBe('application/problem+json')
     expect(await res.json()).toEqual({
       type: 'about:blank',
@@ -405,7 +413,7 @@ describe('every stub answers 501 problem+json', () => {
 
 /**
  * Request parsing mirrors FastAPI and Pydantic's lax mode. A request that parses reaches the
- * stub (501); one that does not is a 422 problem.
+ * handler (`parsed`: a stub's 501 or the route's own answer); one that does not is a 422 problem.
  */
 describe('request parsing (FastAPI and Pydantic lax mode)', () => {
   async function status(method: string, url: string, body?: unknown) {
@@ -417,7 +425,7 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
   it.each(['true', 'True', 'TRUE', '1', 'yes', 'on', 't', 'y', 'false', '0', 'no', 'off', 'f', 'n'])(
     'accepts the boolean %j',
     async (value) => {
-      expect(await status('GET', `/api/categories?include_hidden=${value}`)).toBe(501)
+      expect(await status('GET', `/api/categories?include_hidden=${value}`)).toSatisfy(parsed)
     },
   )
 
@@ -426,7 +434,7 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
   })
 
   it.each(['5', '+5', '05', '5.0', ' 5', '1_0', '500'])('accepts the integer %j', async (value) => {
-    expect(await status('GET', `/api/transactions?limit=${encodeURIComponent(value)}`)).toBe(501)
+    expect(await status('GET', `/api/transactions?limit=${encodeURIComponent(value)}`)).toSatisfy(parsed)
   })
 
   it.each(['', '5.5', '1e2', '0x10', 'five', '0', '501'])('rejects the integer %j or its bounds', async (value) => {
@@ -434,8 +442,8 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
   })
 
   it('takes repeated list parameters and a single one', async () => {
-    expect(await status('GET', '/api/transactions?account_id=1&account_id=2')).toBe(501)
-    expect(await status('GET', '/api/transactions?category_id=3')).toBe(501)
+    expect(await status('GET', '/api/transactions?account_id=1&account_id=2')).toSatisfy(parsed)
+    expect(await status('GET', '/api/transactions?category_id=3')).toSatisfy(parsed)
     expect(await status('GET', '/api/transactions?account_id=1&account_id=x')).toBe(422)
   })
 
@@ -450,7 +458,7 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
 
   it('checks integer path parameters', async () => {
     expect(await status('GET', '/api/goals/abc')).toBe(422)
-    expect(await status('GET', '/api/goals/-1')).toBe(501)
+    expect(await status('GET', '/api/goals/-1')).toSatisfy(parsed)
   })
 
   it('forbids extra fields in request bodies (Schema, extra="forbid")', async () => {
@@ -474,8 +482,8 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
 
   it('requires required body fields and accepts empty updates', async () => {
     expect(await status('POST', '/api/recurring', { transaction_id: 1 })).toBe(422)
-    expect(await status('PATCH', '/api/manual-entries/1', {})).toBe(501)
-    expect(await status('PUT', '/api/settings/config', {})).toBe(501)
+    expect(await status('PATCH', '/api/manual-entries/1', {})).toSatisfy(parsed)
+    expect(await status('PUT', '/api/settings/config', {})).toSatisfy(parsed)
     expect(await status('PUT', '/api/settings/config', { llm_provider: 'gpt' })).toBe(422)
     expect(await status('PUT', '/api/settings/config', { llm_model: null })).toBe(422)
   })
@@ -486,19 +494,19 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
     expect(await status('PUT', '/api/settings/config', { sync_first_history_days: 0 })).toBe(422)
     expect(
       await status('PUT', '/api/settings/config', { llm_model: 'x', sync_interval_hours: 1, sync_first_history_days: 1 }),
-    ).toBe(501)
+    ).toSatisfy(parsed)
   })
 
   it('takes request money as Pydantic took a Decimal: a number or a decimal string', async () => {
     const entry = { description: 'Rent', due_date: '2026-11-01' }
     for (const amount of ['-15.49', '1000', '15.5', 15.5, -1200]) {
-      expect(await status('POST', '/api/manual-entries', { ...entry, amount })).toBe(501)
-      expect(await status('PATCH', '/api/manual-entries/1', { amount })).toBe(501)
-      expect(await status('PATCH', '/api/recurring/1', { amount })).toBe(501)
+      expect(await status('POST', '/api/manual-entries', { ...entry, amount })).toSatisfy(parsed)
+      expect(await status('PATCH', '/api/manual-entries/1', { amount })).toSatisfy(parsed)
+      expect(await status('PATCH', '/api/recurring/1', { amount })).toSatisfy(parsed)
     }
-    expect(await status('PATCH', '/api/manual-entries/1', { amount: null })).toBe(501)
+    expect(await status('PATCH', '/api/manual-entries/1', { amount: null })).toSatisfy(parsed)
     expect(await status('POST', '/api/manual-entries', { ...entry, amount: '1e3' })).toBe(422)
-    expect(await status('POST', '/api/goals', { name: 'Trip', target_amount: 1000, target_date: '2027-06-01' })).toBe(501)
+    expect(await status('POST', '/api/goals', { name: 'Trip', target_amount: 1000, target_date: '2027-06-01' })).toSatisfy(parsed)
     expect(await status('PATCH', '/api/goals/1', { target_amount: '0' })).toBe(422)
   })
 })
