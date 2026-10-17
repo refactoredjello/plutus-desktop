@@ -66,6 +66,12 @@ jobs:
       - run: npm ci
         working-directory: .
       - run: npm run check
+      - name: Desktop shell (lint, types, unit tests)
+        run: npm run check --workspace desktop
+        working-directory: .
+      - name: Parity harness unit tests
+        run: make check-parity
+        working-directory: .
 
   # The web image no longer builds here: web/ has no lockfile of its own since the root
   # workspace. Docker goes away at cutover (docs/DESKTOP_PLAN.md, brief 5A).
