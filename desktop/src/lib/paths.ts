@@ -19,6 +19,14 @@ export interface ShellPaths {
   databasePath: string
 }
 
+/**
+ * The userData folder, set before anything reads it. Development runs get their own, so an
+ * unmerged branch's migrations never touch the database the installed app uses.
+ */
+export function userDataDir(inputs: { isPackaged: boolean; appDataPath: string }): string {
+  return join(inputs.appDataPath, inputs.isPackaged ? 'Plutus' : 'Plutus Dev')
+}
+
 export function resolvePaths(inputs: PathInputs): ShellPaths {
   const webDist = inputs.isPackaged
     ? join(inputs.resourcesPath, 'web') // electron-builder.yml extraResources
