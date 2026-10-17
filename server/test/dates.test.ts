@@ -6,6 +6,8 @@ import {
   compareDates,
   daysBetween,
   daysInMonth,
+  epochToTimestamp,
+  epochToUtcDate,
   monthBounds,
   monthKey,
   plainDate,
@@ -137,5 +139,22 @@ describe('daysBetween and compareDates', () => {
     expect(compareDates(d('2026-01-02'), d('2026-01-10'))).toBeLessThan(0)
     expect(compareDates(d('2026-01-10'), d('2026-01-10'))).toBe(0)
     expect(compareDates(d('2027-01-01'), d('2026-12-31'))).toBeGreaterThan(0)
+  })
+})
+
+describe('epoch conversions (datetime.fromtimestamp(seconds, UTC))', () => {
+  it('gives the UTC date of a Unix timestamp', () => {
+    expect(epochToUtcDate(1772884800)).toBe('2026-03-07')
+    // 23:59:59 UTC stays on its day whatever the local zone.
+    expect(epochToUtcDate(1772927999)).toBe('2026-03-07')
+    expect(epochToUtcDate(1772928000)).toBe('2026-03-08')
+  })
+
+  it('gives the ISO UTC timestamp of a Unix timestamp', () => {
+    expect(epochToTimestamp(1790769600)).toBe('2026-09-30T12:00:00.000Z')
+  })
+
+  it('refuses a non-finite value', () => {
+    expect(() => epochToUtcDate(Number.NaN)).toThrow()
   })
 })
