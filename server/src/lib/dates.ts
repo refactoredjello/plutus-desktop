@@ -89,6 +89,21 @@ export function utcNow(): string {
   return new Date().toISOString()
 }
 
+function epochMillis(seconds: number): number {
+  if (!Number.isFinite(seconds)) throw new RangeError(`Not a Unix timestamp: ${seconds}`)
+  return seconds * 1000
+}
+
+/** `datetime.fromtimestamp(seconds, UTC).date()`. */
+export function epochToUtcDate(seconds: number): PlainDate {
+  return plainDate(new Date(epochMillis(seconds)).toISOString().slice(0, 10))
+}
+
+/** `datetime.fromtimestamp(seconds, UTC)` as an ISO 8601 UTC timestamp. */
+export function epochToTimestamp(seconds: number): string {
+  return new Date(epochMillis(seconds)).toISOString()
+}
+
 /** `day + timedelta(days=n)`. */
 export function addDays(day: PlainDate, n: number): PlainDate {
   return fromDayNumber(toDayNumber(day) + n)
