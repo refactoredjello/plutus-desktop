@@ -26,7 +26,7 @@ export async function compareGet(
   }
   differences.push(...compareResponses(e, a, normalizeOptionsFor(endpoint)))
   const request = actualPath === path ? `GET ${path}` : `GET ${path} (other app: ${actualPath})`
-  return { endpoint, label, request, differences }
+  return { endpoint, label, request, differences, statuses: { expected: e.status, actual: a.status } }
 }
 
 type Prepared = { ok: true; request: StepRequest } | { ok: false; error: string }
@@ -55,6 +55,7 @@ export async function runStep(
   const pa = await prepare(step, actual, today)
   const differences: Difference[] = []
   let request = step.endpoint
+  const statuses: { expected: number | null; actual: number | null } = { expected: null, actual: null }
 
   if (!pe.ok) {
     differences.push({
@@ -67,6 +68,7 @@ export async function runStep(
     request = `${pe.request.method} ${pe.request.path}`
     const re = await expected.api.send(pe.request.method, pe.request.path, pe.request.body)
     step.capture?.(re, expected.state)
+    statuses.expected = re.status
     if (!pa.ok) {
       differences.push({
         path: '(prepare)',
@@ -85,11 +87,12 @@ export async function runStep(
       }
       const ra = await actual.api.send(pa.request.method, pa.request.path, pa.request.body)
       step.capture?.(ra, actual.state)
+      statuses.actual = ra.status
       differences.push(...compareResponses(re, ra, normalizeOptionsFor(step.endpoint)))
     }
   }
 
-  const results: CaseResult[] = [{ endpoint: step.endpoint, label, request, differences }]
+  const results: CaseResult[] = [{ endpoint: step.endpoint, label, request, differences, statuses }]
   const ePaths = step.reread(expected.state, today)
   const aPaths = step.reread(actual.state, today)
   for (let i = 0; i < Math.max(ePaths.length, aPaths.length); i++) {

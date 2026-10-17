@@ -32,6 +32,7 @@ describe('compareGet', () => {
       label: 'initial',
       request: 'GET /api/reports/by-category?month=2026-09',
       differences: [],
+      statuses: { expected: 200, actual: 200 },
     })
   })
 

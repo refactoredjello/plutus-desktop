@@ -14,6 +14,8 @@ export interface CaseResult {
   /** The concrete request, e.g. `GET /api/goals/999999`. */
   request: string
   differences: Difference[]
+  /** HTTP status on each side; null when that side's request was not sent. */
+  statuses?: { expected: number | null; actual: number | null }
 }
 
 /** A pass/fail check outside the endpoint diff: app setup, demo load, prompt equality. */
@@ -123,6 +125,20 @@ export function renderReport(report: RunReport, options: { maxPerCase?: number }
   }
   checks('Setup', report.setup)
   checks('Prompts', report.prompts)
+
+  const steps = report.cases.filter((c) => c.label.startsWith('step '))
+  if (steps.length > 0) {
+    const status = (n: number | null | undefined) => (n === null || n === undefined ? 'not sent' : String(n))
+    lines.push('## Write steps', '')
+    lines.push(`| Step | Request | Python | ${report.actualLabel} | Result |`, '|---|---|---|---|---|')
+    for (const c of steps) {
+      lines.push(
+        `| ${cell(c.label)} | \`${c.request}\` | ${status(c.statuses?.expected)} | ` +
+          `${status(c.statuses?.actual)} | ${c.differences.length === 0 ? 'same' : 'DIFFERS'} |`,
+      )
+    }
+    lines.push('')
+  }
 
   lines.push('## Differences', '')
   const differing = report.cases.filter((c) => c.differences.length > 0)
