@@ -22,7 +22,18 @@ import {
   validationError,
 } from './lib/errors.js'
 import { type Logger, createLogger } from './lib/log.js'
+import { registerAccounts } from './routes/accounts.js'
+import { registerCategories } from './routes/categories.js'
+import { registerChanges } from './routes/changes.js'
+import { registerGoals } from './routes/goals.js'
 import { registerHealth } from './routes/health.js'
+import { registerManualEntries } from './routes/manual_entries.js'
+import { registerProjection } from './routes/projection.js'
+import { registerRecurring } from './routes/recurring.js'
+import { registerReports } from './routes/reports.js'
+import { registerSettings } from './routes/settings.js'
+import { registerSync } from './routes/sync.js'
+import { registerTransactions } from './routes/transactions.js'
 import type { SecretStore } from './secrets.js'
 
 export const API_PREFIX = '/api'
@@ -175,6 +186,17 @@ export function createApp(deps: AppDeps): App {
 
   // Routes, in app/main.py's ROUTERS order. Brief 0B adds one line per router here.
   registerHealth(app)
+  registerAccounts(app)
+  registerSync(app)
+  registerSettings(app)
+  registerTransactions(app)
+  registerCategories(app)
+  registerChanges(app)
+  registerReports(app)
+  registerProjection(app)
+  registerRecurring(app)
+  registerManualEntries(app)
+  registerGoals(app)
 
   app.doc31(`${API_PREFIX}/openapi.json`, OPENAPI_CONFIG)
 
