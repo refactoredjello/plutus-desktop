@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // The shell runs the server's compiled output (plutus-server/dist, from `npm run build
+    // -w server`) but typechecks against its sources, so `npm run check` needs no server build.
+    "paths": {
+      "plutus-server/dist/*": ["../server/src/*"]
+    }
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}
