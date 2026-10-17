@@ -1,5 +1,5 @@
 /**
- * Typed API client generated from the FastAPI OpenAPI spec.
+ * Typed API client generated from the server's OpenAPI spec (server/src/schemas).
  * Never hand-write fetch calls; regenerate types with `npm run gen:api`.
  */
 import createClient from 'openapi-fetch'

@@ -31,7 +31,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 | Command | Use |
 |---|---|
 | `make check` | Everything CI runs. Must pass before a change is done. |
-| `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the TypeScript server, then `schema.d.ts`. A test fails if they're stale. Until brief 0B merges the server covers only `/health`, so don't run it before then. |
+| `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the TypeScript server, then `schema.d.ts`. A test fails if they're stale. `server/test/contract.test.ts` also checks the spec against FastAPI's, frozen in `server/test/fixtures/fastapi-openapi.json`. |
 | `make revision m="..."` | New Alembic migration (autogenerate), then review it. |
 | `make help` | The rest. |
 
@@ -46,6 +46,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 ## Conventions
 
 - Backend: sync SQLAlchemy and endpoints; `Annotated` dependencies; routers call one service function; services never import FastAPI; money is `Decimal` (JSON string); timestamps UTC. "Today" comes from `services/schedule.today()` so tests can patch it.
+- Request money fields use `MoneyInput` (number or decimal string, parsed to cents, as Pydantic accepted); responses use `Money` (two-decimal string).
 - Contract first: change schemas, run `make openapi`, then build frontend against the generated types and MSW mocks.
 - Frontend: TanStack Query for server state, shadcn/ui components (base-nova, on Base UI), Recharts. Use the generated client in `src/api/client.ts`; never hand-write fetch calls.
 - Migrations are reviewed by hand. Never edit an applied migration.
