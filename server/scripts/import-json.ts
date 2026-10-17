@@ -18,23 +18,30 @@
  *   id is ever reused (change dismissal keys embed ids).
  * - The seeded categories are replaced by the exported ones, ids included.
  * - Settings marked is_encrypted arrive in the clear and are encrypted with the SecretStore.
- * - The target must hold nothing but the seed; everything runs in one transaction, and the
- *   row count of every table is checked against the file before it commits.
+ * - The target must hold nothing but the seed: the Plaid categories, plus the config rows a
+ *   desktop writes on its first launch (CONFIG_KEYS and config_seeded_at), which are replaced.
+ *   Everything runs in one transaction, and the row count of every table is checked against
+ *   the file before the runtime config is applied and the import commits.
+ * - runtime_config (the Python app's env settings) is stored through the config service's
+ *   updateConfig: the API key is encrypted with the SecretStore and the database is marked
+ *   seeded, so env defaults never override the imported values.
  */
 
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getTableConfig, type SQLiteColumn, type SQLiteTable } from 'drizzle-orm/sqlite-core'
-import { loadConfig } from '../src/config.js'
+import { type RuntimeDefaults, loadConfig } from '../src/config.js'
 import { type Db, MIGRATIONS_FOLDER, openDb } from '../src/db/index.js'
 import * as schema from '../src/db/schema.js'
 import { isPlainDate } from '../src/lib/dates.js'
 import { parseMoney } from '../src/lib/money.js'
+import { ConfigUpdate } from '../src/schemas/settings.js'
 import { KeySecretStore, type SecretStore } from '../src/secrets.js'
+import { CONFIG_KEYS, CONFIG_SEEDED_AT, type ConfigChanges, updateConfig } from '../src/services/config.js'
 
 export const EXPORT_FORMAT = 'plutus-export'
-export const EXPORT_FORMAT_VERSION = 1
+export const EXPORT_FORMAT_VERSION = 2
 /** The Alembic revision whose final schema db/schema.ts mirrors (brief 0A). */
 export const SOURCE_REVISION = '0006'
 
@@ -152,7 +159,35 @@ function convert(table: string, column: Column, value: Json | undefined, secrets
   }
 }
 
+/** runtime_config carries every ConfigUpdate field. */
+const RUNTIME_CONFIG_KEYS = Object.keys(ConfigUpdate.shape).sort()
+
+/** app_settings rows the config service writes on a first launch: seed, not data. */
+const CONFIG_ROW_KEYS: readonly string[] = [...Object.values(CONFIG_KEYS), CONFIG_SEEDED_AT]
+const CONFIG_ROW_PARAMS = CONFIG_ROW_KEYS.map(() => '?').join(', ')
+
+function parseRuntimeConfig(value: Json | undefined): ConfigChanges {
+  if (!isObj(value)) throw new ImportError('export has no runtime_config object')
+  const keys = Object.keys(value).sort()
+  if (!sameKeys(keys, RUNTIME_CONFIG_KEYS)) {
+    const missing = RUNTIME_CONFIG_KEYS.filter((k) => !keys.includes(k))
+    const extra = keys.filter((k) => !RUNTIME_CONFIG_KEYS.includes(k))
+    throw new ImportError(
+      'runtime_config does not match the config' +
+        (missing.length ? `; missing ${missing.join(', ')}` : '') +
+        (extra.length ? `; unknown ${extra.join(', ')}` : ''),
+    )
+  }
+  const result = ConfigUpdate.safeParse(value)
+  if (!result.success) {
+    const issues = result.error.issues.map((i) => `runtime_config.${i.path.join('.')}: ${i.message}`)
+    throw new ImportError(issues.join('; '))
+  }
+  return result.data
+}
+
 interface Parsed {
+  runtimeConfig: ConfigChanges
   sequences: Record<string, number>
   tables: Record<string, Obj[]>
 }
@@ -208,7 +243,7 @@ function parse(data: unknown): Parsed {
     }
     parsedSequences[table.name] = value
   }
-  return { sequences: parsedSequences, tables: parsedTables }
+  return { runtimeConfig: parseRuntimeConfig(data.runtime_config), sequences: parsedSequences, tables: parsedTables }
 }
 
 interface SeedCategory {
@@ -222,7 +257,13 @@ interface SeedCategory {
 function assertPristine(db: Db, migrationsFolder: string): void {
   for (const table of TABLE_INFO) {
     if (table.name === 'categories') continue
-    const n = db.$client.prepare(`SELECT count(*) FROM ${quote(table.name)}`).pluck().get() as number
+    const n =
+      table.name === 'app_settings'
+        ? (db.$client
+            .prepare(`SELECT count(*) FROM app_settings WHERE key NOT IN (${CONFIG_ROW_PARAMS})`)
+            .pluck()
+            .get(...CONFIG_ROW_KEYS) as number)
+        : (db.$client.prepare(`SELECT count(*) FROM ${quote(table.name)}`).pluck().get() as number)
     if (n > 0) {
       throw new ImportError(
         `target database is not empty: ${table.name} has ${n} row(s); import only into a new database`,
@@ -297,19 +338,24 @@ function raiseSequences(db: Db, sequences: Record<string, number>): void {
 export interface ImportOptions {
   /** Where the seed lives, if openDb was given a different migrations folder. */
   migrationsFolder?: string
+  /** The config service's env defaults; loadConfig().defaults when not given. */
+  defaults?: RuntimeDefaults
 }
 
 /**
  * Import a parsed export file into `db`, which must be freshly opened with openDb. Secrets are
  * encrypted with `secrets`: KeySecretStore headless, the desktop's safeStorage store later.
- * Returns the row count per table. Throws ImportError, or a SQLite error, having written nothing.
+ * Returns the row count per table as exported; app_settings then also holds the runtime config
+ * rows. Throws ImportError, or a SQLite error, having written nothing.
  */
 export function importExport(db: Db, data: unknown, secrets: SecretStore, options: ImportOptions = {}): ImportCounts {
   const parsed = parse(data)
   const migrationsFolder = options.migrationsFolder ?? MIGRATIONS_FOLDER
+  const defaults = options.defaults ?? loadConfig().defaults
   const run = db.$client.transaction((): ImportCounts => {
     assertPristine(db, migrationsFolder)
     db.$client.prepare('DELETE FROM categories').run()
+    db.$client.prepare(`DELETE FROM app_settings WHERE key IN (${CONFIG_ROW_PARAMS})`).run(...CONFIG_ROW_KEYS)
     let pairs: Obj[] = []
     for (const table of TABLE_INFO) {
       const found = insertTable(db, table, parsed.tables[table.name] ?? [], secrets)
@@ -326,6 +372,7 @@ export function importExport(db: Db, data: unknown, secrets: SecretStore, option
       }
       counts[table.name] = actual
     }
+    updateConfig(db, secrets, defaults, parsed.runtimeConfig)
     return counts
   })
   return run()
@@ -372,8 +419,9 @@ export function runCli(
   }
   const db = openDb(target)
   try {
-    const counts = importExport(db, data, new KeySecretStore(secretKey))
+    const counts = importExport(db, data, new KeySecretStore(secretKey), { defaults: loadConfig(env).defaults })
     for (const [name, n] of Object.entries(counts)) out.log(`${name.padEnd(26)} ${String(n).padStart(7)}`)
+    out.log('runtime config (LLM provider, owner name tokens, sync settings, API key) stored in app_settings')
     out.log(`imported into ${target}. Delete ${file} now: it holds secrets in clear text.`)
     return 0
   } catch (err) {
