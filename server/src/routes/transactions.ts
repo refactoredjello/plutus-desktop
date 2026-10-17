@@ -1,4 +1,4 @@
-/** Ports app/routers/transactions.py (stub). */
+/** Ports app/routers/transactions.py. */
 
 import { createRoute, z } from '@hono/zod-openapi'
 import type { App } from '../app.js'
@@ -7,7 +7,9 @@ import { EssentialityFilter } from '../schemas/enums.js'
 import { orNull, params } from '../schemas/model.js'
 import { pathInt, queryBool, queryInt, queryIntList } from '../schemas/params.js'
 import { TransactionPage, TransactionRead, TransactionUpdate } from '../schemas/transactions.js'
-import { json, jsonBody, notImplemented } from './openapi.js'
+import { plainDate } from '../lib/dates.js'
+import * as service from '../services/transactions.js'
+import { json, jsonBody } from './openapi.js'
 
 const listTransactions = createRoute({
   method: 'get',
@@ -44,6 +46,28 @@ const updateTransaction = createRoute({
 })
 
 export function registerTransactions(app: App): void {
-  app.openapi(listTransactions, notImplemented)
-  app.openapi(updateTransaction, notImplemented)
+  app.openapi(listTransactions, (c) => {
+    const query = c.req.valid('query')
+    const [items, total] = service.listTransactions(c.var.db, {
+      q: query.q ?? null,
+      start: query.start ? plainDate(query.start) : null,
+      end: query.end ? plainDate(query.end) : null,
+      account_ids: query.account_id ?? null,
+      category_ids: query.category_id ?? null,
+      essentiality: query.essentiality ?? null,
+      uncategorized: query.uncategorized,
+      needs_review: query.needs_review,
+      include_transfers: query.include_transfers,
+      limit: query.limit,
+      offset: query.offset,
+    })
+    return c.json({ items, total, limit: query.limit, offset: query.offset }, 200)
+  })
+  app.openapi(updateTransaction, async (c) => {
+    // Pydantic's model_fields_set: the keys the client sent (the body is validated, so known).
+    const fields = new Set(Object.keys((await c.req.json()) as object))
+    const { db, secrets, config } = c.var
+    const tx = service.updateTransaction(db, secrets, config.defaults, c.req.valid('param').transaction_id, c.req.valid('json'), fields)
+    return c.json(tx, 200)
+  })
 }

@@ -5,7 +5,7 @@
  * wire string (formatMoney) and routes stay thin.
  */
 
-import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import {
   type EssentialityFilter,
@@ -29,7 +29,6 @@ import { DomainError } from '../lib/errors.js'
 import { type Cents, ZERO, cents, divHalfEven, formatMoney, sum } from '../lib/money.js'
 import type { EssentialityShare, MonthCategory, MonthDetail } from '../schemas/month.js'
 import type { AccountBalanceSeries, BalancePoint, CategoryTotal, MonthlySummary } from '../schemas/reports.js'
-import type { TransactionRead } from '../schemas/transactions.js'
 import {
   type CategoryMonthTotal,
   categoryTotals,
@@ -38,6 +37,7 @@ import {
   monthlyTotals,
   recentActiveMonths,
 } from './aggregates.js'
+import { listTransactions, toTransactionRead } from './transactions.js'
 
 export const DEFAULT_HISTORY_DAYS = 180
 
@@ -212,52 +212,6 @@ function rate(net: Cents, income: Cents): number | null {
   return income > 0 ? roundedRatio(net, income) : null
 }
 
-/** TransactionRead.model_validate(tx). */
-function transactionRead(
-  tx: typeof transactions.$inferSelect,
-  cat: typeof categorizations.$inferSelect | null,
-): TransactionRead {
-  return {
-    id: tx.id,
-    account_id: tx.account_id,
-    posted_on: tx.posted_on,
-    amount: formatMoney(tx.amount),
-    raw_description: tx.raw_description,
-    payee: tx.payee,
-    pending: tx.pending,
-    merchant_key: tx.merchant_key,
-    note: tx.note,
-    one_time: tx.one_time,
-    is_transfer: tx.is_transfer,
-    categorization: cat
-      ? { category_id: cat.category_id, essentiality: cat.essentiality, source: cat.source, confidence: cat.confidence }
-      : null,
-  }
-}
-
-/**
- * The total of transactions_service.list_transactions(start=start, end=end, needs_review=True,
- * include_transfers=False, other filters off): non-transfer transactions posted in
- * [start, end] with no categorization or a low or unknown confidence. Inlined here until
- * brief 2A ports services/transactions.ts.
- */
-function needsReviewCount(db: Db, start: PlainDate, end: PlainDate): number {
-  const row = db
-    .select({ n: count() })
-    .from(transactions)
-    .leftJoin(categorizations, eq(categorizations.transaction_id, transactions.id))
-    .where(
-      and(
-        sql`${transactions.posted_on} >= ${start}`,
-        sql`${transactions.posted_on} <= ${end}`,
-        or(isNull(categorizations.transaction_id), inArray(categorizations.confidence, ['low', 'unknown'])),
-        eq(transactions.is_transfer, false),
-      ),
-    )
-    .get()
-  return row?.n ?? 0
-}
-
 export function monthDetail(db: Db, month: MonthKey): MonthDetail {
   checkMonth(month)
   const now = today()
@@ -314,8 +268,20 @@ export function monthDetail(db: Db, month: MonthKey): MonthDetail {
           .leftJoin(categorizations, eq(categorizations.transaction_id, transactions.id))
           .where(inArray(transactions.id, ids))
           .all()
-  const byId = new Map(rows.map((row) => [row.transactions.id, transactionRead(row.transactions, row.categorizations)]))
-  const reviewCount = needsReviewCount(db, start, addDays(end, -1))
+  const byId = new Map(rows.map((row) => [row.transactions.id, toTransactionRead(row.transactions, row.categorizations)]))
+  const [, reviewCount] = listTransactions(db, {
+    q: null,
+    start,
+    end: addDays(end, -1),
+    account_ids: null,
+    category_ids: null,
+    essentiality: null,
+    uncategorized: false,
+    needs_review: true,
+    include_transfers: false,
+    limit: 1,
+    offset: 0,
+  })
   const transactionCount =
     db
       .select({ n: count() })
