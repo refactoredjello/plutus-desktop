@@ -1,0 +1,24 @@
+# Development overrides, applied automatically by `docker compose up`.
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  api:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./api/app:/app/app
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ./web
+      target: dev
+    volumes:
+      - ./web:/web
+      - /web/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_PROXY: http://api:8000

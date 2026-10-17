@@ -1,0 +1,107 @@
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it } from 'vitest'
+import type { Schemas } from '@/api/client'
+import { server } from '@/mocks/server'
+import { needsReview, transactions } from '@/mocks/transactions'
+import { renderAt } from '@/test/render'
+
+const queue = () => transactions.filter((t) => !t.is_transfer && needsReview(t))
+
+describe('Review queue', () => {
+  it('shows the count in the header and as a nav badge', async () => {
+    renderAt('/review')
+    const n = queue().length
+    expect(await screen.findByText(`${n} to review`)).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: `Review ${n}` })).toBeInTheDocument()
+  })
+
+  it('lists only review rows, with "Looks right" only where there is a category', async () => {
+    renderAt('/review')
+    await screen.findAllByText('Amazon')
+    expect(screen.getAllByRole('row').slice(1)).toHaveLength(queue().length)
+    expect(screen.getAllByRole('button', { name: 'Looks right' })).toHaveLength(queue().filter((t) => t.categorization).length)
+  })
+
+  it('accepts the current category and removes the row; the badge drops', async () => {
+    const bodies: Schemas['TransactionUpdate'][] = []
+    const user = userEvent.setup()
+    server.use(
+      http.patch('/api/transactions/:id', async ({ request, params }) => {
+        const body = (await request.json()) as Schemas['TransactionUpdate']
+        bodies.push(body)
+        const txn = transactions.find((t) => t.id === Number(params.id))!
+        txn.categorization = { ...txn.categorization!, source: 'manual', confidence: 'very_high' }
+        return HttpResponse.json(txn)
+      }),
+    )
+    renderAt('/review')
+    const n = queue().length
+    await screen.findByText(`${n} to review`)
+    const firstWithCategory = queue().find((t) => t.categorization)!
+    const before = screen.getAllByRole('button', { name: 'Looks right' }).length
+    await user.click(screen.getAllByRole('button', { name: 'Looks right' })[0]!)
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toMatchObject({ category_id: firstWithCategory.categorization!.category_id })
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Looks right' }).length).toBeLessThan(before))
+    expect(await screen.findByText(`${n - 1} to review`)).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: `Review ${n - 1}` })).toBeInTheDocument()
+  })
+
+  it('keeps a row with the apply-to-all prompt until it is answered, then drops it', async () => {
+    const user = userEvent.setup()
+    renderAt('/review')
+    const [row] = (await screen.findAllByText('Amazon')).map((el) => el.closest('tr')!)
+    await user.click(within(row!).getByRole('combobox', { name: /Category for/ }))
+    await user.click(await screen.findByRole('option', { name: 'Groceries' }))
+    expect(await within(row!).findByText(/Apply to all from amazon/)).toBeInTheDocument()
+    await user.click(within(row!).getByRole('button', { name: 'Dismiss' }))
+    await waitFor(() => expect(row!.isConnected).toBe(false))
+  })
+
+  it('filters to uncategorized transactions', async () => {
+    const urls: URL[] = []
+    server.use(
+      http.get('/api/transactions', ({ request }) => {
+        const url = new URL(request.url)
+        if (url.searchParams.get('limit') !== '1') urls.push(url) // limit=1 is the nav badge
+        return undefined
+      }),
+    )
+    const user = userEvent.setup()
+    renderAt('/review')
+    await screen.findAllByText('Amazon')
+    await user.click(screen.getByRole('button', { name: 'No category' }))
+    await waitFor(() => expect(urls.some((u) => u.searchParams.get('uncategorized') === 'true')).toBe(true))
+    await waitFor(() => expect(screen.queryByText('Amazon')).not.toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Looks right' })).not.toBeInTheDocument()
+  })
+
+  it('shows only categorized low-confidence rows under Low confidence', async () => {
+    const user = userEvent.setup()
+    renderAt('/review')
+    await screen.findAllByText('Amazon')
+    await user.click(screen.getByRole('button', { name: 'Low confidence' }))
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) expect(within(row).getByRole('button', { name: 'Looks right' })).toBeInTheDocument()
+  })
+
+  it('shows an empty state and no badge when nothing needs review', async () => {
+    server.use(http.get('/api/transactions', () => HttpResponse.json({ items: [], total: 0, limit: 50, offset: 0 })))
+    renderAt('/review')
+    expect(await screen.findByText('All caught up.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Review' })).toBeInTheDocument()
+  })
+})
+
+describe('Review notes', () => {
+  it('shows an existing note on the review row', async () => {
+    const target = queue()[0]!
+    target.note = 'Check with Sam'
+    renderAt('/review')
+    expect(await screen.findByText('Check with Sam')).toBeInTheDocument()
+  })
+})

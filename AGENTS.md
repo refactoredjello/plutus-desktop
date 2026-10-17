@@ -1,0 +1,78 @@
+# AGENTS.md
+
+Context for AI coding agents working on Plutus. Humans start with README.md.
+
+**Keep this file current.** When a change makes anything here wrong or adds something an agent must know (a command, a convention, an ownership rule, a hard-won gotcha), update this file in the same change. Keep edits minimal: change or add the one line that matters, don't restate what the code or docs already say, and delete lines that stop being true.
+
+## What Plutus is
+
+A single-user, self-hosted personal finance app. SimpleFIN pulls bank data; an LLM categorizes it from scrubbed merchant names only; the app shows spending, recurring charges, projections, goals, and what changed this month. Runs locally with Docker Compose; the same images are meant for a single remote host later.
+
+Principles, in priority order:
+
+1. Simple UI and simple implementations are always preferred.
+2. Don't reinvent the wheel. Use established libraries, taxonomies, and processes.
+3. A clean interface is paramount.
+
+## Setup
+
+```bash
+cp .env.example .env    # then set SECRET_KEY; LLM_PROVIDER=fake is fine for development
+make up                 # Postgres, migrations, API on :8000, web on :5173
+make demo-data          # optional fake data; make demo-clear removes it
+cd api && uv sync && cd ../web && npm ci && cd ..   # host tooling for tests and lint
+make check              # lint, types, and tests for backend and frontend
+```
+
+Never use real credentials or real bank data in code, tests, mocks, or commits. Fixtures in `api/tests/fixtures` are fake.
+
+## Commands
+
+| Command | Use |
+|---|---|
+| `make check` | Everything CI runs. Must pass before a change is done. |
+| `make openapi` | After any change to `api/app/schemas` or routes: regenerates `web/src/api/openapi.json` and `schema.d.ts`. A test fails if they're stale. |
+| `make revision m="..."` | New Alembic migration (autogenerate), then review it. |
+| `make help` | The rest. |
+
+## Layout
+
+- `api/app/models` SQLAlchemy tables; `schemas` Pydantic request/response models; `routers` thin HTTP layer; `services` business logic; `providers` SimpleFIN and LLM adapters.
+- `api/app/services/aggregates.py` is the single definition of income, expenses, transfers, money movement, essentiality buckets, and "usual" (recent active months). Build every report on it; never re-derive these rules.
+- `web/src/api` is generated; never edit it. `src/pages` one file per route; `src/features/<area>` components and queries; `src/mocks` MSW handlers for tests.
+- `docs/` requirements (with a decisions log and known limitations), architecture, plans, and PRDs.
+
+## Conventions
+
+- Backend: sync SQLAlchemy and endpoints; `Annotated` dependencies; routers call one service function; services never import FastAPI; money is `Decimal` (JSON string); timestamps UTC. "Today" comes from `services/schedule.today()` so tests can patch it.
+- Contract first: change schemas, run `make openapi`, then build frontend against the generated types and MSW mocks.
+- Frontend: TanStack Query for server state, shadcn/ui components (base-nova, on Base UI), Recharts. Use the generated client in `src/api/client.ts`; never hand-write fetch calls.
+- Migrations are reviewed by hand. Never edit an applied migration.
+- Commits end with a `Co-Authored-By` line for the model that wrote them.
+
+## Privacy rules (enforced by tests)
+
+- Only `services/scrub.py` (merchant keys) and `services/suggestions.py` (category aggregates) may build LLM input. Never send balances, account names, raw descriptions, notes, or names.
+- Rules may match raw descriptions (`contains`) because rules never leave the machine.
+- New features must not call an LLM unless the requirements say so; add a test that proves it.
+
+## Testing
+
+- Backend tests run against real Postgres (database `plutus_test`), each test rolled back. Parallel work in separate git worktrees should use its own database via `TEST_DATABASE_URL=postgresql+psycopg://plutus:plutus@localhost:5432/<name>`.
+- Don't run an unmerged branch's migrations against the shared dev database `plutus`; main's migration step would then fail on an unknown revision. Use a copy.
+- Frontend tests use Vitest, Testing Library, and MSW via `renderAt(path)` in `src/test/render.tsx`.
+
+## Gotchas that cost time
+
+- FastAPI 0.14x wraps included routers: `app.routes` has no `APIRoute`s. Walk `app.main.ROUTERS` instead.
+- SimpleFIN: request at most 45 days per call (the live bridge warns above that) and at most 24 requests a day; runs record `requests` and the guard sums them.
+- Docker Compose expands `$` in `.env`: quote values containing `$` (the argon2 hash) in single quotes.
+- Bank merchant names vary (e.g. `SEAMLESS` vs `SEAMLSS`); prefer prefix or contains rules, and check variants in the data before writing one.
+- Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
+- In zsh, unquoted variables don't word-split; loop over query results with Python or `${=var}`.
+
+## Multi-agent work
+
+An orchestrator session owns schemas, migrations, `app/main.py`, and merges; subagents implement briefs in their own worktree and branch, touching only files they own. Role definitions live in `.claude/agents/`. See `docs/AGENT_PLAN.md`.
+
+The desktop port (TypeScript server plus Electron, SQLite instead of Postgres) is planned in `docs/DESKTOP_PLAN.md`. While it runs, Python code under `api/` is frozen except the two changes that plan names, and new server work goes in `server/`.

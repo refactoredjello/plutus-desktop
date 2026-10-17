@@ -1,0 +1,56 @@
+[project]
+name = "plutus-api"
+version = "0.1.0"
+description = "Plutus personal finance API"
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.0",
+    "anthropic>=1.11.0",
+    "apscheduler>=3.11.3",
+    "argon2-cffi>=25.1.0",
+    "cryptography>=50.0.2",
+    "fastapi[standard]>=0.142.2",
+    "httpx>=0.28.1",
+    "itsdangerous>=2.2.0",
+    "psycopg[binary]>=3.3.6",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy>=2",
+    "structlog>=26.1.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "N", "S", "DTZ", "PT"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]
+"alembic/**" = ["N999"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic/"]
+
+[[tool.mypy.overrides]]
+module = ["apscheduler.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]

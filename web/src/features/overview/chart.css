@@ -1,0 +1,27 @@
+/* Chart tokens (dataviz reference palette). Light by default, stepped values under .dark. */
+.viz {
+  --viz-income: #2a78d6;
+  --viz-expense: #eb6834;
+  --viz-line: #2a78d6;
+  --viz-bar: #2a78d6;
+  --viz-essential: #1baf7a;
+  --viz-flexible: #4a3aa7;
+  --viz-discretionary: #e87ba4;
+  --viz-other: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-ink: #0b0b0b;
+  --viz-muted: #898781;
+}
+.dark .viz {
+  --viz-income: #3987e5;
+  --viz-expense: #d95926;
+  --viz-line: #3987e5;
+  --viz-bar: #3987e5;
+  --viz-essential: #199e70;
+  --viz-flexible: #9085e9;
+  --viz-discretionary: #d55181;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #383835;
+  --viz-ink: #ffffff;
+}

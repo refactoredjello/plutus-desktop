@@ -1,0 +1,48 @@
+# Production-shaped stack. compose.override.yaml layers development settings on top.
+name: plutus
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: plutus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plutus}
+      POSTGRES_DB: plutus
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plutus -d plutus"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Release step: apply migrations, then exit. The api waits for it to succeed.
+  migrate:
+    build: ./api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://plutus:${POSTGRES_PASSWORD:-plutus}@db:5432/plutus
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: ./api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://plutus:${POSTGRES_PASSWORD:-plutus}@db:5432/plutus
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build: ./web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
