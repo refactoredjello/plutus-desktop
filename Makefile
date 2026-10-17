@@ -1,4 +1,4 @@
-.PHONY: help up down logs migrate revision test test-api test-web lint fmt typecheck openapi check check-server check-desktop check-parity parity parity-self dev-server password-hash demo-data demo-clear
+.PHONY: help up down logs migrate revision test test-api test-web lint fmt typecheck openapi check check-server check-desktop check-parity parity parity-self import-check dev-server password-hash demo-data demo-clear
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -61,6 +61,9 @@ parity: ## Python vs TypeScript parity run on demo data; writes tools/parity/rep
 
 parity-self: ## Python vs Python self-check of the parity harness; must report zero differences
 	node_modules/.bin/tsx tools/parity/run.ts --self-check
+
+import-check: ## Postgres export to SQLite import on demo data (plutus_export); counts and monthly report must match
+	node_modules/.bin/tsx tools/parity/import_check.ts
 
 check: lint typecheck test check-server check-desktop check-parity ## Everything CI runs
 
