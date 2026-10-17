@@ -73,6 +73,15 @@ describe('diff', () => {
     expect(diff({ r: 0.1234 }, { r: 0.1235 })).toEqual([{ path: '/r', expected: 0.1234, actual: 0.1235 }])
   })
 
+  it('treats -0 and 0 as equal: Python prints -0.0 and 1.0, JavaScript 0 and 1', () => {
+    const python = JSON.parse('{"share":-0.0,"savings_rate":1.0}') as { share: number }
+    const ts = JSON.parse('{"share":0,"savings_rate":1}') as { share: number }
+    expect(Object.is(python.share, ts.share)).toBe(false) // the trap: -0 vs 0 after parsing
+    expect(diff(python, ts)).toHaveLength(0)
+    expect(diff([-0], [0])).toHaveLength(0)
+    expect(diff({ r: -0.5 }, { r: 0.5 })).toHaveLength(1)
+  })
+
   it('escapes slashes and tildes in keys like a JSON pointer', () => {
     expect(diff({ 'a/b': 1, 'c~d': 1 }, { 'a/b': 2, 'c~d': 2 })).toEqual([
       { path: '/a~1b', expected: 1, actual: 2 },
