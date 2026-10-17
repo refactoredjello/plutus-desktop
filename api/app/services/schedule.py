@@ -1,6 +1,7 @@
 """Date helpers shared by recurring detection and projection."""
 
 import calendar
+import os
 from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
 
@@ -8,7 +9,9 @@ from app.models.base import Cadence, Recurrence
 
 
 def today() -> date:
-    """The one place "today" comes from. Tests monkeypatch this."""
+    """The one place "today" comes from. Tests monkeypatch this; PLUTUS_TODAY pins it."""
+    if pinned := os.environ.get("PLUTUS_TODAY"):
+        return date.fromisoformat(pinned)
     return datetime.now(UTC).date()
 
 
