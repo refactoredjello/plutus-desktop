@@ -176,10 +176,12 @@ if (!app.requestSingleInstanceLock()) {
     if (!mainWindow && server) mainWindow = createWindow()
   })
 
+  // Windows are closed by now. A second app.quit() after preventDefault never completes, so
+  // exit directly once the server and database are closed.
   app.on('will-quit', (event) => {
     if (stopped) return
     event.preventDefault()
-    void shutdown().finally(() => app.quit())
+    void shutdown().finally(() => app.exit(0))
   })
 
   app
