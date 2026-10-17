@@ -91,7 +91,7 @@ echo "::1 plutus.local" | sudo tee -a /etc/hosts
 For running checks and tests on your machine instead of inside Docker:
 
 ```bash
-cd api && uv sync && cd ../web && npm ci && cd ..
+cd api && uv sync && cd .. && npm ci
 ```
 
 ```bash

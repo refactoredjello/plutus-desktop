@@ -20,8 +20,8 @@ Principles, in priority order:
 cp .env.example .env    # then set SECRET_KEY; LLM_PROVIDER=fake is fine for development
 make up                 # Postgres, migrations, API on :8000, web on :5173
 make demo-data          # optional fake data; make demo-clear removes it
-cd api && uv sync && cd ../web && npm ci && cd ..   # host tooling for tests and lint
-make check              # lint, types, and tests for backend and frontend
+cd api && uv sync && cd .. && npm ci   # host tooling: Python, then every npm workspace from the root lockfile
+make check              # lint, types, and tests for api/, web/, and server/
 ```
 
 Never use real credentials or real bank data in code, tests, mocks, or commits. Fixtures in `api/tests/fixtures` are fake.
@@ -31,7 +31,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 | Command | Use |
 |---|---|
 | `make check` | Everything CI runs. Must pass before a change is done. |
-| `make openapi` | After any change to `api/app/schemas` or routes: regenerates `web/src/api/openapi.json` and `schema.d.ts`. A test fails if they're stale. |
+| `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the TypeScript server, then `schema.d.ts`. A test fails if they're stale. Until brief 0B merges the server covers only `/health`, so don't run it before then. |
 | `make revision m="..."` | New Alembic migration (autogenerate), then review it. |
 | `make help` | The rest. |
 
@@ -39,6 +39,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 
 - `api/app/models` SQLAlchemy tables; `schemas` Pydantic request/response models; `routers` thin HTTP layer; `services` business logic; `providers` SimpleFIN and LLM adapters.
 - `api/app/services/aggregates.py` is the single definition of income, expenses, transfers, money movement, essentiality buckets, and "usual" (recent active months). Build every report on it; never re-derive these rules.
+- `server/` is the TypeScript port (Hono, Drizzle, better-sqlite3), laid out per docs/DESKTOP_PLAN.md 4.3. `server/test/setup.ts` gives each test its own in-memory SQLite via `makeDb()`.
 - `web/src/api` is generated; never edit it. `src/pages` one file per route; `src/features/<area>` components and queries; `src/mocks` MSW handlers for tests.
 - `docs/` requirements (with a decisions log and known limitations), architecture, plans, and PRDs.
 
@@ -67,6 +68,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - FastAPI 0.14x wraps included routers: `app.routes` has no `APIRoute`s. Walk `app.main.ROUTERS` instead.
 - SimpleFIN: request at most 45 days per call (the live bridge warns above that) and at most 24 requests a day; runs record `requests` and the guard sums them.
 - Two checkouts (or a worktree) share the compose project `plutus`, but `docker compose up db` from a second path recreates the shared db container (the init.sql bind mount differs). `make test-api` skips it when :5432 answers; don't run it by hand.
+- `make up` can't build the web image in this repo (web has no lockfile of its own since the root workspace); run the Docker app from `~/dev/Plutus`.
 - Docker Compose expands `$` in `.env`: quote values containing `$` (the argon2 hash) in single quotes.
 - Bank merchant names vary (e.g. `SEAMLESS` vs `SEAMLSS`); prefer prefix or contains rules, and check variants in the data before writing one.
 - Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
