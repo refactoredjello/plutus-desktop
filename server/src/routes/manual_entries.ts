@@ -1,11 +1,26 @@
-/** Manual entries (R5). Ports app/routers/manual_entries.py (stub). */
+/** Manual entries (R5). Ports app/routers/manual_entries.py. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
+import { formatMoney } from '../lib/money.js'
 import { ManualEntryCreate, ManualEntryRead, ManualEntryUpdate } from '../schemas/manual_entries.js'
 import { params, responseList } from '../schemas/model.js'
 import { pathInt } from '../schemas/params.js'
-import { json, jsonBody, noContent, notImplemented } from './openapi.js'
+import * as service from '../services/manual_entries.js'
+import { json, jsonBody, noContent } from './openapi.js'
+
+function read(entry: service.ManualEntry): ManualEntryRead {
+  return {
+    id: entry.id,
+    amount: formatMoney(entry.amount),
+    description: entry.description,
+    category_id: entry.category_id,
+    due_date: entry.due_date,
+    recurrence: entry.recurrence,
+    end_date: entry.end_date,
+    fulfilled_transaction_id: entry.fulfilled_transaction_id,
+  }
+}
 
 const listManualEntries = createRoute({
   method: 'get',
@@ -47,8 +62,15 @@ const deleteManualEntry = createRoute({
 })
 
 export function registerManualEntries(app: App): void {
-  app.openapi(listManualEntries, notImplemented)
-  app.openapi(createManualEntry, notImplemented)
-  app.openapi(updateManualEntry, notImplemented)
-  app.openapi(deleteManualEntry, notImplemented)
+  app.openapi(listManualEntries, (c) => c.json(service.listManualEntries(c.var.db).map(read), 200))
+  app.openapi(createManualEntry, (c) => c.json(read(service.createManualEntry(c.var.db, c.req.valid('json'))), 201))
+  app.openapi(updateManualEntry, (c) => {
+    const { entry_id } = c.req.valid('param')
+    return c.json(read(service.updateManualEntry(c.var.db, entry_id, c.req.valid('json'))), 200)
+  })
+  app.openapi(deleteManualEntry, (c) => {
+    const { entry_id } = c.req.valid('param')
+    service.deleteManualEntry(c.var.db, entry_id)
+    return c.body(null, 204)
+  })
 }
