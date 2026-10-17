@@ -22,6 +22,7 @@ import {
   validationError,
 } from './lib/errors.js'
 import { type Logger, createLogger } from './lib/log.js'
+import { registerHealth } from './routes/health.js'
 import type { SecretStore } from './secrets.js'
 
 export const API_PREFIX = '/api'
@@ -104,11 +105,16 @@ function apiGuard(token: string): MiddlewareHandler<AppEnv> {
 
 /** web/dist with an index.html fallback for client routes, like web/nginx.conf. */
 function spa(webDist: string, guardToken: string | null): MiddlewareHandler<AppEnv> {
-  const files = serveStatic<AppEnv>({ root: webDist })
-  const index = serveStatic<AppEnv>({ path: join(webDist, 'index.html') })
+  // Built on first use: the web build may appear after the server starts (npm run dev).
+  let handlers: { files: MiddlewareHandler<AppEnv>; index: MiddlewareHandler<AppEnv> } | null = null
   const noop = async () => {}
   return async (c, next) => {
     if (isApi(c.req.path) || !existsSync(webDist)) return next()
+    handlers ??= {
+      files: serveStatic<AppEnv>({ root: webDist }),
+      index: serveStatic<AppEnv>({ path: join(webDist, 'index.html') }),
+    }
+    const { files, index } = handlers
     const isIndex = c.req.path === '/' || c.req.path === '/index.html'
     if (!isIndex) {
       const found = await files(c, noop)
@@ -167,7 +173,8 @@ export function createApp(deps: AppDeps): App {
     return c.text('Not Found', 404)
   })
 
-  // Routes. Brief 0B adds one line per router here.
+  // Routes, in app/main.py's ROUTERS order. Brief 0B adds one line per router here.
+  registerHealth(app)
 
   app.doc31(`${API_PREFIX}/openapi.json`, OPENAPI_CONFIG)
 
