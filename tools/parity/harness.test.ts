@@ -90,6 +90,8 @@ describe('runStep', () => {
     ])
     expect(py.state.goalId).toBe(4)
     expect(ts.state.goalId).toBe(4)
+    expect(results[0]?.statuses).toEqual({ expected: 201, actual: 201 })
+    expect(results[1]?.statuses).toEqual({ expected: 200, actual: 200 })
   })
 
   it('reports a failed preparation on the right-hand app and still runs the Python write', async () => {
@@ -106,6 +108,7 @@ describe('runStep', () => {
     ])
     expect(py.api.calls).toContain('POST /api/goals')
     expect(ts.api.calls).not.toContain('POST /api/goals')
+    expect(results[0]?.statuses).toEqual({ expected: 201, actual: null })
     // The re-reads still run on both; the right-hand app has no captured goal.
     expect(results.slice(1).map((r) => r.request)).toEqual([
       'GET /api/goals',

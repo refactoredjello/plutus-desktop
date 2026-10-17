@@ -126,6 +126,40 @@ describe('renderReport', () => {
     expect(md).toContain('25 more differences not shown')
   })
 
+  it('lists each write step with both status codes, so a run of errors is visible', () => {
+    const md = renderReport(
+      report({
+        cases: [
+          {
+            endpoint: 'POST /api/goals',
+            label: 'step 11: create a goal',
+            request: 'POST /api/goals',
+            differences: [],
+            statuses: { expected: 201, actual: 201 },
+          },
+          {
+            endpoint: 'GET /api/goals',
+            label: 'after step 11: create a goal',
+            request: 'GET /api/goals',
+            differences: [],
+            statuses: { expected: 200, actual: 200 },
+          },
+          {
+            endpoint: 'POST /api/goals/{goal_id}/suggestions',
+            label: 'step 12: generate suggestions',
+            request: 'POST /api/goals/1/suggestions',
+            differences: [{ path: '(prepare)', expected: 'x', actual: 'failed: y' }],
+            statuses: { expected: 201, actual: null },
+          },
+        ],
+      }),
+    )
+    expect(md).toContain('## Write steps')
+    expect(md).toContain('| step 11: create a goal | `POST /api/goals` | 201 | 201 | same |')
+    expect(md).toContain('| step 12: generate suggestions | `POST /api/goals/1/suggestions` | 201 | not sent | DIFFERS |')
+    expect(md).not.toContain('| after step 11')
+  })
+
   it('lists what was not compared and the normalization rules', () => {
     const md = renderReport(report())
     expect(md).toContain('## Not compared')
