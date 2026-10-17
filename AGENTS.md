@@ -66,6 +66,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 
 - FastAPI 0.14x wraps included routers: `app.routes` has no `APIRoute`s. Walk `app.main.ROUTERS` instead.
 - SimpleFIN: request at most 45 days per call (the live bridge warns above that) and at most 24 requests a day; runs record `requests` and the guard sums them.
+- Two checkouts (or a worktree) share the compose project `plutus`, but `docker compose up db` from a second path recreates the shared db container (the init.sql bind mount differs). `make test-api` skips it when :5432 answers; don't run it by hand.
 - Docker Compose expands `$` in `.env`: quote values containing `$` (the argon2 hash) in single quotes.
 - Bank merchant names vary (e.g. `SEAMLESS` vs `SEAMLSS`); prefer prefix or contains rules, and check variants in the data before writing one.
 - Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
