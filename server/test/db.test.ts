@@ -277,7 +277,7 @@ describe('schema', () => {
     for (const ref of MONEY_COLUMNS) {
       const [table, column] = ref.split('.')
       const info = raw.prepare(`PRAGMA table_info("${table}")`).all() as ColumnInfo[]
-      expect(info.find((c) => c.name === column)?.type, ref).toBe('integer')
+      expect(info.find((c) => c.name === column)?.type.toUpperCase(), ref).toBe('INTEGER')
     }
   })
 
