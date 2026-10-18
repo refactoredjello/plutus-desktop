@@ -52,8 +52,12 @@ export function encodeToken(claimUrl: string): string {
 type Obj = { [key: string]: Json }
 const isObj = (v: Json | undefined): v is Obj => v !== null && typeof v === 'object' && !Array.isArray(v)
 
-/** The fixture with extra rows on its first account, for `mode`. Never mutates `fixture`. */
-export function bridgePayload(fixture: Json, today: string, mode: BridgeMode): Json {
+/**
+ * The fixture with extra rows on its first account, for `mode`. Never mutates `fixture`. Posted
+ * rows are dated from `today` (PLUTUS_TODAY); the pending row from `clockToday`, because both
+ * apps take the sync window from the clock and drop only stale pending rows inside it.
+ */
+export function bridgePayload(fixture: Json, today: string, mode: BridgeMode, clockToday: string): Json {
   const payload = structuredClone(fixture)
   if (!isObj(payload) || !Array.isArray(payload.accounts)) throw new Error('fixture has no accounts')
   const extras: Obj[] = [
@@ -62,7 +66,7 @@ export function bridgePayload(fixture: Json, today: string, mode: BridgeMode): J
     {
       id: 'PARITY-PENDING',
       pending: true,
-      transacted_at: noon(today, 1),
+      transacted_at: noon(clockToday, 1),
       amount: '-4.10',
       description: 'STRASSE BAKERY BERLIN',
     },
@@ -84,7 +88,12 @@ function readBody(req: IncomingMessage): Promise<void> {
 }
 
 /** Start the bridge on 127.0.0.1. `unreachablePort` must have no listener. */
-export async function startBridge(fixture: Json, today: string, unreachablePort: number): Promise<Bridge> {
+export async function startBridge(
+  fixture: Json,
+  today: string,
+  unreachablePort: number,
+  clockToday: string = new Date().toISOString().slice(0, 10),
+): Promise<Bridge> {
   const log: BridgeRequest[] = []
   const passwords = new Map<string, string>()
   let mode: BridgeMode = 'ok'
@@ -124,7 +133,7 @@ export async function startBridge(fixture: Json, today: string, unreachablePort:
         res.writeHead(500, { 'content-type': 'text/plain' }).end('Internal Server Error')
         return
       }
-      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(bridgePayload(fixture, today, mode)))
+      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(bridgePayload(fixture, today, mode, clockToday)))
       return
     }
     entry('unknown')
