@@ -73,13 +73,17 @@ function parseBool(name: string, value: string): boolean {
   throw new ConfigError(name, value, 'a boolean')
 }
 
-function parseInt10(name: string, value: string, min = Number.MIN_SAFE_INTEGER): number {
+function parseInt10(name: string, value: string, min?: number): number {
+  const expected = min === undefined ? 'an integer' : `an integer >= ${min}`
   const v = value.trim()
-  if (!/^[+-]?\d+$/.test(v)) throw new ConfigError(name, value, 'an integer')
+  if (!/^[+-]?\d+$/.test(v)) throw new ConfigError(name, value, expected)
   const n = Number(v)
-  if (!Number.isSafeInteger(n) || n < min) throw new ConfigError(name, value, `an integer >= ${min}`)
+  if (!Number.isSafeInteger(n) || (min !== undefined && n < min)) throw new ConfigError(name, value, expected)
   return n
 }
+
+/** Integers Settings bounds with `.min(1)` (ConfigUpdate in schemas/settings.ts). */
+const positiveInt = (name: string, value: string): number => parseInt10(name, value, 1)
 
 function parseChoice<T extends string>(name: string, value: string, choices: readonly T[]): T {
   if ((choices as readonly string[]).includes(value)) return value as T
@@ -135,9 +139,9 @@ export function loadConfig(env: Env = process.env): Config {
       anthropicApiKey: opt('ANTHROPIC_API_KEY', str, null as string | null),
       ollamaBaseUrl: opt('OLLAMA_BASE_URL', str, 'http://localhost:11434'),
       ownerNameTokens: opt('OWNER_NAME_TOKENS', parseStringList, []),
-      syncIntervalHours: opt('SYNC_INTERVAL_HOURS', parseInt10, 6),
+      syncIntervalHours: opt('SYNC_INTERVAL_HOURS', positiveInt, 6),
       // How far back the very first sync reaches. Each 45 days costs one SimpleFIN request.
-      syncFirstHistoryDays: opt('SYNC_FIRST_HISTORY_DAYS', parseInt10, 180),
+      syncFirstHistoryDays: opt('SYNC_FIRST_HISTORY_DAYS', positiveInt, 180),
       schedulerEnabled: opt('SCHEDULER_ENABLED', parseBool, true),
     },
   }
