@@ -564,6 +564,56 @@ export const CATEGORY_EDGES: readonly WriteStep[] = [
   },
 ]
 
+/**
+ * No body and no Content-Type, on ids that exist. FastAPI answers 422 at `body` before the
+ * handler runs, even where every field is optional; the re-read shows anything a write did.
+ */
+function noBody(name: string, endpoint: string, path: (state: State) => string, reread: string[]): WriteStep {
+  const method = endpoint.split(' ')[0] as StepRequest['method']
+  return { name, endpoint, prepare: (_api, state) => ({ method, path: path(state) }), reread: () => reread }
+}
+
+const NO_BODY_EDGES: WriteStep[] = [
+  noBody('create a category with no body', 'POST /api/categories', () => '/api/categories', CATEGORIES),
+  noBody(
+    'update a category with no body',
+    'PATCH /api/categories/{category_id}',
+    (state) => `/api/categories/${need(state, 'categoryId')}`,
+    CATEGORIES,
+  ),
+  noBody('update a goal with no body', 'PATCH /api/goals/{goal_id}', (state) => `/api/goals/${need(state, 'goalId')}`, [
+    '/api/goals',
+  ]),
+  noBody(
+    'update a suggestion with no body',
+    'PATCH /api/suggestions/{suggestion_id}',
+    (state) => `/api/suggestions/${need(state, 'suggestionId')}`,
+    [],
+  ),
+  noBody('create a manual entry with no body', 'POST /api/manual-entries', () => '/api/manual-entries', [
+    '/api/manual-entries',
+  ]),
+  noBody(
+    'update a manual entry with no body',
+    'PATCH /api/manual-entries/{entry_id}',
+    (state) => `/api/manual-entries/${need(state, 'entryId')}`,
+    ['/api/manual-entries'],
+  ),
+  noBody('mark recurring with no body', 'POST /api/recurring', () => '/api/recurring', ['/api/recurring']),
+  noBody(
+    'update a recurrence with no body',
+    'PATCH /api/recurring/{recurring_id}',
+    (state) => `/api/recurring/${need(state, 'confirmedId')}`,
+    ['/api/recurring'],
+  ),
+  noBody('dismiss a change with no body', 'POST /api/reports/changes/dismiss', () => '/api/reports/changes/dismiss', [
+    '/api/reports/changes?all=true',
+  ]),
+  noBody('connect SimpleFIN with no body', 'POST /api/settings/simplefin', () => '/api/settings/simplefin', [
+    '/api/settings/simplefin',
+  ]),
+]
+
 export const WRITE_STEPS: readonly WriteStep[] = [
   {
     name: 'recategorize with save-as-rule',
@@ -851,6 +901,7 @@ export const WRITE_STEPS: readonly WriteStep[] = [
   ...MANUAL_ENTRY_EDGES,
   ...GOAL_EDGES,
   ...CATEGORY_EDGES,
+  ...NO_BODY_EDGES,
 ]
 
 /** Prepare a step; any failure becomes a PrepareError. */
