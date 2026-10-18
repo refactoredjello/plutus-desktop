@@ -79,7 +79,10 @@ export function spendingByCategory(
  * Daily balance per active account, rebuilt backwards from its latest snapshot.
  *
  * Snapshots are sparse (one per sync), so for a snapshot balance B on day D:
- * balance(d) = B - sum(amounts posted in (d, D]); days after D carry B.
+ * balance(d) = B - sum(posted amounts in (d, D]); days after D carry B. Pending
+ * transactions are left out, as the bank's ledger balance usually leaves them out.
+ * A series starts at the account's earliest posted transaction or snapshot when
+ * that is later than `start`; an account with no data by `end` has no series.
  */
 export function balanceHistory(
   db: Db,
@@ -102,6 +105,21 @@ export function balanceHistory(
     if (snap === undefined) continue
     // The snapshot's UTC date: timestamps are stored as ISO 8601 UTC.
     const snapDay = plainDate(snap.as_of.slice(0, 10))
+    const firstSnap = db
+      .select({ as_of: sql<string>`min(${balanceSnapshots.as_of})` })
+      .from(balanceSnapshots)
+      .where(eq(balanceSnapshots.account_id, account.id))
+      .get()
+    const firstTx = db
+      .select({ on: sql<PlainDate | null>`min(${transactions.posted_on})` })
+      .from(transactions)
+      .where(and(eq(transactions.account_id, account.id), eq(transactions.pending, false)))
+      .get()
+    const firstSnapDay = plainDate((firstSnap?.as_of ?? snap.as_of).slice(0, 10))
+    const firstTxDay = firstTx?.on ?? null
+    const opened = firstTxDay !== null && firstTxDay < firstSnapDay ? firstTxDay : firstSnapDay
+    const from = opened > first ? opened : first
+    if (from > last) continue
     const daily = new Map<string, Cents>()
     const rows = db
       .select({
@@ -112,7 +130,8 @@ export function balanceHistory(
       .where(
         and(
           eq(transactions.account_id, account.id),
-          sql`${transactions.posted_on} > ${first}`,
+          eq(transactions.pending, false),
+          sql`${transactions.posted_on} > ${from}`,
           sql`${transactions.posted_on} <= ${snapDay}`,
         ),
       )
@@ -123,7 +142,7 @@ export function balanceHistory(
     for (const [k, v] of daily) if (k > last) after += v
     const points: BalancePoint[] = []
     let day = last
-    while (day >= first) {
+    while (day >= from) {
       points.push({ on: day, balance: formatMoney(cents(snap.balance - after)) })
       after += daily.get(day) ?? 0
       day = addDays(day, -1)
