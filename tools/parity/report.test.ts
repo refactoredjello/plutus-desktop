@@ -15,17 +15,20 @@ function report(overrides: Partial<RunReport> = {}): RunReport {
         label: 'initial',
         request: 'GET /api/accounts',
         differences: [{ path: '/status', expected: 200, actual: 501 }],
+        statuses: { expected: 200, actual: 501 },
       },
       {
         endpoint: 'GET /api/accounts',
         label: 'after step 1: recategorize',
         request: 'GET /api/accounts',
         differences: [],
+        statuses: { expected: 200, actual: 200 },
       },
       {
         endpoint: 'GET /api/goals/{goal_id}',
         label: 'initial',
         request: 'GET /api/goals/999999',
+        statuses: { expected: 404, actual: null },
         differences: [
           { path: '/body/title', expected: 'Not Found', actual: undefined, note: 'missing' },
           { path: '/body/detail', expected: 'a | b', actual: 'c' },
@@ -42,9 +45,9 @@ describe('summarize', () => {
   it('counts cases and differing cases per endpoint, sorted by path then method', () => {
     const s = summarize(report())
     expect(s.endpoints).toEqual([
-      { endpoint: 'GET /api/accounts', cases: 2, differing: 1, differences: 1 },
-      { endpoint: 'GET /api/goals/{goal_id}', cases: 1, differing: 1, differences: 2 },
-      { endpoint: 'GET /api/health', cases: 1, differing: 0, differences: 0 },
+      { endpoint: 'GET /api/accounts', cases: 2, differing: 1, differences: 1, statuses: [200] },
+      { endpoint: 'GET /api/goals/{goal_id}', cases: 1, differing: 1, differences: 2, statuses: [404] },
+      { endpoint: 'GET /api/health', cases: 1, differing: 0, differences: 0, statuses: [] },
     ])
     expect(s.differingEndpoints).toBe(2)
     expect(s.failedChecks).toBe(0)
@@ -90,8 +93,11 @@ describe('renderReport', () => {
     expect(md).toContain('Python vs TypeScript')
     expect(md).toContain('PLUTUS_TODAY=2026-09-30')
     expect(md).toContain('## Summary')
-    expect(md).toContain('| `GET /api/accounts` | 2 | 1 | 1 |')
-    expect(md).toContain('| `GET /api/health` | 1 | 0 | 0 |')
+    // The Python statuses seen per endpoint: the coverage of success and error paths.
+    expect(md).toContain('| Endpoint | Cases | Differing cases | Differences | Python statuses |')
+    expect(md).toContain('| `GET /api/accounts` | 2 | 1 | 1 | 200 |')
+    expect(md).toContain('| `GET /api/goals/{goal_id}` | 1 | 1 | 2 | 404 |')
+    expect(md).toContain('| `GET /api/health` | 1 | 0 | 0 |  |')
     expect(md).toContain('2 of 3 endpoints differ')
   })
 
