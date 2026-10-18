@@ -5,7 +5,7 @@
  */
 
 import type { Envelope } from './diff.ts'
-import { addDays } from './endpoints.ts'
+import { addDays, monthOffset } from './endpoints.ts'
 import type { Json } from './normalize.ts'
 
 export interface Api {
@@ -619,9 +619,14 @@ export const WRITE_STEPS: readonly WriteStep[] = [
     name: 'mark one-time',
     endpoint: 'PATCH /api/transactions/{transaction_id}',
     async prepare(api, _state, today) {
-      const detail = await getJson(api, `/api/reports/month/${month(today)}`)
-      const largest = isObj(detail) && Array.isArray(detail.largest) ? detail.largest.filter(isObj) : []
-      const tx = pick(largest, 'largest expense this month', () => true)
+      // On a month's first days there may be no expense yet; then take last month's largest.
+      const largest: Obj[] = []
+      for (const m of [month(today), monthOffset(today, -1)]) {
+        const detail = await getJson(api, `/api/reports/month/${m}`)
+        largest.push(...(isObj(detail) && Array.isArray(detail.largest) ? detail.largest.filter(isObj) : []))
+        if (largest.length > 0) break
+      }
+      const tx = pick(largest, 'largest expense this month or last', () => true)
       return { method: 'PATCH', path: `/api/transactions/${tx.id}`, body: { one_time: true } }
     },
     reread: (_s, today) => [
