@@ -237,6 +237,54 @@ describe('detect_recurring', () => {
     expect(detectRecurring(db)).toBe(0) // idempotent
   })
 
+  it('counts a refresh that also fills essentiality once (backlog 3)', () => {
+    const acct = makeAccount(db)
+    series(db, acct, 'netflix', Array(3).fill('-15.00'), ['2026-07-01', '2026-08-01', '2026-09-01'])
+    const lastTx = db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .orderBy(transactions.posted_on)
+      .all()
+      .at(-1) as { id: number }
+    categorize(db, lastTx.id, 'ENTERTAINMENT_TV_AND_MOVIES', 'discretionary')
+    db.insert(recurrences)
+      .values({
+        merchant_key: 'netflix',
+        account_id: acct.id,
+        amount: money('-14.00'),
+        cadence: 'monthly',
+        next_expected_date: d('2026-09-01'),
+        last_seen_on: d('2026-08-01'),
+        status: 'confirmed',
+      })
+      .run()
+    expect(detectRecurring(db)).toBe(1)
+    const r = only(db)
+    expect([r.amount, r.last_seen_on, r.essentiality]).toEqual([money('-15.00'), '2026-09-01', 'discretionary'])
+    expect(detectRecurring(db)).toBe(0)
+  })
+
+  it('an undetectable charge takes the latest amount when it shows up again (backlog 5)', () => {
+    const acct = makeAccount(db, 'credit')
+    series(db, acct, 'annual fee', ['-325.00'], ['2025-09-16'])
+    db.insert(recurrences)
+      .values({
+        merchant_key: 'annual fee',
+        account_id: acct.id,
+        amount: money('-325.00'),
+        cadence: 'yearly',
+        next_expected_date: d('2026-09-16'),
+        last_seen_on: d('2025-09-16'),
+        status: 'confirmed',
+      })
+      .run()
+    series(db, acct, 'annual fee', ['-350.00'], ['2026-09-15'])
+    expect(detectRecurring(db)).toBe(1)
+    const r = only(db)
+    expect([r.amount, r.last_seen_on, r.next_expected_date]).toEqual([money('-350.00'), '2026-09-15', '2027-09-15'])
+    expect(detectRecurring(db)).toBe(0)
+  })
+
   it('ignores history older than 18 months', () => {
     vi.stubEnv('PLUTUS_TODAY', '2026-10-03')
     const acct = makeAccount(db)
@@ -404,6 +452,7 @@ describe('recurring routes', () => {
     expect(row.last_seen_on).toBe('2027-09-15')
     expect(row.next_expected_date).toBe('2028-09-15')
     expect(row.status).toBe('confirmed')
+    expect(row.amount).toBe(money('-350.00')) // backlog 5: the renewal's new price
   })
 
   it('mark confirms a dismissed one and rejects transfers', async () => {
