@@ -14,6 +14,7 @@ import { needsReview } from './review'
 import { NoteEditor } from './NoteEditor'
 import { OneTimeToggle } from './OneTimeToggle'
 import { RecurringMark } from './RecurringMark'
+import { UnpairTransfer } from './UnpairTransfer'
 import type { RuleMatchType } from './RuleMatchSelect'
 import { CategorySelect, EssentialitySelect } from './selects'
 
@@ -90,6 +91,7 @@ export function TransactionRow({
           <NoteEditor txn={txn} label={description} />
           {!txn.is_transfer && <RecurringMark txn={txn} label={description} onMarked={setMarkedCadence} />}
           {!txn.is_transfer && !inflow && <OneTimeToggle txn={txn} label={description} />}
+          {txn.is_transfer && <UnpairTransfer txn={txn} label={description} />}
           {txn.one_time && (
             <Badge variant="secondary" className="text-muted-foreground">
               One-time

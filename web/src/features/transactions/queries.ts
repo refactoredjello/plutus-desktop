@@ -86,3 +86,15 @@ export function useUpdateTransaction() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['transactions'] }),
   })
 }
+
+/** Split a transfer pair; both rows count again, so reports and the projection refresh too. */
+export function useUnpairTransfer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.POST('/api/transactions/{transaction_id}/unpair', { params: { path: { transaction_id: id } } })),
+    onSuccess: () => {
+      for (const key of ['transactions', 'reports', 'projection']) void qc.invalidateQueries({ queryKey: [key] })
+    },
+  })
+}
