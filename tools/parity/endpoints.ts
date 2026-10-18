@@ -3,6 +3,7 @@
  * templates that group the report, and the per-endpoint normalization (tie rules).
  */
 
+import { ACCEPTED_NOTES } from './accepted.ts'
 import type { NormalizeOptions, TieRule } from './normalize.ts'
 
 /** Every operation either app serves, as `METHOD /path/{param}`. */
@@ -227,6 +228,7 @@ export function ruleNotes(): string[] {
     'Object key order is ignored (JSON objects are unordered). List order is compared except ' +
       'for the tie rules below.',
     'Status code and media type (without parameters) are compared with the body.',
+    ...ACCEPTED_NOTES,
   ]
   for (const [endpoint, rules] of Object.entries(TIE_RULES)) {
     for (const r of rules) {
