@@ -33,6 +33,11 @@ describe('resolvePaths', () => {
     }
   })
 
+  it('keeps pre-migration backups under the data directory', () => {
+    const paths = resolvePaths({ isPackaged: true, appPath: '/a', resourcesPath: '/r', userDataPath })
+    expect(paths.backupDir).toBe(join(userDataPath, 'backups'))
+  })
+
   it('writes the log file under the data directory, so each profile has its own', () => {
     const paths = resolvePaths({ isPackaged: true, appPath: '/a', resourcesPath: '/r', userDataPath })
     expect(paths.logFile).toBe(join(userDataPath, 'logs', 'plutus.log'))

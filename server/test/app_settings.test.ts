@@ -88,6 +88,17 @@ describe('app settings', () => {
     )
     expect((error as DomainError).detail).not.toContain('pass456')
   })
+
+  it("uses the store's own explanation when it has one", () => {
+    const db = makeDb()
+    setSetting(db, secrets, SIMPLEFIN_ACCESS_URL, ACCESS_URL, { encrypt: true })
+    const store = Object.assign(new KeySecretStore('another-secret'), {
+      undecryptableReason: 'the OS key changed. Reconnect.',
+    })
+    expect(() => getSetting(db, store, SIMPLEFIN_ACCESS_URL)).toThrow(
+      "Stored setting 'simplefin_access_url' cannot be decrypted; the OS key changed. Reconnect.",
+    )
+  })
 })
 
 describe('SimpleFIN connection', () => {
