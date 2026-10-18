@@ -116,7 +116,7 @@ Wave 4   4A parity run ──▶ fix briefs to owning agents ──▶ Fable che
                  │
 Wave 5   5A cutover   5B packaging   5C frontend cleanup
                  │
-Wave 6   6A documentation pass
+Wave 6   (owner imports real data) ──▶ 6B old-app cleanup ──▶ 6A documentation pass ──▶ delete port docs, tag wave-6
 ```
 
 Parallelism: up to five agents in Wave 1, four in Wave 2, two in Wave 3, three in Wave 5, one in Wave 6. The orchestrator merges a wave in dependency order and runs the gate before starting the next.
@@ -340,7 +340,7 @@ The orchestrator then, in `~/dev/plutus-desktop`:
 | Wave 3 | `npm run demo` in `server/` loads the fixture through the real pipeline. All ported tests pass. Every route stub is gone. |
 | Wave 4 | Parity diff is empty, or every remaining difference is listed with a reason and accepted at Fable checkpoint B. The Electron audit is clean: every page loads with no console errors or failed requests, and every request the pages send is compared by the harness. |
 | Wave 5 | No Python, Docker, or Postgres in the repo. CI green on Node only. An unsigned macOS build launches, syncs demo data, and survives a restart with its data. Docs and AGENTS.md describe the new shape. The owner's real data imports and the SimpleFIN connection survives. |
-| Wave 6 | Tag `wave-6`. Every doc listed in brief 6A describes the repo as it is at `wave-5`: each command in README.md, AGENTS.md, and the package READMEs was run as written and works; no doc mentions Python, Docker, Postgres, FastAPI, or `api/` except as history (the decisions log, `PLAN.md`, `AGENT_PLAN.md` history notes, `DESKTOP_PLAN.md`, `PORT_BUG_BACKLOG.md`, `HANDOFF_RULES_AND_BUGS.md`); every relative link resolves; the agent role files match the final layout and ownership. `make check` stays green. The owner reviews the finished port after this tag. |
+| Wave 6 | Tag `wave-6`. Nothing in the repo refers to the old app: no Python, Docker, Postgres, FastAPI, `api/`, parity, or "ported from" mention in code, comments, tests, or docs (owner decision 2026-10-17: after Wave 5 the app as it is is the baseline). Every command in README.md, AGENTS.md, and the package READMEs was run as written and works; every relative link resolves; the agent role files match the final layout and ownership. `docs/BACKLOG.md` keeps the open bugs with the ask-the-owner-first rule. `make check` stays green. The owner reviews the finished app after this tag. |
 
 ---
 
@@ -645,19 +645,31 @@ Tasks: remove anything that only made sense in a browser deployment: the Vite pr
 
 Done when: `web` is green and `desktop` dev and dist both serve the built app.
 
+### 6B — Old-app cleanup (server-engineer)
+
+Wave 6. Depends on `wave-5` and on the owner having imported their real data and confirmed SimpleFIN works (the owner's own step; no agent runs it).
+
+Owner decision 2026-10-17: after Wave 5 the app as it is becomes the baseline, and nothing that compares against or refers to the old app is kept.
+
+Owns: `server/` (comments and the importer), `desktop/` and `web/` (comments only), `docs/` deletions, `docs/PORT_BUG_BACKLOG.md`, `docs/HANDOFF_RULES_AND_BUGS.md`.
+
+Tasks: delete `server/scripts/import-json.ts`, its tests, the fake export fixture, and `docs/MIGRATING_DATA.md`; strip every code comment and test name that cites a Python file, FastAPI, Pydantic, Postgres, or "parity" (rewrite the comment to say what the code does, or drop it); reword fixture READMEs the same way; turn `docs/PORT_BUG_BACKLOG.md` into `docs/BACKLOG.md`, the app's own list of open bugs and wanted changes described against the TypeScript code, folding in the still-open items of `docs/HANDOFF_RULES_AND_BUGS.md` (rule builder, stale cache, transfer false positives) and keeping the rule that nothing on it is fixed without asking the owner; delete `docs/HANDOFF_RULES_AND_BUGS.md`, `docs/PARITY_4A.md`, and `docs/PLAN.md`.
+
+Done when: `LC_ALL=C grep -rniE "python|fastapi|pydantic|postgres|sqlalchemy|alembic|parity|api/app|\.py\b" --exclude-dir=node_modules --exclude-dir=.git .` finds only `docs/DESKTOP_PLAN.md` and `docs/AGENT_PLAN.md` (both handled after 6A); `make check` is green.
+
 ### 6A — Documentation pass (docs-writer)
 
-Wave 6. Depends on 5A, 5B, and 5C, all merged and tagged `wave-5`.
+Wave 6. Depends on 6B. After 6A merges, the orchestrator deletes `docs/DESKTOP_PLAN.md` and the port history in `docs/AGENT_PLAN.md`, then tags `wave-6`.
 
-Owns: `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/agents/*.md`, `docs/ARCHITECTURE.md`, `docs/REQUIREMENTS.md` (requirements text and the decisions log), `docs/AGENT_PLAN.md`, `docs/MIGRATING_DATA.md`, `docs/PRD_WHAT_CHANGED.md` (implementation references only), `desktop/README.md`, `tools/parity/README.md`, `server/test/fixtures/README.md`, and any other README in the repo. Code is out of scope: a doc that cannot be made true without a code change is reported, not fixed.
+Owns: `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/agents/*.md`, `docs/ARCHITECTURE.md`, `docs/REQUIREMENTS.md` (requirements text and the decisions log), `docs/AGENT_PLAN.md`, `docs/BACKLOG.md` (wording only), `docs/PRD_WHAT_CHANGED.md` (implementation references only), `desktop/README.md`, `server/test/fixtures/README.md`, and any other README in the repo. Code is out of scope: a doc that cannot be made true without a code change is reported, not fixed.
 
 Tasks:
-1. Read every doc above against the repo at `wave-5` and rewrite what is no longer true: setup, commands, layout, ownership, conventions, gotchas, testing, privacy rules, and the data migration steps. Keep each doc's purpose; cut lines that stopped being true rather than adding history.
-2. README.md: what Plutus is, how to install and run the desktop app, how to run the headless server, how to migrate data from the old Docker app (pointing at `docs/MIGRATING_DATA.md`), and the development commands.
-3. AGENTS.md and CLAUDE.md: the TypeScript server, the Electron shell, the web app, the parity harness, the commands that exist, the conventions that hold, and the gotchas that still cost time. Remove every Python, Docker, and Postgres line, and the "desktop port in progress" paragraph. Keep the pointer to `docs/PORT_BUG_BACKLOG.md` and its ask-the-owner-first rule.
+1. Read every doc above against the repo after 6B and rewrite what is no longer true: setup, commands, layout, ownership, conventions, gotchas, testing, and privacy rules. Keep each doc's purpose; cut lines that stopped being true rather than adding history.
+2. README.md: what Plutus is, how to install and run the desktop app, how to run the headless server, and the development commands. No mention of the old Docker app.
+3. AGENTS.md and CLAUDE.md: the TypeScript server, the Electron shell, the web app, the commands that exist, the conventions that hold, and the gotchas that still cost time. Remove every Python, Docker, and Postgres line, and the "desktop port in progress" paragraph. Keep a pointer to `docs/BACKLOG.md` and its ask-the-owner-first rule.
 4. `.claude/agents/*.md`: each role file matches the final layout and file ownership; `backend-engineer.md` is gone (5A); no role mentions Python, `api/`, Alembic, or pytest. Update `docs/AGENT_PLAN.md` to the same roles.
 5. `docs/ARCHITECTURE.md` and `docs/REQUIREMENTS.md`: the architecture describes the desktop app and the headless server as built; requirements whose wording assumed Docker, Postgres, or FastAPI are reworded to the same intent. Add a decisions-log entry dated the day of the pass if the pass changes a requirement's wording.
-6. Run every command the docs tell a reader to run, in a fresh worktree from `wave-5` (`npm ci`, `make check`, `npm run dev` and `npm run smoke` in `desktop/`, the headless server, the import steps against the demo data), and fix the docs where a command is wrong. Check every relative link.
+6. Run every command the docs tell a reader to run, in a fresh worktree from main after 6B (`npm ci`, `make check`, `npm run dev` and `npm run smoke` in `desktop/`, the headless server, demo data), and fix the docs where a command is wrong. Check every relative link.
 7. Docs with nothing to assert: commit as `docs: <what> (no tests: docs)`, one commit per document or tightly related group.
 
 Done when: the Wave 6 gate holds; the report lists every doc changed, every command run with its result, and any doc that could not be made true without a code change.
@@ -666,11 +678,9 @@ Done when: the Wave 6 gate holds; the report lists every doc changed, every comm
 
 ## 9. After cutover
 
-- Bring `docs/PORT_BUG_BACKLOG.md` (Python bugs found during the port, ported as they are) to the owner and fix only what the owner approves. Never start these fixes unasked.
-- Implement `docs/HANDOFF_RULES_AND_BUGS.md` in TypeScript: the rule builder, the stale-cache fix, the transfer false-positive fix, the cadence-change fix.
+- Bring `docs/BACKLOG.md` to the owner and fix only what the owner approves. Never start these fixes unasked.
 - Auto-update through electron-updater once builds are signed.
 - A headless install guide for a VPS, since the server still runs without Electron.
-- Delete `tools/parity/` once the first post-cutover refactor has used the baseline and nobody needs it anymore.
 
 ---
 
