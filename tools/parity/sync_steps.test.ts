@@ -134,7 +134,14 @@ describe('bridgeSteps', () => {
     const state: State = {}
     expect(byName(steps, 'connect SimpleFIN').reread(state, TODAY)).toContain('/api/settings/simplefin')
     const synced = byName(steps, 'sync from the bridge').reread(state, TODAY)
-    for (const path of ['/api/sync/runs?limit=100', '/api/accounts', '/api/transactions?limit=500', '/api/reports/balances']) {
+    for (const path of [
+      '/api/sync/runs?limit=100',
+      '/api/accounts',
+      '/api/transactions?limit=500',
+      '/api/reports/balances',
+      '/api/reports/month/2026-09',
+      '/api/reports/by-category?month=2026-09',
+    ]) {
       expect(synced).toContain(path)
     }
     expect(byName(steps, 'exhaust the daily request budget').reread(state, TODAY)).toContain('/api/sync/runs?limit=100')
