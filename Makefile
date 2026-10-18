@@ -1,4 +1,4 @@
-.PHONY: help check check-web check-server check-desktop openapi dev dev-server dist smoke demo-data demo-clear
+.PHONY: help check check-web check-server check-desktop openapi dev dev-server dist smoke demo-data demo-clear update rollback quit-plutus
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -36,3 +36,19 @@ demo-data: ## Load fake demo data into the headless server's database (PLUTUS_DA
 
 demo-clear: ## Remove the demo data
 	cd server && npm run demo -- clear
+
+# Quit the installed app gracefully (it closes its database on quit) and wait up to 30 s.
+quit-plutus:
+	@if pgrep -x Plutus >/dev/null; then \
+		echo "Quitting Plutus..."; osascript -e 'quit app "Plutus"' >/dev/null; \
+		for i in $$(seq 1 30); do pgrep -x Plutus >/dev/null || break; sleep 1; done; \
+		if pgrep -x Plutus >/dev/null; then echo "Plutus is still running; quit it and try again." >&2; exit 1; fi; \
+	fi
+
+update: quit-plutus ## Quit Plutus, install the latest release (or VERSION=x.y.z) with a data copy and rollback zip, reopen it
+	cd desktop && npm run update:app -- $(VERSION)
+	open -a /Applications/Plutus.app
+
+rollback: quit-plutus ## Quit Plutus, reinstall the app the last update replaced, reopen it
+	cd desktop && npm run update:app -- --rollback
+	open -a /Applications/Plutus.app

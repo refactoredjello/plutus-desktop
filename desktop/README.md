@@ -16,7 +16,7 @@ From the repository root, once: `npm ci`. Then in `desktop/`:
 | `npm run smoke:dist` | Runs the smoke check against the packaged app for this Mac's architecture. |
 | `npm run icons` | Regenerates `build/icon.icns` from `build/icon.svg` (macOS `sips` and `iconutil`). |
 | `npm run check` | Lint, typecheck, and unit tests (`src/lib`, and `scripts/update.sh` on macOS against temp dirs). Needs no build. |
-| `npm run update:app` | Installs the latest GitHub Release into `/Applications`, safely (see [Updating](#updating)). |
+| `npm run update:app` | Installs the latest GitHub Release into `/Applications`, safely (see [Updating](#updating)). `make update` / `make rollback` at the root quit Plutus first and reopen it after. |
 | `npm run version:bump -- patch\|minor\|major` | Bumps the app version and commits it (see [Releases](#releases)). |
 
 Smoke options, with either smoke command:

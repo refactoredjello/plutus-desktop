@@ -46,12 +46,14 @@ This builds the web app, the server, and the Electron shell and packages the app
 
 ### Updating
 
-Releases are on the repository's GitHub Releases page (tag `v<version>`, a dmg and a zip for each architecture). With the GitHub CLI logged in (`gh auth login`), quit Plutus and run, in `desktop/`:
+Releases are on the repository's GitHub Releases page (tag `v<version>`, a dmg and a zip for each architecture). With the GitHub CLI logged in (`gh auth login`), run from the repository root:
 
 ```bash
-npm run update:app                  # the latest release; or: npm run update:app -- 0.2.0
-npm run update:app -- --rollback    # back to the app the last update replaced
+make update                  # quits Plutus, installs the latest release, reopens it; or: make update VERSION=0.2.0
+make rollback                # back to the app the last update replaced
 ```
+
+Both run `npm run update:app` in `desktop/` (which you can also run yourself after quitting Plutus).
 
 The script copies your data to `~/Library/Application Support/Plutus/backups/manual-<time>/` and keeps the replaced app in `previous-app/` next to it before installing. By hand: quit Plutus, copy `plutus.sqlite` (and `-wal`, `-shm` if present) somewhere safe, replace `/Applications/Plutus.app` with the one from the release zip, and open it. Each new build asks once to use "Plutus Safe Storage" in the Keychain: choose Always Allow. Details, rollback with data, and releasing: [desktop/README.md](desktop/README.md#updating).
 
