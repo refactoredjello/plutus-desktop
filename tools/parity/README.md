@@ -42,6 +42,38 @@ Listed in every report (`ruleNotes()` in `endpoints.ts`); the code is `normalize
 not covered here is a finding: classify it as a port bug, a Python bug, or an accepted
 difference, and give it to the owning brief.
 
+The summary lists the statuses Python answered per endpoint (which success and error paths
+ran). `GET /api/settings/config` has no Python counterpart, so instead of a diff a setup check
+compares the TypeScript answer with the env both apps got and Python's own
+`/api/settings/llm` and `/api/sync/schedule` (`config_check.ts`).
+
+## Electron request audit
+
+```bash
+npm run build:all --prefix desktop                    # web, server, desktop
+node_modules/.bin/tsx tools/parity/visual/audit.ts    # or add --build; at most ~3 minutes
+```
+
+Opens the real desktop app (desktop/dist/main.js, unchanged: cookie guard, in-process server,
+window) on fake demo data in a fresh temp data dir, visits every route in `web/src/app/router.tsx`
+(by clicking its link where the page has one) plus one deep link loaded directly, and records
+every request with its status and content type, console errors and warnings, failed or blocked
+requests, and uncaught page errors. After the first page it seeds a goal, a planned item, and a
+confirmed recurrence through the page's own fetch, and at the end checks that `/api/health`
+from outside the page answers 401. Then every distinct `/api/` request (method, path template,
+query keys) is matched against the harness cases; a request no case compares is a coverage gap.
+
+`electron_main.mjs` is the Electron entry: it sets the app path and `appData` synchronously
+before importing main.js, so userData is `<temp>/Plutus Dev` and never the developer's own data
+dir, and it refuses to continue otherwise. Electron runs in its own process group, killed after
+`AUDIT_TIMEOUT_MS` (default 180 s) or when the script exits. The browser clock and the server's
+"today" are both the real date (no `PLUTUS_TODAY`).
+
+Output in `tools/parity/visual/out/` (gitignored): `audit.md`, `audit.json`, `events.ndjson`,
+`electron.log`, one PNG per route. Exit 1 on any problem or gap, 2 when Electron failed or timed
+out. Accepted class: Chromium's cache-only probe for a web font (`net::ERR_CACHE_MISS`, then
+the same font loads) is listed but not counted.
+
 ## Import check
 
 `make import-check` (not part of `make check`) tests the Postgres export and SQLite import of
@@ -51,7 +83,9 @@ exports with `python -m app.export_json`, imports with `server/scripts/import-js
 compares per-table row counts (Postgres, file, SQLite) and `GET /api/reports/monthly` between
 the Python API and the TypeScript server on the imported file. `--all-gets` (run
 `node_modules/.bin/tsx tools/parity/import_check.ts --all-gets`) also prints every parity GET
-for information. The importer's unit tests are `import.test.ts`.
+for information. The importer's unit tests are `import.test.ts`. An export file holds the
+SimpleFIN access URL and the Anthropic API key in clear text (docs/MIGRATING_DATA.md); the
+check only ever stores fake ones.
 
 ## Data
 

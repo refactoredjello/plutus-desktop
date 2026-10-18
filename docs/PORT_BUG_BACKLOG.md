@@ -60,6 +60,10 @@ Each entry names the brief that found it and where it lives in the TypeScript po
 29. A scheduled sync that fires more than a second late is skipped and pushed a full interval later (APScheduler's default 1 s misfire grace, never overridden). On a laptop that sleeps this skips due syncs.
 30. Jitter is added to the previous jittered time, so the schedule drifts by about a minute per interval.
 
+## Parity run (brief 4A)
+
+34. A write's response can show a different amount from the one it stored. The session keeps objects after commit (`expire_on_commit=False`), so the response formats the request's own `Decimal` with `f"{v:.2f}"` (half to even), while `NUMERIC(14,2)` stored it rounded half away from zero. `POST /api/manual-entries` with `"12.345"` answers `"12.34"` and stores 12.35; `"-0.005"` answers `"-0.00"` and stores -0.01. Every request money field is affected (manual entries, goal targets, recurring amounts). The port answers what it stored (parity steps 46 and 47; `schemas/common.ts` `MoneyInput`).
+
 ## Port behaviour to revisit (not Python bugs; same ask-first rule)
 
 31. The scheduler reads its interval and on/off setting once at start. The desktop can now change them through Settings, but the running scheduler keeps the old values until the app restarts, while `GET /api/sync/schedule` shows the stored ones.
