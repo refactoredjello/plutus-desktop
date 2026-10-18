@@ -1,5 +1,5 @@
 /**
- * The SQLite importer (server/scripts/import-json.ts, brief 2D) on a small hand-written export
+ * The SQLite importer (server/src/importer.ts and its command line server/scripts/import-json.ts) on a small hand-written export
  * in the shape api/app/export_json.py writes. No Postgres, no app: an in-memory SQLite file
  * opened with the server's openDb, so it is migrated and seeded like a fresh desktop install.
  */
@@ -8,7 +8,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { IMPORT_TABLES, ImportError, importExport, runCli } from '../scripts/import-json.js'
+import { runCli } from '../scripts/import-json.js'
+import { IMPORT_TABLES, ImportError, importExport } from '../src/importer.js'
 import { type Db, MIGRATIONS_FOLDER, openDb } from '../src/db/index.js'
 import { KeySecretStore, type SecretStore } from '../src/secrets.js'
 import { loadConfig } from '../src/config.js'
