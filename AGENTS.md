@@ -6,7 +6,7 @@ Context for AI coding agents working on Plutus. Humans start with README.md.
 
 ## What Plutus is
 
-A single-user, self-hosted personal finance app. SimpleFIN pulls bank data; an LLM categorizes it from scrubbed merchant names only; the app shows spending, recurring charges, projections, goals, and what changed this month. Runs locally with Docker Compose; the same images are meant for a single remote host later.
+A single-user personal finance app. SimpleFIN pulls bank data; an LLM categorizes it from scrubbed merchant names only; the app shows spending, recurring charges, projections, goals, and what changed this month. It is an Electron desktop app over one SQLite file; the same TypeScript server also runs headless.
 
 Principles, in priority order:
 
@@ -17,84 +17,74 @@ Principles, in priority order:
 ## Setup
 
 ```bash
-cp .env.example .env    # then set SECRET_KEY; LLM_PROVIDER=fake is fine for development
-make up                 # Postgres, migrations, API on :8000, web on :5173
-make demo-data          # optional fake data; make demo-clear removes it
-cd api && uv sync && cd .. && npm ci   # host tooling: Python, then every npm workspace from the root lockfile
-make check              # lint, types, and tests for api/, web/, and server/
+npm ci                  # every workspace (web, server, desktop) from the root lockfile; Node 24+
+make check              # lint, types, and tests for web/, server/, and desktop/
 ```
 
-Never use real credentials or real bank data in code, tests, mocks, or commits. Fixtures in `api/tests/fixtures` are fake.
+Never use real credentials or real bank data in code, tests, mocks, or commits. Fixtures in `server/test/fixtures` are fake.
 
 ## Commands
 
 | Command | Use |
 |---|---|
-| `make check` | Everything CI runs. Must pass before a change is done. |
-| `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the TypeScript server, then `schema.d.ts`. A test fails if they're stale. `server/test/contract.test.ts` also checks the spec against FastAPI's, frozen in `server/test/fixtures/fastapi-openapi.json`. |
-| `make parity-self` / `make parity` | Parity harness (`tools/parity`): Python against itself (must be zero differences), then Python against the TypeScript server on demo data; writes `tools/parity/report.md`. Needs the compose Postgres; not part of `make check`. |
-| `node_modules/.bin/tsx tools/parity/visual/audit.ts` | Electron request audit: the built desktop app on demo data in a temp dir, every route, requests, console, screenshots, and harness coverage; writes `tools/parity/visual/out/`. Build first (`npm run build:all --prefix desktop`). |
-| `make import-check` | Postgres export (`python -m app.export_json`) to SQLite import (`server/scripts/import-json.ts`) on demo data in a throwaway `plutus_export` database; counts, secrets, runtime config, and the monthly report must match. See docs/MIGRATING_DATA.md. |
-| `npm run demo -- load` / `-- clear` (in `server/`) | Fake demo data in the TypeScript server's database through the real sync pipeline (same 295 transactions as `make demo-data`). |
-| `make revision m="..."` | New Alembic migration (autogenerate), then review it. |
+| `make check` | Everything CI runs (`npm run check` at the root). Must pass before a change is done. |
+| `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the server, then `schema.d.ts`. A test fails if they're stale. |
+| `make dev` / `make smoke` / `make dist` | The desktop app from source / its smoke check on a throwaway data dir / an unsigned package in `desktop/release/`. |
+| `make dev-server` | Headless server from source on :8000 with reload, serving `web/dist`. |
+| `npm run demo -- load` / `-- clear` (in `server/`) | Fake demo data (295 transactions) through the real sync pipeline into `PLUTUS_DB_PATH` or `PLUTUS_DATA_DIR/plutus.sqlite`; `make demo-data` / `make demo-clear` do the same. |
+| `node_modules/.bin/tsx server/scripts/import-json.ts <file> --db <sqlite>` | Import an export of the old Docker app (docs/MIGRATING_DATA.md); needs `PLUTUS_SECRET_KEY`. |
 | `make help` | The rest. |
 
 ## Layout
 
-- `api/app/models` SQLAlchemy tables; `schemas` Pydantic request/response models; `routers` thin HTTP layer; `services` business logic; `providers` SimpleFIN and LLM adapters.
-- `api/app/services/aggregates.py` is the single definition of income, expenses, transfers, money movement, essentiality buckets, and "usual" (recent active months). Build every report on it; never re-derive these rules.
-- `server/` is the TypeScript port (Hono, Drizzle, better-sqlite3), laid out per docs/DESKTOP_PLAN.md 4.3. `server/test/setup.ts` gives each test its own in-memory SQLite via `makeDb()`.
+- `server/` is the backend (Hono, Zod, Drizzle, better-sqlite3): `src/routes` thin HTTP layer, `src/schemas` Zod request/response schemas (the OpenAPI source), `src/services` business logic, `src/providers` SimpleFIN and LLM adapters, `src/db` schema and migrations. `docs/ARCHITECTURE.md` has the full layout.
+- `server/src/services/aggregates.ts` is the single definition of income, expenses, transfers, money movement, essentiality buckets, and "usual" (recent active months). Build every report on it; never re-derive these rules.
 - `server/src/services/config.ts` is the runtime config: knobs live in `app_settings`, seeded once from env; read them with `runtimeConfig()`/`llmSettings()`, never `process.env`.
 - `desktop/` is the Electron shell: it runs `plutus-server/dist` in-process (build server first), testable parts in `desktop/src/lib/`. `npm run smoke` in desktop/ opens the real window on a throwaway data dir and checks the SPA reaches `/api/health` through the cookie guard; `smoke:dist` does the same for the packaged app.
+- `web/src/api` is generated; never edit it. `src/pages` one file per route; `src/features/<area>` components and queries; `src/mocks` MSW handlers for tests.
+- `docs/` requirements (with a decisions log and known limitations), architecture, plans, and PRDs.
 
 ## Working on the desktop app
 
 - Most features touch only `server/` and `web/`: build and check them as a web app (server tests, MSW frontend tests, `npm run dev` in `server/` opened in a browser). Use the real window only for shell work or a final check.
 - Dev runs (`npm run dev` in `desktop/`, or `npx electron .` after a build) keep data in `~/Library/Application Support/Plutus Dev/plutus.sqlite`, separate from the installed app's. Load demo data with the app closed: `PLUTUS_DB_PATH="$HOME/Library/Application Support/Plutus Dev/plutus.sqlite" npm run demo -- load` in `server/`.
 - Debug the real window with `npx electron . --remote-debugging-port=9222` in `desktop/`. A human attaches Chrome DevTools from `chrome://inspect`; an agent reads `http://127.0.0.1:9222/json/list`, opens the page's `webSocketDebuggerUrl` with Node's built-in `WebSocket`, and sends DevTools Protocol commands (`Runtime.evaluate`, `Page.captureScreenshot`, `Network.enable`). Code run in the page passes the cookie guard, so `fetch('/api/...')` works there; the same origin opened in another browser answers 401. Dev builds and demo data only, since any local program can drive an open port; quit the app when done.
-- `tools/parity/` compares the Python and TypeScript apps endpoint by endpoint (`make parity`).
-- `web/src/api` is generated; never edit it. `src/pages` one file per route; `src/features/<area>` components and queries; `src/mocks` MSW handlers for tests.
-- `docs/` requirements (with a decisions log and known limitations), architecture, plans, and PRDs.
 
 ## Conventions
 
-- Backend: sync SQLAlchemy and endpoints; `Annotated` dependencies; routers call one service function; services never import FastAPI; money is `Decimal` (JSON string); timestamps UTC. "Today" comes from `services/schedule.today()` so tests can patch it.
-- Request money fields use `MoneyInput` (number or decimal string, parsed to cents, as Pydantic accepted); responses use `Money` (two-decimal string).
+- Server: routes parse, call one service function, and return a schema; services never import Hono. Money is integer cents through `lib/money.ts` (division rounds half to even), never a float; dates are `PlainDate` strings through `lib/dates.ts`; timestamps UTC ISO strings. "Today" comes from `lib/dates.today()` (`PLUTUS_TODAY` pins it in tests).
+- Request money fields use `MoneyInput` (number or decimal string, parsed to cents); responses use `Money` (two-decimal string).
 - Contract first: change schemas, run `make openapi`, then build frontend against the generated types and MSW mocks.
 - Frontend: TanStack Query for server state, shadcn/ui components (base-nova, on Base UI), Recharts. Use the generated client in `src/api/client.ts`; never hand-write fetch calls.
-- Migrations are reviewed by hand. Never edit an applied migration.
+- Migrations are drizzle-kit SQL in `server/src/db/migrations`, reviewed by hand. Never edit an applied migration.
+- Tests first: a failing-test commit, then the implementation commit.
 - Commits end with a `Co-Authored-By` line for the model that wrote them.
 
 ## Privacy rules (enforced by tests)
 
-- Only `services/scrub.py` (merchant keys) and `services/suggestions.py` (category aggregates) may build LLM input. Never send balances, account names, raw descriptions, notes, or names.
+- Only `services/scrub.ts` (merchant keys) and `services/suggestions.ts` (category aggregates) may build LLM input. Never send balances, account names, raw descriptions, notes, or names.
 - Rules may match raw descriptions (`contains`) because rules never leave the machine.
 - New features must not call an LLM unless the requirements say so; add a test that proves it.
 
 ## Testing
 
-- Backend tests run against real Postgres (database `plutus_test`), each test rolled back. Parallel work in separate git worktrees should use its own database via `TEST_DATABASE_URL=postgresql+psycopg://plutus:plutus@localhost:5432/<name>`.
-- Don't run an unmerged branch's migrations against the shared dev database `plutus`; main's migration step would then fail on an unknown revision. Use a copy.
+- Server tests use Vitest; `server/test/setup.ts` gives each test its own migrated, seeded in-memory SQLite via `makeDb()`, and `makeApp()` an app over it for `app.request('/api/...')`. Fake SimpleFIN and LLM providers only.
 - Frontend tests use Vitest, Testing Library, and MSW via `renderAt(path)` in `src/test/render.tsx`.
+- Desktop: unit tests for `desktop/src/lib`; window code is checked with `npm run smoke`.
 
 ## Gotchas that cost time
 
-- FastAPI 0.14x wraps included routers: `app.routes` has no `APIRoute`s. Walk `app.main.ROUTERS` instead.
 - SimpleFIN: request at most 45 days per call (the live bridge warns above that) and at most 24 requests a day; runs record `requests` and the guard sums them.
-- Two checkouts (or a worktree) share the compose project `plutus`, but `docker compose up db` from a second path recreates the shared db container (the init.sql bind mount differs). `make test-api` skips it when :5432 answers; don't run it by hand.
-- `make up` can't build the web image in this repo (web has no lockfile of its own since the root workspace); run the Docker app from `~/dev/Plutus`.
-- Docker Compose expands `$` in `.env`: quote values containing `$` (the argon2 hash) in single quotes.
 - Bank merchant names vary (e.g. `SEAMLESS` vs `SEAMLSS`); prefer prefix or contains rules, and check variants in the data before writing one.
 - Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
-- Driving `desktop/dist/main.js` from a script: set `appData` synchronously before importing it (as `tools/parity/visual/electron_main.mjs` does). A deferred preload loses the race and main.js opens the shared `~/Library/Application Support/Plutus Dev`.
 - Agent file writes can turn `\uXXXX` escapes in source into literal characters (a literal U+2028 broke a regex class). Keep sources ASCII: `LC_ALL=C grep -nP '[^\x00-\x7F]' <file>` finds strays.
-- Python `re` is Unicode-aware where JS `RegExp` is not (`\b`, `\d`, `\s`, `.`); `services/scrub.ts` shows the rewrites.
-- In zsh, unquoted variables don't word-split; loop over query results with Python or `${=var}`.
+- JS `RegExp` word boundaries and classes (`\b`, `\d`, `\w`) are ASCII-only; `services/scrub.ts` spells out the Unicode-aware patterns bank text needs, and the scrub golden test catches a regression.
+- In zsh, unquoted variables don't word-split; loop over query results with a script or `${=var}`.
 
 ## Multi-agent work
 
-An orchestrator session owns schemas, migrations, `app/main.py`, and merges; subagents implement briefs in their own worktree and branch, touching only files they own. Role definitions live in `.claude/agents/`. See `docs/AGENT_PLAN.md`.
+An orchestrator session owns `server/src/db/schema.ts`, migrations, Zod schemas, `server/src/app.ts`, root config, and merges; subagents implement briefs in their own worktree and branch, touching only files they own. Role definitions live in `.claude/agents/`. See `docs/AGENT_PLAN.md`.
 
-Suspected Python bugs found during the port go in `docs/PORT_BUG_BACKLOG.md`; port them as they are and never fix one without the owner's go-ahead.
+Suspected bugs found during the port are listed in `docs/PORT_BUG_BACKLOG.md`; never fix one without the owner's go-ahead.
 
-The desktop port (TypeScript server plus Electron, SQLite instead of Postgres) is planned in `docs/DESKTOP_PLAN.md`. While it runs, Python code under `api/` is frozen except the two changes that plan names, and new server work goes in `server/`.
+The remaining desktop-port briefs (packaging, frontend cleanup, removing the old-app importer and references, the documentation pass) are in `docs/DESKTOP_PLAN.md`.
