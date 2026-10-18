@@ -277,6 +277,31 @@ describe('error paths and edge cases', () => {
     expect(requests.some((r) => r.method === 'POST' && r.path === '/api/goals' && r.body === undefined)).toBe(true)
   })
 
+  it('sends no body at all to every write that takes one, on an id that exists', async () => {
+    // FastAPI answers 422 at `body` before the handler runs; a missing body is not `{}`.
+    const takesBody = [
+      'POST /api/categories',
+      'PATCH /api/categories/{category_id}',
+      'POST /api/goals',
+      'PATCH /api/goals/{goal_id}',
+      'PATCH /api/suggestions/{suggestion_id}',
+      'POST /api/manual-entries',
+      'PATCH /api/manual-entries/{entry_id}',
+      'POST /api/recurring',
+      'PATCH /api/recurring/{recurring_id}',
+      'PATCH /api/transactions/{transaction_id}',
+      'POST /api/reports/changes/dismiss',
+      'POST /api/settings/simplefin',
+    ]
+    const { requests } = await runAll(fakeApi())
+    const bodiless = new Set(
+      requests
+        .filter((r) => r.body === undefined && !r.path.split('/').includes('999999'))
+        .map((r) => templateFor(r.method, r.path)),
+    )
+    expect(takesBody.filter((e) => !bodiless.has(e))).toEqual([])
+  })
+
   it('picks targets for the transaction edge cases from the app\'s own data', async () => {
     const byName = await requestsByName()
     expect(byName['recategorize with a contains rule']).toEqual({
