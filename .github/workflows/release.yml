@@ -1,0 +1,59 @@
+name: Release
+
+# Pushing a tag v<version> (on main, matching desktop/package.json) builds the ad hoc signed
+# macOS app and publishes a GitHub Release with the dmg and zip for arm64 and x64. Release files
+# stay until deleted, unlike CI artifacts. See desktop/README.md "Releases".
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # to check the tag is on main
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Tag matches desktop/package.json version
+        run: node desktop/scripts/version.mjs check-tag "$GITHUB_REF_NAME"
+      - name: Tag is on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not on main; tag a commit on main"
+            exit 1
+          fi
+      - run: npm ci
+      - name: Lint, typecheck, and test web, server, and desktop
+        run: npm run check
+      - name: Ad hoc signed desktop build, dmg and zip for arm64 and x64
+        # Publishing is this workflow's job, not electron-builder's.
+        run: npm run dist --workspace desktop -- --publish never
+      - name: Signatures verify
+        run: |
+          codesign --verify --deep --strict desktop/release/mac-arm64/Plutus.app
+          codesign --verify --deep --strict desktop/release/mac/Plutus.app
+      - name: Packaged app opens and reaches the API
+        run: npm run smoke:dist --workspace desktop
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          files=(
+            "desktop/release/Plutus-$version-arm64.dmg"
+            "desktop/release/Plutus-$version-arm64.zip"
+            "desktop/release/Plutus-$version-x64.dmg"
+            "desktop/release/Plutus-$version-x64.zip"
+          )
+          ls -l "${files[@]}"
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+            --verify-tag --generate-notes --title "Plutus $version"

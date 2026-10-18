@@ -21,6 +21,7 @@ export default {
   files: [
     'dist/**',
     '!dist/lib/signing.js', // build-time only
+    '!dist/lib/version.js', // release scripts only
     'package.json',
     // Sources the app never loads: the server runs from its dist, SQLite from its prebuild.
     '!**/node_modules/plutus-server/{src,scripts,test}/**',
