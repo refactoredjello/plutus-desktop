@@ -1,14 +1,16 @@
 /**
  * What changed (R12): signals about the current month, and their dismissals.
- * Ports app/routers/changes.py (stub).
+ * Ports app/routers/changes.py.
  */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
+import { today } from '../lib/dates.js'
 import { ChangesRead, DismissChange } from '../schemas/changes.js'
 import { params } from '../schemas/model.js'
 import { queryBool } from '../schemas/params.js'
-import { json, jsonBody, noContent, notImplemented } from './openapi.js'
+import * as service from '../services/changes.js'
+import { json, jsonBody, noContent } from './openapi.js'
 
 const getChanges = createRoute({
   method: 'get',
@@ -41,7 +43,16 @@ const clearChangeDismissals = createRoute({
 })
 
 export function registerChanges(app: App): void {
-  app.openapi(getChanges, notImplemented)
-  app.openapi(dismissChange, notImplemented)
-  app.openapi(clearChangeDismissals, notImplemented)
+  app.openapi(getChanges, (c) => {
+    const { all } = c.req.valid('query')
+    return c.json(service.compute(c.var.db, today(), { includeAll: all }), 200)
+  })
+  app.openapi(dismissChange, (c) => {
+    service.dismiss(c.var.db, c.req.valid('json').key)
+    return c.body(null, 204)
+  })
+  app.openapi(clearChangeDismissals, (c) => {
+    service.clearDismissals(c.var.db)
+    return c.body(null, 204)
+  })
 }
