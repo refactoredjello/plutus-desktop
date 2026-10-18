@@ -611,8 +611,8 @@ function s8DiscretionaryPace(db: Db, current: MonthTotals, used: readonly MonthT
   ]
 }
 
-function s9ProjectionNegative(db: Db, month: MonthKey): Item[] {
-  const endBalance = (project(db, 1).months[0] as { projected_end_balance: Cents }).projected_end_balance
+function s9ProjectionNegative(db: Db, month: MonthKey, today: PlainDate): Item[] {
+  const endBalance = (project(db, 1, today).months[0] as { projected_end_balance: Cents }).projected_end_balance
   if (endBalance >= 0) return []
   // "Only when the previous projection was not" needs history we don't store; the
   // month in the key means one dismissal holds for the month (see PR notes).
@@ -655,7 +655,7 @@ export function compute(db: Db, today: PlainDate, { includeAll = false }: { incl
     ...s6LargeExpenses(db, month, today, s5Merchants, recurringKeys),
     ...s7ReviewBacklog(db),
     ...s8DiscretionaryPace(db, current, used, day, month),
-    ...s9ProjectionNegative(db, month),
+    ...s9ProjectionNegative(db, month, today),
   ]
   const dismissed = new Set(
     db
