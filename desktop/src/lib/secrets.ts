@@ -4,7 +4,7 @@
  * Blobs are base64 of safeStorage's output. Error messages never include the secret.
  */
 
-import { SecretDecryptError, type SecretStore } from 'plutus-server/dist/secrets.js'
+import { SecretDecryptError, type SecretStore } from 'plutus-server/secrets'
 
 /** The part of Electron's safeStorage this store uses; injected so it can be tested. */
 export interface SafeStorageLike {

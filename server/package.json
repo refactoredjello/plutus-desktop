@@ -3,6 +3,18 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "exports": {
+    "./app": { "plutus-source": "./src/app.ts", "default": "./dist/app.js" },
+    "./config": { "plutus-source": "./src/config.ts", "default": "./dist/config.js" },
+    "./db": { "plutus-source": "./src/db/index.ts", "default": "./dist/db/index.js" },
+    "./importer": { "plutus-source": "./src/importer.ts", "default": "./dist/importer.js" },
+    "./log": { "plutus-source": "./src/lib/log.ts", "default": "./dist/lib/log.js" },
+    "./scheduler": { "plutus-source": "./src/scheduler.ts", "default": "./dist/scheduler.js" },
+    "./secrets": { "plutus-source": "./src/secrets.ts", "default": "./dist/secrets.js" },
+    "./settings": { "plutus-source": "./src/services/app_settings.ts", "default": "./dist/services/app_settings.js" },
+    "./runtime-config": { "plutus-source": "./src/services/config.ts", "default": "./dist/services/config.js" },
+    "./package.json": "./package.json"
+  },
   "engines": {
     "node": ">=24"
   },

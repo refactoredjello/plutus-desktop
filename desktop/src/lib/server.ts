@@ -6,8 +6,8 @@
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { serve } from '@hono/node-server'
-import { type AppDeps, createApp } from 'plutus-server/dist/app.js'
-import type { Config } from 'plutus-server/dist/config.js'
+import { type AppDeps, createApp } from 'plutus-server/app'
+import type { Config } from 'plutus-server/config'
 import type { ShellPaths } from './paths.js'
 
 export const LOOPBACK = '127.0.0.1'

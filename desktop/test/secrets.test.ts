@@ -1,4 +1,4 @@
-import { KeySecretStore, SecretDecryptError } from 'plutus-server/dist/secrets.js'
+import { KeySecretStore, SecretDecryptError } from 'plutus-server/secrets'
 import { describe, expect, it, vi } from 'vitest'
 import { type SafeStorageLike, SafeStorageSecretStore } from '../src/lib/secrets.js'
 

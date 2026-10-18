@@ -31,5 +31,21 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - name: Unsigned desktop build
+      - name: Unsigned (ad hoc) desktop build, dmg and zip for arm64 and x64
         run: npm run dist --workspace desktop
+        env:
+          # No certificate here: the build is signed ad hoc. electron-builder skips all signing
+          # on pull requests unless this is set; there are no secrets to protect.
+          CSC_FOR_PULL_REQUEST: 'true'
+      - name: Signature verifies
+        run: codesign --verify --deep --strict desktop/release/mac-arm64/Plutus.app
+      - name: Packaged app opens and reaches the API
+        run: npm run smoke:dist --workspace desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plutus-macos
+          path: |
+            desktop/release/*.dmg
+            desktop/release/*.zip
+          if-no-files-found: error
+          retention-days: 14

@@ -17,13 +17,17 @@ export interface ShellPaths {
   webDist: string
   dataDir: string
   databasePath: string
+  logFile: string
 }
 
 /**
  * The userData folder, set before anything reads it. Development runs get their own, so an
- * unmerged branch's migrations never touch the database the installed app uses.
+ * unmerged branch's migrations never touch the database the installed app uses. --data-dir
+ * replaces either; Electron keys the single-instance lock on this folder, so each profile has
+ * its own.
  */
-export function userDataDir(inputs: { isPackaged: boolean; appDataPath: string }): string {
+export function userDataDir(inputs: { isPackaged: boolean; appDataPath: string; dataDir?: string | null }): string {
+  if (inputs.dataDir) return inputs.dataDir
   return join(inputs.appDataPath, inputs.isPackaged ? 'Plutus' : 'Plutus Dev')
 }
 
@@ -35,5 +39,6 @@ export function resolvePaths(inputs: PathInputs): ShellPaths {
     webDist,
     dataDir: inputs.userDataPath,
     databasePath: join(inputs.userDataPath, 'plutus.sqlite'),
+    logFile: join(inputs.userDataPath, 'logs', 'plutus.log'),
   }
 }
