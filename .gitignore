@@ -1,10 +1,5 @@
 .env
-__pycache__/
-*.pyc
-.venv/
 node_modules/
 dist/
 .DS_Store
 .claude/worktrees/
-tools/parity/report.md
-tools/parity/visual/out/
