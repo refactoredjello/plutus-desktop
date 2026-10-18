@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap, type Schemas } from '@/api/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useCategories } from '@/features/transactions/queries'
 import { humanizeEnum } from '@/lib/format'
+import { NewRuleDialog } from './NewRuleDialog'
 
 type Rule = Schemas['RuleRead']
 
@@ -25,7 +26,10 @@ function useDeleteRule() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => unwrap(api.DELETE('/api/rules/{rule_id}', { params: { path: { rule_id: id } } })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rules'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['rules'] })
+      void qc.invalidateQueries({ queryKey: ['transactions'] })
+    },
   })
 }
 
@@ -41,13 +45,17 @@ export function RulesCard() {
       <CardHeader>
         <CardTitle>Rules</CardTitle>
         <CardDescription>Merchants that are categorized automatically.</CardDescription>
+        <CardAction>
+          <NewRuleDialog />
+        </CardAction>
       </CardHeader>
       <CardContent>
         {rules.isPending ? (
           <Skeleton className="h-16 w-full" />
         ) : !rules.data?.length ? (
           <p className="text-sm text-muted-foreground">
-            No rules yet. Change a transaction's category on the Transactions page and choose "Apply to all" to create one.
+            No rules yet. Add one with "New rule", or change a transaction's category on the Transactions page and choose
+            "Apply to all".
           </p>
         ) : (
           <Table>

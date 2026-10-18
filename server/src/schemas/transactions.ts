@@ -42,7 +42,9 @@ export const TransactionUpdate = requestModel(
     one_time: z.boolean().nullable().optional(), // excluded from the projection's trailing average
     save_as_rule: z.boolean().default(false),
     rule_match_type: refWithDefault(RuleMatchType, 'exact'),
+    // Defaults to the merchant key (exact, prefix) or the payee or raw description (contains).
+    rule_pattern: z.string().max(200).nullable().optional(),
   },
-  'Manual override. Setting save_as_rule also creates a rule for the merchant key.',
+  'Manual override. Setting save_as_rule also creates a rule; rule_match_type and rule_pattern shape it.',
 )
 export type TransactionUpdate = z.infer<typeof TransactionUpdate>

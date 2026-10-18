@@ -8,9 +8,10 @@
  *   each LLM batch in its own once its answer is in. A failing LLM still leaves the earlier work in place.
  * - The owner name tokens and the provider come from the config service (runtimeConfig and
  *   llmProvider), never from the environment.
- * - Contains rules compare with full case folding; applying a rule to past transactions (and
- *   transaction search) match with a simple lowercase mapping. JavaScript has neither and
- *   SQLite's lower() is ASCII-only: see casefold and simpleLower.
+ * - Contains rules compare with full case folding (containsPattern), both when categorizing new
+ *   transactions and when a rule is applied to existing ones. Transaction search matches with a
+ *   simple lowercase mapping. JavaScript has neither and SQLite's lower() is ASCII-only: see
+ *   casefold and simpleLower.
  * - Keys sort by code point; JavaScript's default sort compares UTF-16 units.
  */
 
@@ -98,6 +99,11 @@ export function ensurePgLower(db: Db): void {
 /** A literal (no wildcards), case-insensitive substring match on a column. */
 export function icontains(column: Column, text: string) {
   return sql`instr(simple_lower(${column}), ${simpleLower(text)}) > 0`
+}
+
+/** Does a contains rule's pattern match this raw description? Full case folding on both sides. */
+export function containsPattern(rawDescription: string, pattern: string): boolean {
+  return casefold(rawDescription).includes(casefold(pattern))
 }
 
 /** String ordering by code point. */
@@ -357,8 +363,7 @@ class Rules {
   match(key: string, rawDescription: string): Rule | undefined {
     const exact = this.exact.get(key)
     if (exact !== undefined) return exact
-    const haystack = casefold(rawDescription)
-    const hit = this.contains.find((r) => haystack.includes(casefold(r.pattern)))
+    const hit = this.contains.find((r) => containsPattern(rawDescription, r.pattern))
     if (hit !== undefined) return hit
     return this.prefix.find((r) => key.startsWith(r.pattern))
   }
@@ -371,20 +376,21 @@ class Rules {
  * The writes run in one transaction, a savepoint inside a caller's.
  */
 export function applyRule(db: Db, rule: Pick<Rule, 'match_type' | 'pattern' | 'category_id' | 'essentiality'>): number {
-  ensurePgLower(db)
+  // Contains rules filter in code with containsPattern, so they agree with categorizePending.
   const match =
     rule.match_type === 'exact'
       ? eq(transactions.merchant_key, rule.pattern)
       : rule.match_type === 'contains'
-        ? icontains(transactions.raw_description, rule.pattern)
-        : // startswith(autoescape=True): a literal, case-sensitive prefix (SQLite's LIKE ignores ASCII case).
+        ? undefined
+        : // A literal, case-sensitive prefix (SQLite's LIKE ignores ASCII case).
           sql`substr(${transactions.merchant_key}, 1, length(${rule.pattern})) = ${rule.pattern}`
   const rows = db
-    .select({ id: transactions.id, current: categorizations })
+    .select({ id: transactions.id, raw: transactions.raw_description, current: categorizations })
     .from(transactions)
     .leftJoin(categorizations, eq(categorizations.transaction_id, transactions.id))
     .where(and(eq(transactions.is_transfer, false), match))
     .all()
+    .filter((row) => rule.match_type !== 'contains' || containsPattern(row.raw, rule.pattern))
   let changed = 0
   db.transaction(() => {
     for (const { id, current } of rows) {

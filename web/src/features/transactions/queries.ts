@@ -5,8 +5,9 @@ import { PAGE_SIZE, type Filters } from './filters'
 type Page = Schemas['Page_TransactionRead_']
 type Update = Schemas['TransactionUpdate']
 /** What callers send; the generated type also demands the rule defaults, which we fill in. */
-export type TransactionEdit = Pick<Update, 'category_id' | 'essentiality' | 'note' | 'one_time'> & {
+export type TransactionEdit = Pick<Update, 'category_id' | 'essentiality' | 'note' | 'one_time' | 'rule_pattern'> & {
   save_as_rule?: boolean
+  rule_match_type?: Update['rule_match_type']
 }
 
 /** A note or one-time edit: sent as-is and never touches the categorization. */

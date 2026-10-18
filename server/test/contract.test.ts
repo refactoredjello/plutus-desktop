@@ -209,11 +209,14 @@ const SAMPLES: Record<string, { query?: string; body?: unknown }> = {
       'q=coffee&start=2026-01-01&end=2026-01-31&account_id=1&account_id=2&category_id=3' +
       '&essentiality=unset&uncategorized=true&needs_review=false&include_transfers=1&limit=500&offset=0',
   },
-  update_transaction: { body: { category_id: 1, note: '', save_as_rule: true, rule_match_type: 'prefix' } },
+  update_transaction: {
+    body: { category_id: 1, note: '', save_as_rule: true, rule_match_type: 'prefix', rule_pattern: 'UBER' },
+  },
   list_categories: { query: 'include_hidden=true' },
   create_category: { body: { primary: 'FOOD_AND_DRINK', label: 'Snacks' } },
   update_category: { body: { label: 'Snacks', is_hidden: false } },
   list_rules: {},
+  create_rule: { body: { match_type: 'prefix', pattern: 'UBER', category_id: 1, essentiality: null } },
   delete_rule: {},
   get_changes: { query: 'all=true' },
   dismiss_change: { body: { key: 'S1:fake' } },

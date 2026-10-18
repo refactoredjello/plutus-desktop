@@ -356,7 +356,11 @@ export interface paths {
         /** List Rules */
         get: operations["list_rules"];
         put?: never;
-        post?: never;
+        /**
+         * Create Rule
+         * @description Upserts by match type and pattern, then applies the rule to existing transactions.
+         */
+        post: operations["create_rule"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1087,6 +1091,18 @@ export interface components {
             status?: components["schemas"]["RecurrenceStatus"] | null;
         };
         /**
+         * RuleCreate
+         * @description A rule, upserted by match type and pattern and applied to existing transactions.
+         */
+        RuleCreate: {
+            /** Category Id */
+            category_id: number;
+            essentiality?: components["schemas"]["Essentiality"] | null;
+            match_type: components["schemas"]["RuleMatchType"];
+            /** Pattern */
+            pattern: string;
+        };
+        /**
          * RuleMatchType
          * @enum {string}
          */
@@ -1221,7 +1237,7 @@ export interface components {
         };
         /**
          * TransactionUpdate
-         * @description Manual override. Setting save_as_rule also creates a rule for the merchant key.
+         * @description Manual override. Setting save_as_rule also creates a rule; rule_match_type and rule_pattern shape it.
          */
         TransactionUpdate: {
             /** Category Id */
@@ -1233,6 +1249,8 @@ export interface components {
             one_time?: boolean | null;
             /** @default exact */
             rule_match_type?: components["schemas"]["RuleMatchType"];
+            /** Rule Pattern */
+            rule_pattern?: string | null;
             /**
              * Save As Rule
              * @default false
@@ -1848,6 +1866,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuleRead"][];
+                };
+            };
+        };
+    };
+    create_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleRead"];
                 };
             };
         };

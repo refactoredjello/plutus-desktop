@@ -2,7 +2,7 @@
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
-import { CategoryCreate, CategoryRead, CategoryUpdate, RuleRead } from '../schemas/categories.js'
+import { CategoryCreate, CategoryRead, CategoryUpdate, RuleCreate, RuleRead } from '../schemas/categories.js'
 import { params, responseList } from '../schemas/model.js'
 import { pathInt, queryBool } from '../schemas/params.js'
 import * as service from '../services/categories.js'
@@ -47,6 +47,17 @@ const listRules = createRoute({
   responses: { 200: json(responseList(RuleRead, 'list_rules')) },
 })
 
+const createRule = createRoute({
+  method: 'post',
+  path: '/api/rules',
+  operationId: 'create_rule',
+  summary: 'Create Rule',
+  description: 'Upserts by match type and pattern, then applies the rule to existing transactions.',
+  tags: ['categories'],
+  request: { body: jsonBody(RuleCreate) },
+  responses: { 200: json(RuleRead) },
+})
+
 const deleteRule = createRoute({
   method: 'delete',
   path: '/api/rules/{rule_id}',
@@ -64,6 +75,7 @@ export function registerCategories(app: App): void {
     c.json(service.updateCategory(c.var.db, c.req.valid('param').category_id, c.req.valid('json')), 200),
   )
   app.openapi(listRules, (c) => c.json(service.listRules(c.var.db), 200))
+  app.openapi(createRule, (c) => c.json(service.createRule(c.var.db, c.req.valid('json')), 200))
   app.openapi(deleteRule, (c) => {
     service.deleteRule(c.var.db, c.req.valid('param').rule_id)
     return c.body(null, 204)

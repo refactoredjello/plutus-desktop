@@ -3,17 +3,18 @@ import { StickyNote } from 'lucide-react'
 import type { Schemas } from '@/api/client'
 import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { cadencePhrase } from '@/features/recurring/queries'
 import { formatDate } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
+import { ApplyToAllPrompt } from './ApplyToAllPrompt'
 import { useUpdateTransaction } from './queries'
 import { needsReview } from './review'
 import { NoteEditor } from './NoteEditor'
 import { OneTimeToggle } from './OneTimeToggle'
 import { RecurringMark } from './RecurringMark'
+import type { RuleMatchType } from './RuleMatchSelect'
 import { CategorySelect, EssentialitySelect } from './selects'
 
 type Txn = Schemas['TransactionRead']
@@ -61,10 +62,13 @@ export function TransactionRow({
     onKeep?.(false)
   }
 
-  function applyToAll() {
+  function applyToAll(matchType: RuleMatchType, pattern: string) {
     if (promptCategory === null) return
     update.mutate(
-      { id: txn.id, body: { category_id: promptCategory, save_as_rule: true } },
+      {
+        id: txn.id,
+        body: { category_id: promptCategory, save_as_rule: true, rule_match_type: matchType, rule_pattern: pattern },
+      },
       {
         onSuccess: () => {
           setPromptCategory(null)
@@ -104,15 +108,7 @@ export function TransactionRow({
           </p>
         )}
         {promptCategory !== null && (
-          <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            <span>Apply to all from {txn.merchant_key}?</span>
-            <Button size="xs" variant="secondary" disabled={update.isPending} onClick={applyToAll}>
-              Apply
-            </Button>
-            <Button size="xs" variant="ghost" onClick={dismissPrompt}>
-              Dismiss
-            </Button>
-          </div>
+          <ApplyToAllPrompt txn={txn} pending={update.isPending} onApply={applyToAll} onDismiss={dismissPrompt} />
         )}
         {markedCadence && (
           <p className="mt-1 text-xs text-muted-foreground">
