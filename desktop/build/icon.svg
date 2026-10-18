@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- Plutus app icon (original artwork). Regenerate the png, icns, and ico with
+  <!-- Plutus app icon (original artwork). Regenerate icon.icns with
        `npm run icons` in desktop/ (scripts/icons.sh, macOS). -->
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">

@@ -12,7 +12,7 @@ export default {
 
   directories: {
     output: 'release',
-    // icon.icns, icon.ico, icon.png (scripts/icons.sh renders them from icon.svg).
+    // icon.icns (scripts/icons.sh renders it from icon.svg). macOS is the only target.
     buildResources: 'build',
   },
 
@@ -27,7 +27,7 @@ export default {
     '!**/node_modules/plutus-server/*.{ts,json}',
     'node_modules/plutus-server/package.json',
     '!**/node_modules/better-sqlite3/{deps,src,build}/**',
-    // better-sqlite3 ships a prebuild per platform; keep the one this build runs on.
+    // better-sqlite3 ships a prebuild per platform; keep the one this build's arch runs.
     '!**/node_modules/better-sqlite3/prebuilds/**',
     '**/node_modules/better-sqlite3/prebuilds/${platform}-${arch}.node',
   ],
@@ -53,20 +53,5 @@ export default {
     // Plutus-0.1.0-arm64.dmg, Plutus-0.1.0-x64.zip, ...
     artifactName: '${productName}-${version}-${arch}.${ext}',
     ...macSigning(process.env),
-  },
-
-  // Configured, not verified: built and tested on macOS only so far.
-  win: {
-    target: [{ target: 'nsis', arch: ['x64'] }],
-  },
-  nsis: {
-    oneClick: false,
-    perMachine: false,
-    allowToChangeInstallationDirectory: true,
-  },
-  linux: {
-    target: [{ target: 'AppImage', arch: ['x64'] }],
-    category: 'Finance',
-    maintainer: 'Plutus',
   },
 }
