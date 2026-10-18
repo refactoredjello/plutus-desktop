@@ -333,4 +333,40 @@ describe('schema guard', () => {
     })
     c.close()
   })
+
+  it('records and names the app version it is given', () => {
+    const newer = migrationsWith('newer', [{ tag: '0001_marker', sql: ADD_MARKER }])
+    openDb(dbPath, { migrationsFolder: newer, appVersion: '0.3.0' }).$client.close()
+    const c = new Database(dbPath, { readonly: true })
+    expect(c.prepare('SELECT value FROM app_settings WHERE key = ?').pluck().get(LAST_APP_VERSION_KEY)).toBe('0.3.0')
+    c.close()
+
+    const err = openError(() => openDb(dbPath, { migrationsFolder: migrationsWith('base'), appVersion: '0.2.0' }))
+    expect(err.kind).toBe('too_new')
+    expect(err.message).toContain('Plutus 0.3.0')
+    expect(err.message).toContain('(0.2.0)')
+  })
+})
+
+describe('a new database that fails to migrate', () => {
+  function expectNoDatabaseFiles(): void {
+    for (const suffix of ['', '-wal', '-shm']) expect(existsSync(dbPath + suffix)).toBe(false)
+  }
+
+  it('is deleted when the checks after migrating fail, so the next start retries', () => {
+    const folder = migrationsWith('orphan', [{ tag: '0001_orphan', sql: ORPHAN_ROW }])
+    const err = openError(() => openDb(dbPath, { migrationsFolder: folder }))
+    expect(err.kind).toBe('migration_failed')
+    expectNoDatabaseFiles()
+    expect(backups()).toEqual([])
+    openDb(dbPath).$client.close()
+    expect(appliedMigrations(dbPath)).toBe(1)
+  })
+
+  it('is deleted when the migration throws', () => {
+    const folder = migrationsWith('broken', [{ tag: '0001_broken', sql: 'INSERT INTO no_such_table VALUES (1);' }])
+    const err = openError(() => openDb(dbPath, { migrationsFolder: folder }))
+    expect(err.kind).toBe('migration_failed')
+    expectNoDatabaseFiles()
+  })
 })
