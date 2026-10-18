@@ -187,7 +187,7 @@ GET  /api/settings/simplefin   POST /api/settings/simplefin   DELETE /api/settin
 GET  /api/settings/llm      GET  /api/settings/config    PUT /api/settings/config
 GET  /api/transactions      PATCH /api/transactions/{id}
 GET  /api/categories        POST /api/categories         PATCH /api/categories/{id}
-GET  /api/rules             DELETE /api/rules/{id}
+GET  /api/rules             POST /api/rules              DELETE /api/rules/{id}
 GET  /api/reports/monthly   GET /api/reports/month/{month}   GET /api/reports/by-category?month=
 GET  /api/reports/balances  GET /api/reports/changes     POST /api/reports/changes/dismiss
 DELETE /api/reports/changes/dismissals
