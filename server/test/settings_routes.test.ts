@@ -10,12 +10,16 @@
 
 import { Writable } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createApp } from '../src/app.js'
 import type { RuntimeDefaults } from '../src/config.js'
 import { ProviderError } from '../src/lib/errors.js'
-import { createLogger } from '../src/lib/log.js'
+import { createLogger, silentLogger } from '../src/lib/log.js'
 import { simplefinClaim } from '../src/routes/settings.js'
+import { OVERDUE_DELAY_MS, type Scheduler, createScheduler } from '../src/scheduler.js'
+import { KeySecretStore } from '../src/secrets.js'
+import { runtimeConfig } from '../src/services/config.js'
 import { ACCESS_URL, makeToken } from './factories.js'
-import { makeApp, testConfig } from './setup.js'
+import { makeApp, makeDb, testConfig } from './setup.js'
 
 const API_KEY = 'sk-ant-route-test-987654'
 
@@ -240,6 +244,65 @@ describe('privacy: secrets are never returned or logged', () => {
       expect(text).not.toContain(API_KEY)
       expect(text).not.toContain(ACCESS_URL)
       expect(text).not.toContain('pass456')
+    }
+  })
+})
+
+describe('PUT /api/settings/config reschedules (backlog 31)', () => {
+  const NOW = new Date('2026-10-03T12:00:00.000Z')
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('reschedules after storing the change, once per update', async () => {
+    const config = testConfig()
+    const db = makeDb()
+    const secrets = new KeySecretStore(config.secretKey)
+    const seen: boolean[] = []
+    const scheduler = {
+      nextRunAt: () => null,
+      reschedule: vi.fn(() => {
+        seen.push(runtimeConfig(db, secrets, config.defaults).schedulerEnabled)
+      }),
+    }
+    const app = createApp({ db, secrets, config, log: silentLogger(), scheduler })
+    await app.request('/api/settings/config', send('PUT', { scheduler_enabled: true }))
+    await app.request('/api/settings/config', send('PUT', { scheduler_enabled: false }))
+    expect(seen).toEqual([true, false])
+    // A rejected update stores nothing and reschedules nothing.
+    expect((await app.request('/api/settings/config', send('PUT', { sync_interval_hours: 'x' }))).status).toBe(422)
+    expect(scheduler.reschedule).toHaveBeenCalledTimes(2)
+  })
+
+  it('GET /api/sync/schedule and the real timer agree after turning it on and off', async () => {
+    vi.useFakeTimers({ now: NOW })
+    const config = testConfig() // scheduler disabled at start
+    const db = makeDb()
+    const secrets = new KeySecretStore(config.secretKey)
+    const job = vi.fn(async () => {})
+    const scheduler: Scheduler = createScheduler({ db, secrets, defaults: config.defaults, random: () => 0, job })
+    const app = createApp({ db, secrets, config, log: silentLogger(), scheduler })
+    const schedule = async () => body(await app.request('/api/sync/schedule'))
+    try {
+      expect(scheduler.start()).toBe(false)
+      expect(await schedule()).toEqual({ enabled: false, interval_hours: 6, next_run_at: null })
+
+      await app.request('/api/settings/config', send('PUT', { scheduler_enabled: true, sync_interval_hours: 2 }))
+      const due = new Date(NOW.getTime() + OVERDUE_DELAY_MS).toISOString()
+      expect(await schedule()).toEqual({ enabled: true, interval_hours: 2, next_run_at: due })
+      expect(scheduler.nextRunAt()).toBe(due)
+      await vi.advanceTimersByTimeAsync(OVERDUE_DELAY_MS)
+      expect(job).toHaveBeenCalledTimes(1)
+      expect((await schedule()).next_run_at).toBe(new Date(Date.parse(due) + 2 * 3_600_000).toISOString())
+
+      await app.request('/api/settings/config', send('PUT', { scheduler_enabled: false }))
+      expect(await schedule()).toEqual({ enabled: false, interval_hours: 2, next_run_at: null })
+      expect(vi.getTimerCount()).toBe(0)
+      await vi.advanceTimersByTimeAsync(10 * 3_600_000)
+      expect(job).toHaveBeenCalledTimes(1)
+    } finally {
+      scheduler.stop()
     }
   })
 })
