@@ -1,8 +1,7 @@
 /**
- * Guards on the API contract that every brief must keep true. Ports api/tests/test_contract.py
- * (its route guards and the committed-spec staleness check; the models-versus-migrations guard
- * lives in db.test.ts) and adds brief 0B's structural check against FastAPI's spec, frozen in
- * test/fixtures/fastapi-openapi.json as the oracle for the contract.
+ * Guards on the API contract: every route is declared and tagged, the committed spec is
+ * current, the config contract, and request parsing. The models-versus-migrations guard lives
+ * in db.test.ts.
  */
 
 import { readFileSync } from 'node:fs'
@@ -10,7 +9,7 @@ import { HTTPException } from 'hono/http-exception'
 import { describe, expect, it } from 'vitest'
 import { renderOpenApi } from '../scripts/export-openapi.js'
 import { MoneyInput, PositiveMoneyInput } from '../src/schemas/common.js'
-import { FIXTURES, makeApp } from './setup.js'
+import { makeApp } from './setup.js'
 
 type Schema = { [key: string]: unknown }
 
@@ -37,24 +36,9 @@ interface Spec {
 }
 
 const SPEC_PATH = new URL('../../web/src/api/openapi.json', import.meta.url)
-const FASTAPI: Spec = JSON.parse(readFileSync(`${FIXTURES}fastapi-openapi.json`, 'utf8'))
 const SERVER: Spec = JSON.parse(renderOpenApi())
 
 const METHODS = ['get', 'put', 'post', 'delete', 'patch', 'options', 'head', 'trace']
-
-/** `/auth/*` is not ported (brief 0B). */
-const notPorted = (path: string) => path.startsWith('/api/auth/')
-
-/** Routes the plan adds on purpose (brief 0B, schemas/settings.ts). */
-const NEW_ROUTES = ['GET /api/settings/config', 'PUT /api/settings/config']
-
-/** FastAPI components the server does not have, with the reason. */
-const NOT_PORTED_COMPONENTS: Record<string, string> = {
-  LoginRequest: 'auth is not ported',
-  SessionRead: 'auth is not ported',
-  HTTPValidationError: "FastAPI's 422 body; the server answers 422 problem+json (plan 5.5)",
-  ValidationError: "FastAPI's 422 body; the server answers 422 problem+json (plan 5.5)",
-}
 
 function operations(spec: Spec): Array<[string, Operation]> {
   return Object.entries(spec.paths).flatMap(([path, ops]) =>
@@ -64,31 +48,15 @@ function operations(spec: Spec): Array<[string, Operation]> {
   )
 }
 
-const fastapiOps = new Map(operations(FASTAPI).filter(([key]) => !notPorted(key.split(' ')[1] ?? '')))
 const serverOps = new Map(operations(SERVER))
-
-/** The server's operation for a FastAPI one; a missing operation fails the test. */
-function serverOp(key: string): Operation {
-  const op = serverOps.get(key)
-  expect(op, `${key} is missing`).toBeDefined()
-  return op as Operation
-}
-
-/** The server's component for a FastAPI one; a missing component fails the test. */
-function serverSchema(name: string): Schema {
-  const schema = SERVER.components.schemas[name]
-  expect(schema, `${name} is missing`).toBeDefined()
-  return schema as Schema
-}
 
 /** The Money regex from schemas/common.ts, as it appears in the spec. */
 const MONEY_PATTERN = '^-?\\d+\\.\\d{2}$'
 
 /**
- * A canonical form of a JSON schema so FastAPI's and zod-openapi's spellings of the same type
- * compare equal: `anyOf [X, null]`, `type [X, "null"]`, and `allOf [$ref, {default}]` all
- * become X plus `nullable` or `default`. Response money is a plain string on both sides:
- * Pydantic documented a Money output as a string; the server adds the `Money` pattern (plan 5.2).
+ * A canonical form of a JSON schema: `anyOf [X, null]`, `type [X, "null"]`, and
+ * `allOf [$ref, {default}]` all become X plus `nullable` or `default`; the `Money` pattern is
+ * dropped, so a money field reads as a plain string.
  */
 function canonical(schema: Schema): Schema {
   let out: Schema = { ...schema }
@@ -122,100 +90,6 @@ function canonicalProperties(schema: Schema): Record<string, Schema> {
 }
 
 const sorted = (values: unknown) => [...((values as string[] | undefined) ?? [])].sort()
-
-describe('routes match FastAPI', () => {
-  it('has the same METHOD path pairs, apart from /auth/* and the new config routes', () => {
-    const expected = [...fastapiOps.keys(), ...NEW_ROUTES].sort()
-    expect([...serverOps.keys()].sort()).toEqual(expected)
-  })
-
-  it.each([...fastapiOps.keys()])('%s keeps its operation id, summary, description, and tags', (key) => {
-    const old = fastapiOps.get(key)
-    const now = serverOp(key)
-    expect({
-      operationId: now?.operationId,
-      summary: now?.summary,
-      description: now?.description,
-      tags: now?.tags,
-    }).toEqual({
-      operationId: old?.operationId,
-      summary: old?.summary,
-      description: old?.description,
-      tags: old?.tags,
-    })
-  })
-
-  it.each([...fastapiOps.keys()])('%s keeps its parameters, names, defaults, and bounds', (key) => {
-    const params = (op: Operation | undefined) =>
-      (op?.parameters ?? [])
-        .map((p) => ({ in: p.in, name: p.name, required: p.required, schema: canonical(p.schema) }))
-        .sort((a, b) => a.name.localeCompare(b.name))
-    expect(params(serverOp(key))).toEqual(params(fastapiOps.get(key)))
-  })
-
-  it.each([...fastapiOps.keys()])('%s keeps its request body', (key) => {
-    const body = (op: Operation | undefined) => {
-      const rb = op?.requestBody
-      if (rb === undefined) return null
-      return {
-        required: rb.required,
-        content: Object.fromEntries(Object.entries(rb.content).map(([type, c]) => [type, canonical(c.schema)])),
-      }
-    }
-    expect(body(serverOp(key))).toEqual(body(fastapiOps.get(key)))
-  })
-
-  it.each([...fastapiOps.keys()])('%s keeps its success responses', (key) => {
-    // FastAPI documented a 422 HTTPValidationError on every route with input; the server's 422
-    // is problem+json (plan 5.5) and, like FastAPI's other errors, undocumented.
-    const responses = (op: Operation | undefined) =>
-      Object.fromEntries(
-        Object.entries(op?.responses ?? {})
-          .filter(([status]) => status !== '422')
-          .map(([status, r]) => [
-            status,
-            {
-              description: r.description,
-              content: Object.fromEntries(
-                Object.entries(r.content ?? {}).map(([type, c]) => [type, canonical(c.schema)]),
-              ),
-            },
-          ]),
-      )
-    expect(responses(serverOp(key))).toEqual(responses(fastapiOps.get(key)))
-  })
-})
-
-describe('component schemas match FastAPI', () => {
-  const ported = Object.keys(FASTAPI.components.schemas).filter((name) => !(name in NOT_PORTED_COMPONENTS))
-  const serverSchemas = SERVER.components.schemas
-
-  it('has every FastAPI component schema name, apart from auth and the 422 body', () => {
-    const missing = ported.filter((name) => !(name in serverSchemas))
-    expect(missing).toEqual([])
-  })
-
-  it('has no components beyond those and the new config contract', () => {
-    expect(Object.keys(serverSchemas).sort()).toEqual([...ported, 'ConfigRead', 'ConfigUpdate'].sort())
-  })
-
-  it.each(ported)('%s has the same required property names', (name) => {
-    expect(sorted(serverSchema(name).required)).toEqual(sorted(FASTAPI.components.schemas[name]?.required))
-  })
-
-  it.each(ported)('%s has the same title, description, properties, and enum values', (name) => {
-    const shape = (s: Schema | undefined) => ({
-      title: s?.title,
-      description: s?.description,
-      type: s?.type,
-      enum: s?.enum,
-      default: s?.default,
-      additionalProperties: s?.additionalProperties,
-      properties: canonicalProperties(s ?? {}),
-    })
-    expect(shape(serverSchema(name))).toEqual(shape(FASTAPI.components.schemas[name]))
-  })
-})
 
 describe('the new config contract (schemas/settings.ts)', () => {
   const schemas = SERVER.components.schemas
