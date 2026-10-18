@@ -313,12 +313,12 @@ describe('the savings user message', () => {
 
     const goal = db.select().from(goals).where(eq(goals.id, gid)).get()
     if (goal === undefined) throw new Error('no goal')
-    expect(savingsUserMessage(buildContext(db, goal))).toBe(PYTHON_MESSAGE)
+    expect(savingsUserMessage(buildContext(db, goal))).toBe(EXPECTED_MESSAGE)
   })
 })
 
 // savingsUserMessage(buildContext(db, goal)) over the same rows, pinned.
-const PYTHON_MESSAGE =
+const EXPECTED_MESSAGE =
   'Suggest savings for this situation:\n' +
   '{\n' +
   ' "goal_target": "5000.00",\n' +
