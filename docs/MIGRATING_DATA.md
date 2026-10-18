@@ -26,28 +26,38 @@ the new app's own defaults never override them.
 Stop the Docker API so no sync writes while you export. The database keeps running:
 
 ```bash
+cd ~/dev/Plutus
 docker compose stop api
 ```
 
 ## 2. Export from the Docker app
 
-Run the export in a one-off API container, so it uses the same `.env` and `SECRET_KEY` that
-encrypted the SimpleFIN URL. The current directory is mounted at `/out`, so the file lands
-here and nothing stays in the container:
+The exporter (`python -m app.export_json`) is not in the Docker app: it was written during the
+desktop port, and the Python code left this repository after tag `wave-4`. Check out that tag
+next to this repository and run the exporter from there, against the Docker app's Postgres
+(published on `localhost:5432`) with a copy of the Docker app's `.env`, so it decrypts the
+SimpleFIN URL with the same `SECRET_KEY` and carries the same settings over. You need
+[uv](https://docs.astral.sh/uv/).
 
 ```bash
-docker compose run --rm --no-deps -v "$PWD:/out" api \
-  python -m app.export_json /out/plutus-export.json
+git -C ~/dev/plutus-desktop worktree add ~/plutus-wave-4 wave-4
+cd ~/plutus-wave-4/api
+uv sync
+cp ~/dev/Plutus/.env .env
+DATABASE_URL=postgresql+psycopg://plutus:plutus@localhost:5432/plutus \
+  uv run python -m app.export_json ~/plutus-export.json
 ```
 
-The container runs as uid 1000; on Linux, run this from a directory that user can write to.
+`DATABASE_URL` on the command line wins over the one in `.env`, which names the compose host
+`db`. If your `.env` sets a `POSTGRES_PASSWORD` other than `plutus`, put it in place of the
+second `plutus` in the URL.
+
 It prints a row count per table. Keep that output: step 4 prints the same table. The file is
 created readable by you only, and the export refuses to overwrite an existing file. If it
-says a setting "cannot be decrypted", the container's `SECRET_KEY` is not the one the URL was
-saved with: fix `.env`, don't work around it.
+says a setting "cannot be decrypted", the `SECRET_KEY` is not the one the URL was saved with:
+check that the `.env` you copied is the Docker app's; don't work around it.
 
-If you run the API from a checkout instead (`cd api && uv run ...`), set `DATABASE_URL` and
-the same `SECRET_KEY` as the container uses before running `python -m app.export_json`.
+The copied `.env` holds your secrets too; step 5 removes the checkout with it.
 
 ## 3. Decide where the data goes
 
@@ -68,7 +78,7 @@ From the repository root, after `npm ci`:
 
 ```bash
 PLUTUS_SECRET_KEY='<the key the new server will use>' \
-  node_modules/.bin/tsx server/scripts/import-json.ts plutus-export.json --db <path to plutus.sqlite>
+  node_modules/.bin/tsx server/scripts/import-json.ts ~/plutus-export.json --db <path to plutus.sqlite>
 ```
 
 `PLUTUS_SECRET_KEY` re-encrypts the SimpleFIN URL and the API key in the new database. It must be the key the
@@ -86,13 +96,15 @@ to enter the API key again. An import from inside
 the desktop app that uses the Keychain is planned (brief 5B in `docs/DESKTOP_PLAN.md`); wait
 for it if you want the connection to carry over.
 
-## 5. Delete the export file
+## 5. Delete the export file and the wave-4 checkout
 
 ```bash
-rm plutus-export.json
+rm ~/plutus-export.json
+git -C ~/dev/plutus-desktop worktree remove --force ~/plutus-wave-4
 ```
 
-Also empty it from the trash if you moved it there, and delete any copy you made.
+`--force` is needed because of the copied `.env`; the checkout is deleted with it. Also empty
+the export from the trash if you moved it there, and delete any copy you made.
 
 ## 6. Check
 
@@ -100,7 +112,9 @@ Start the new app and compare a few pages with the Docker app: the dashboard, a 
 transactions, recurring charges, goals. Open Settings and check the LLM provider and the
 **owner name tokens**. The owner name tokens decide how new transactions are cleaned up into
 merchant names; if they differ from before, new transactions stop matching your rules, cached
-categories, and recurring charges.
+categories, and recurring charges. If you used Ollama, check its URL too: the Docker `.env`
+usually names `host.docker.internal`, which only resolves inside a container; outside one it
+is `http://localhost:11434`.
 
 The headless server applies any of these settings set in its environment (`LLM_PROVIDER`,
 `OWNER_NAME_TOKENS`, and so on) at every start, over the imported values. Leave them unset
@@ -120,4 +134,6 @@ dates are `YYYY-MM-DD`, timestamps are ISO 8601 in UTC. The importer stores mone
 cents and timestamps in the server's format (UTC, milliseconds, `Z`); microseconds are cut
 to milliseconds.
 
-`make import-check` runs the whole path on fake demo data and compares the result.
+`server/test/import-fixture.test.ts` imports a committed export of the fake demo data
+(`server/test/fixtures/demo-export.json`) and checks the row counts, the monthly report, and
+the secrets.
