@@ -6,7 +6,8 @@ import createClient from 'openapi-fetch'
 import type { components, paths } from './schema'
 
 export const api = createClient<paths>({
-  // Same origin as the page: Vite proxies /api in development, nginx in production.
+  // Same origin as the page: the Plutus server serves both the SPA and /api; in development
+  // Vite proxies /api to it.
   baseUrl: globalThis.location.origin,
   credentials: 'include',
   // Resolve fetch per call so test mocks installed after import still apply.
