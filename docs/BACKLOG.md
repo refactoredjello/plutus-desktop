@@ -6,6 +6,20 @@ Plutus's own list of open bugs and wanted changes. Each entry names the file and
 
 Numbers are stable: code and tests cite them (for example "backlog 29"). New entries take the next free number.
 
+## Approved to fix (owner, 2026-10-18)
+
+Grouped by the change that carries them; the entries below keep their full descriptions.
+
+- **Rule builder:** 35, with 15, 16, 17, 18 and 20.
+- **Transfer matching and Unpair:** 36 (stricter pairing and an Unpair action), closing 21.
+- **Local "today":** 38, with 24.
+- **Balance history:** 37.
+- **Recurring detection:** 5, with 3.
+- **What changed:** 28.
+- **Sync interval from the environment:** 33.
+
+Everything else stays open for later.
+
 ## Rules and categorization
 
 15. Deleting a rule leaves its merchant cache entry. `saveRule` in `services/transactions.ts` writes a `merchant_classifications` row (manual, very high confidence) next to the rule, and `deleteRule` in `services/categories.ts` deletes only the rule, so later syncs keep applying the deleted rule's category from the cache. Wanted: when a rule is deleted, remove the manual cache rows it created (the exact key; keys starting with a prefix pattern; keys of transactions a contains pattern matches).
@@ -32,7 +46,6 @@ Numbers are stable: code and tests cite them (for example "backlog 29"). New ent
 ## Scrubbing
 
 6. `STAR_REFERENCE` in `services/scrub.ts` mixes ASCII `[A-Z0-9]` with the Unicode digit class, so a reference with non-ASCII digits is only half removed.
-7. `stripOwnerTokens` in `services/scrub.ts` length-checks owner tokens before upper-casing them, so a short token with a sharp s (U+00DF, which upper-cases to `SS`) is dropped.
 8. An owner token that starts or ends with punctuation can never match the word-boundary pattern in `stripOwnerTokens`; a multi-word token like `MARY (ANN)` is not removed.
 
 ## SimpleFIN
@@ -64,12 +77,14 @@ Numbers are stable: code and tests cite them (for example "backlog 29"). New ent
 
 29. A scheduled sync that fires more than a second late is skipped and pushed a full interval later (`MISFIRE_GRACE_SECONDS` in `server/src/scheduler.ts`). On a laptop that sleeps this skips due syncs.
 30. Jitter is added to the previous jittered run time (`server/src/scheduler.ts`), so the schedule drifts by about a minute per interval.
-32. A sync commits per step (`runSync` in `services/sync.ts`; better-sqlite3 can't hold a transaction across the LLM call), so a failure after the account and transaction upsert leaves those rows committed rather than rolling the whole run back.
 33. The scheduler clamps a zero or negative interval to one second (`clampedInterval` in `server/src/scheduler.ts`). Settings rejects an interval under one hour, but `SYNC_INTERVAL_HOURS` seeds any integer from the environment on first run, so a bad seed syncs every second until the daily request guard refuses.
 
 ## Closed without a change
 
-Entries that today's code does not have, kept so their numbers stay unused.
+Entries that today's code does not have, or that the owner closed, kept so their numbers stay unused.
+
+7. `stripOwnerTokens` in `services/scrub.ts` length-checks owner tokens before upper-casing them, so a short token with a sharp s (U+00DF, which upper-cases to `SS`) is dropped. Dropped by the owner, 2026-10-18: only affects very short names containing a sharp s.
+32. A sync commits per step (`runSync` in `services/sync.ts`; better-sqlite3 can't hold a transaction across the LLM call), so a failure after the account and transaction upsert leaves those rows committed rather than rolling the whole run back. Closed by the owner, 2026-10-18: the failure is recorded, upserts don't duplicate, and the next sync categorizes what's left.
 
 10. Claim-URL errors: `claimSetupToken` in `providers/bank/simplefin.ts` turns any failure to reach the claim URL (an invalid IPv6 URL included) into a `ProviderError`, and a non-http(s) access URL fails as `UnsupportedProtocol`.
 11. `NaN` and `Infinity` amounts: `decimalToCents` in `providers/bank/simplefin.ts` rejects them as non-numeric.
