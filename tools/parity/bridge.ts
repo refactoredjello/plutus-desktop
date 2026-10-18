@@ -76,6 +76,16 @@ export function bridgePayload(fixture: Json, today: string, mode: BridgeMode, cl
   if (!isObj(first) || !Array.isArray(first.transactions)) throw new Error('fixture account has no transactions')
   const kept = mode === 'ok' ? extras : extras.filter((t) => t.id !== 'PARITY-PENDING')
   first.transactions.push(...kept)
+  // No org (institution_name NULL sorts last in Postgres, first in SQLite unless told) and a
+  // lowercase accented name (byte order puts it after every uppercase name).
+  payload.accounts.push({
+    id: 'PARITY-NO-ORG',
+    name: '\u00e9pargne parity savings',
+    currency: 'usd',
+    balance: '250.00',
+    'balance-date': noon(today, 0),
+    transactions: [{ id: 'PARITY-INTEREST', posted: noon(today, 4), amount: '0.42', description: 'INTEREST PAYMENT' }],
+  })
   payload.errors = mode === 'errors' ? ['Parity: the connection to Example Bank needs attention.'] : []
   return payload
 }

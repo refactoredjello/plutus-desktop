@@ -134,7 +134,7 @@ describe('startBridge', () => {
     const client = new URL(access).username
     const ok = await accounts(access)
     expect(ok.status).toBe(200)
-    expect(((await ok.json()) as Payload).accounts).toHaveLength(2)
+    expect(((await ok.json()) as Payload).accounts).toHaveLength(3)
 
     const bad = new URL(access)
     bad.password = 'wrong'
