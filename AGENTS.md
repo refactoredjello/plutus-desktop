@@ -29,7 +29,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 |---|---|
 | `make check` | Everything CI runs (`npm run check` at the root). Must pass before a change is done. |
 | `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the server, then `schema.d.ts`. A test fails if they're stale. |
-| `make dev` / `make smoke` / `make dist` | The desktop app from source / its smoke check on a throwaway data dir / an unsigned package in `desktop/release/`. |
+| `make dev` / `make smoke` / `make dist` | The desktop app from source / its smoke check on a throwaway data dir / a macOS package in `desktop/release/` (ad hoc signed without a certificate; `desktop/README.md` has signing). |
 | `make dev-server` | Headless server from source on :8000 with reload, serving `web/dist`. |
 | `npm run demo -- load` / `-- clear` (in `server/`) | Fake demo data (295 transactions) through the real sync pipeline into `PLUTUS_DB_PATH` or `PLUTUS_DATA_DIR/plutus.sqlite`; `make demo-data` / `make demo-clear` do the same. |
 | `make help` | The rest. |
@@ -81,6 +81,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
 - Agent file writes can turn `\uXXXX` escapes in source into literal characters (a literal U+2028 broke a regex class). Keep sources ASCII: `LC_ALL=C grep -nP '[^\x00-\x7F]' <file>` finds strays.
 - JS `RegExp` word boundaries and classes (`\b`, `\d`, `\w`) are ASCII-only; `services/scrub.ts` spells out the Unicode-aware patterns bank text needs, and the scrub golden test catches a regression.
+- The server sets a strict Content-Security-Policy on the SPA's HTML (`server/src/app.ts`): no outside scripts, styles, fonts, or connections, in the window or headless.
 - In zsh, unquoted variables don't word-split; loop over query results with a script or `${=var}`.
 
 ## Multi-agent work
@@ -88,5 +89,3 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 An orchestrator session owns `server/src/db/schema.ts`, migrations, Zod schemas, `server/src/app.ts`, root config, and merges; subagents implement briefs in their own worktree and branch, touching only files they own. Role definitions live in `.claude/agents/`. See `docs/AGENT_PLAN.md`.
 
 Open bugs and wanted changes are listed in `docs/BACKLOG.md`; never fix one without the owner's go-ahead.
-
-The remaining desktop-port briefs (packaging, frontend cleanup, removing the old-app importer and references, the documentation pass) are in `docs/DESKTOP_PLAN.md`.
