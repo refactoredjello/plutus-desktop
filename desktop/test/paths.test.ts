@@ -32,6 +32,11 @@ describe('resolvePaths', () => {
       expect(paths.databasePath).toBe(join(userDataPath, 'plutus.sqlite'))
     }
   })
+
+  it('writes the log file under the data directory, so each profile has its own', () => {
+    const paths = resolvePaths({ isPackaged: true, appPath: '/a', resourcesPath: '/r', userDataPath })
+    expect(paths.logFile).toBe(join(userDataPath, 'logs', 'plutus.log'))
+  })
 })
 
 describe('userDataDir', () => {
@@ -43,5 +48,12 @@ describe('userDataDir', () => {
 
   it('is a separate folder in development, so a dev run never migrates the real database', () => {
     expect(userDataDir({ isPackaged: false, appDataPath })).toBe(join(appDataPath, 'Plutus Dev'))
+  })
+
+  it('is the --data-dir folder when one is given, packaged or not', () => {
+    for (const isPackaged of [false, true]) {
+      expect(userDataDir({ isPackaged, appDataPath, dataDir: '/tmp/second-profile' })).toBe('/tmp/second-profile')
+    }
+    expect(userDataDir({ isPackaged: true, appDataPath, dataDir: null })).toBe(join(appDataPath, 'Plutus'))
   })
 })
