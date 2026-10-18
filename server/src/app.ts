@@ -45,6 +45,13 @@ export const OPENAPI_CONFIG = {
 
 export const GUARD_COOKIE = 'plutus_guard'
 
+/** What the routes need from the scheduler (scheduler.ts). */
+export interface AppScheduler {
+  nextRunAt(): string | null
+  /** Re-read the stored config and cancel and re-arm to match it. */
+  reschedule(): void
+}
+
 export interface AppDeps {
   db: Db
   secrets: SecretStore
@@ -52,8 +59,9 @@ export interface AppDeps {
   log?: Logger
   /** The per-launch token for the API guard; random when the guard is on and none is given. */
   guardToken?: string
-  /** The periodic sync, for GET /api/sync/schedule; none when it is not running here. */
-  scheduler?: { nextRunAt(): string | null }
+  /** The periodic sync, for GET /api/sync/schedule and for PUT /api/settings/config to
+   * reschedule; none when it is not running here. */
+  scheduler?: AppScheduler
 }
 
 export interface AppEnv {
@@ -63,7 +71,7 @@ export interface AppEnv {
     config: Config
     log: Logger
     requestId: string
-    scheduler: { nextRunAt(): string | null } | null
+    scheduler: AppScheduler | null
   }
 }
 

@@ -66,6 +66,9 @@ Each entry names the brief that found it and where it lives in the TypeScript po
 
 ## Port behaviour to revisit (not Python bugs; same ask-first rule)
 
-31. The scheduler reads its interval and on/off setting once at start. The desktop can now change them through Settings, but the running scheduler keeps the old values until the app restarts, while `GET /api/sync/schedule` shows the stored ones.
 32. A sync commits per step (better-sqlite3 can't hold a transaction across the LLM call), so a failure after the account and transaction upsert leaves those rows committed where Python rolled the whole run back.
 33. The port clamps a zero or negative sync interval to one second; Python's scheduler would loop forever on a negative one.
+
+## Fixed
+
+31. The scheduler reads its interval and on/off setting once at start. The desktop can now change them through Settings, but the running scheduler keeps the old values until the app restarts, while `GET /api/sync/schedule` shows the stored ones. Fixed in aebc9b3 (brief 5D), owner approved 2026-10-17: the timer reads the stored config each time it arms, and `PUT /api/settings/config` reschedules.
