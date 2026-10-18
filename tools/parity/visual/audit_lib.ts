@@ -174,3 +174,112 @@ export class AuditLog {
     }))
   }
 }
+
+/** One line of the event stream electron_main.mjs writes (events.ndjson). */
+type AuditEvent =
+  | { t: 'route'; path: string }
+  | { t: 'request'; id: number | string; method: string; url: string }
+  | { t: 'response'; id: number | string; status: number; contentType: string | null }
+  | { t: 'finished'; id: number | string }
+  | { t: 'failed'; id: number | string; error: string }
+  | { t: 'console'; level: string; text: string }
+  | { t: 'exception'; text: string }
+  | { t: 'screenshot'; path: string; file: string }
+
+const isHttp = (url: string) => url.startsWith('http://') || url.startsWith('https://')
+const media = (contentType: string | null) => contentType?.split(';')[0]?.trim().toLowerCase() || null
+const BEFORE = '(before the first route)'
+
+/** The per-route log, rebuilt from the Electron event stream. Non-http requests are dropped. */
+export function replayEvents(lines: readonly string[]): RouteAudit[] {
+  const log = new AuditLog()
+  const seen = new Set<string>()
+  let started = false
+  const ensureRoute = () => {
+    if (!started) log.route(BEFORE)
+    started = true
+  }
+  for (const line of lines) {
+    if (line.trim() === '') continue
+    let e: AuditEvent
+    try {
+      e = JSON.parse(line) as AuditEvent
+    } catch {
+      ensureRoute()
+      log.exception(`audit: unreadable event ${line}`)
+      continue
+    }
+    if (e.t === 'route') {
+      log.route(e.path)
+      started = true
+      continue
+    }
+    ensureRoute()
+    const id = 'id' in e ? String(e.id) : ''
+    if (e.t === 'request') {
+      if (!isHttp(e.url)) continue
+      seen.add(id)
+      log.request(id, e.method, e.url)
+    } else if (e.t === 'response') {
+      if (seen.has(id)) log.response(id, e.status, media(e.contentType))
+    } else if (e.t === 'finished') {
+      log.finished(id)
+    } else if (e.t === 'failed') {
+      if (seen.has(id)) log.failed(id, e.error)
+    } else if (e.t === 'console') {
+      log.console(e.level, e.text)
+    } else if (e.t === 'exception') {
+      log.exception(e.text)
+    }
+  }
+  return log.results()
+}
+
+/** The request key of every /api request the pages sent, in order, duplicates kept. */
+export function uiKeys(results: readonly RouteAudit[]): RequestKey[] {
+  return results.flatMap((r) =>
+    r.requests.flatMap((q) => {
+      const k = requestKey(q.method, `http://app${q.url}`)
+      return k === null ? [] : [k]
+    }),
+  )
+}
+
+export function auditExitCode(results: readonly RouteAudit[], gaps: readonly string[]): 0 | 1 {
+  return gaps.length === 0 && results.every((r) => r.problems.length === 0) ? 0 : 1
+}
+
+const tableCell = (text: string) => text.replaceAll('|', '\\|')
+
+/** The audit as markdown: every route's requests, problems, and screenshot, then the gaps. */
+export function renderAudit(
+  results: readonly RouteAudit[],
+  gaps: readonly string[],
+  screenshots: Readonly<Record<string, string>>,
+): string {
+  const lines = ['# Electron request audit', '']
+  const problems = results.reduce((n, r) => n + r.problems.length, 0)
+  lines.push(
+    `${results.length} routes, ${problems} problems, ${gaps.length} coverage gaps. ` +
+      (auditExitCode(results, gaps) === 0 ? 'Clean.' : 'Not clean: exit status 1.'),
+    '',
+  )
+  for (const r of results) {
+    lines.push(`## \`${r.path}\``, '')
+    const shot = screenshots[r.path]
+    if (shot !== undefined) lines.push(`Screenshot: \`${shot}\``, '')
+    lines.push('| Method | Request | Status | Content type |', '|---|---|---|---|')
+    for (const q of r.requests) {
+      const status = q.failed !== undefined ? `failed: ${q.failed}` : q.status === null ? 'no response' : String(q.status)
+      lines.push(`| ${q.method} | \`${tableCell(q.url)}\` | ${tableCell(status)} | ${q.contentType ?? ''} |`)
+    }
+    lines.push('')
+    if (r.problems.length === 0) lines.push('Problems: none.', '')
+    else lines.push('Problems:', '', ...r.problems.map((p) => `- ${p}`), '')
+  }
+  lines.push('## Coverage gaps', '')
+  if (gaps.length === 0) lines.push('Every request the pages sent matches a harness case.')
+  else lines.push('Requests the pages sent that no harness case compares:', '', ...gaps.map((g) => `- \`${g}\``))
+  lines.push('')
+  return lines.join('\n')
+}
