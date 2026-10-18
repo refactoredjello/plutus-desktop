@@ -108,6 +108,9 @@ export function registerSettings(app: App): void {
   })
   app.openapi(updateConfig, (c) => {
     const changes = c.req.valid('json')
-    return c.json(read(config.updateConfig(c.var.db, c.var.secrets, c.var.config.defaults, changes)), 200)
+    const updated = config.updateConfig(c.var.db, c.var.secrets, c.var.config.defaults, changes)
+    // The running scheduler follows the stored interval and on/off switch (backlog 31).
+    c.var.scheduler?.reschedule()
+    return c.json(read(updated), 200)
   })
 }
