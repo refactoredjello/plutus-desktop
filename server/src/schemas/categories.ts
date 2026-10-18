@@ -38,3 +38,15 @@ export const RuleRead = model('RuleRead', {
   created_at: DateTime,
 })
 export type RuleRead = z.infer<typeof RuleRead>
+
+export const RuleCreate = requestModel(
+  'RuleCreate',
+  {
+    match_type: RuleMatchType,
+    pattern: z.string().min(1).max(200), // exact and prefix are upper-cased to match merchant keys
+    category_id: z.int(),
+    essentiality: orNull(Essentiality).optional(),
+  },
+  'A rule, upserted by match type and pattern and applied to existing transactions.',
+)
+export type RuleCreate = z.infer<typeof RuleCreate>

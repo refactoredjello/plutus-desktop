@@ -1532,6 +1532,42 @@
         "title": "RecurringChargeUpdate",
         "type": "object"
       },
+      "RuleCreate": {
+        "additionalProperties": false,
+        "description": "A rule, upserted by match type and pattern and applied to existing transactions.",
+        "properties": {
+          "category_id": {
+            "title": "Category Id",
+            "type": "integer"
+          },
+          "essentiality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Essentiality"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_type": {
+            "$ref": "#/components/schemas/RuleMatchType"
+          },
+          "pattern": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Pattern",
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_type",
+          "pattern",
+          "category_id"
+        ],
+        "title": "RuleCreate",
+        "type": "object"
+      },
       "RuleMatchType": {
         "enum": [
           "exact",
@@ -1901,7 +1937,7 @@
       },
       "TransactionUpdate": {
         "additionalProperties": false,
-        "description": "Manual override. Setting save_as_rule also creates a rule for the merchant key.",
+        "description": "Manual override. Setting save_as_rule also creates a rule; rule_match_type and rule_pattern shape it.",
         "properties": {
           "category_id": {
             "title": "Category Id",
@@ -1938,6 +1974,14 @@
           "rule_match_type": {
             "$ref": "#/components/schemas/RuleMatchType",
             "default": "exact"
+          },
+          "rule_pattern": {
+            "maxLength": 200,
+            "title": "Rule Pattern",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "save_as_rule": {
             "default": false,
@@ -2847,6 +2891,36 @@
           }
         },
         "summary": "List Rules",
+        "tags": [
+          "categories"
+        ]
+      },
+      "post": {
+        "description": "Upserts by match type and pattern, then applies the rule to existing transactions.",
+        "operationId": "create_rule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Rule",
         "tags": [
           "categories"
         ]

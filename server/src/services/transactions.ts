@@ -1,8 +1,9 @@
 /**
  * Transaction queries and manual overrides (R2.1-R2.3).
  *
- * - `fields` holds the fields the client sent (defaults excluded); the route takes it from
- *   the request body's keys.
+ * - `fields` holds the fields the client sent; the route takes it from the request body's keys.
+ *   The rule options (save_as_rule, rule_match_type, rule_pattern) count only when save_as_rule
+ *   is true, so sending their defaults with a note-only edit is still a note-only edit.
  * - Search lowers both sides; SQLite's lower() is ASCII-only, so `q` goes through simple_lower
  *   (categorize.ts).
  * - A column is written only when its value changes, so a row whose values are all unchanged
@@ -13,24 +14,15 @@
 import { type SQL, and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { RuntimeDefaults } from '../config.js'
 import type { Db } from '../db/index.js'
-import {
-  type Essentiality,
-  type EssentialityFilter,
-  type RuleMatchType,
-  categories,
-  categorizations,
-  merchantClassifications,
-  rules,
-  transactions,
-} from '../db/schema.js'
+import { type Essentiality, type EssentialityFilter, categories, categorizations, transactions } from '../db/schema.js'
 import { type PlainDate, utcNow } from '../lib/dates.js'
 import { DomainError, NotFoundError } from '../lib/errors.js'
 import { formatMoney } from '../lib/money.js'
 import type { TransactionRead, TransactionUpdate } from '../schemas/transactions.js'
 import type { SecretStore } from '../secrets.js'
 import { essentialityCondition } from './aggregates.js'
-import { pyStrip } from './categories.js'
-import { applyRule, ensurePgLower, icontains } from './categorize.js'
+import { pyStrip, saveRule } from './categories.js'
+import { ensurePgLower, icontains } from './categorize.js'
 import { runtimeConfig } from './config.js'
 import { merchantKey as scrubMerchantKey } from './scrub.js'
 
@@ -133,6 +125,9 @@ interface OwnerSettings {
   defaults: RuntimeDefaults
 }
 
+/** Fields that only shape the rule save_as_rule creates. */
+const RULE_OPTIONS: ReadonlySet<string> = new Set(['save_as_rule', 'rule_match_type', 'rule_pattern'])
+
 /**
  * Manual override of category and/or essentiality; optionally saved as a rule.
  * `fields` holds the body keys the client sent.
@@ -157,7 +152,8 @@ export function updateTransaction(
 
     const categoryChanges = body.category_id != null || fields.has('essentiality') || body.save_as_rule
     // A note- or one-time-only edit leaves the categorization alone.
-    const onlyNoteOrOneTime = [...fields].every((f) => f === 'note' || f === 'one_time')
+    const counted = [...fields].filter((f) => body.save_as_rule || !RULE_OPTIONS.has(f))
+    const onlyNoteOrOneTime = counted.every((f) => f === 'note' || f === 'one_time')
     if (categoryChanges || !onlyNoteOrOneTime) {
       overrideCategory(db, { secrets, defaults }, { ...tx, ...values }, body, fields)
     }
@@ -206,51 +202,10 @@ function overrideCategory(
       tx.merchant_key ||
       scrubMerchantKey(tx.raw_description, runtimeConfig(db, settings.secrets, settings.defaults).ownerNameTokens)
     if (tx.merchant_key !== key) db.update(transactions).set({ merchant_key: key }).where(eq(transactions.id, tx.id)).run()
-    saveRule(db, key, body.rule_match_type, categoryId, essentiality)
+    const matchType = body.rule_match_type
+    // Contains rules match the raw description, so they default to the payee or the description.
+    const pattern =
+      body.rule_pattern ?? (matchType === 'contains' ? pyStrip(tx.payee ?? '') || tx.raw_description : key)
+    saveRule(db, { match_type: matchType, pattern, category_id: categoryId, essentiality })
   }
-}
-
-function saveRule(
-  db: Db,
-  key: string,
-  matchType: RuleMatchType,
-  categoryId: number,
-  essentiality: Essentiality | null,
-): void {
-  const existing = db
-    .select()
-    .from(rules)
-    .where(and(eq(rules.match_type, matchType), eq(rules.pattern, key)))
-    .get()
-  let rule: typeof rules.$inferSelect
-  if (existing === undefined) {
-    rule = db
-      .insert(rules)
-      .values({ match_type: matchType, pattern: key, category_id: categoryId, essentiality })
-      .returning()
-      .get()
-  } else {
-    const changes = changedValues(existing, { category_id: categoryId, essentiality })
-    rule = Object.keys(changes).length
-      ? db.update(rules).set(changes).where(eq(rules.id, existing.id)).returning().get()
-      : existing
-  }
-
-  const entryValues = {
-    category_id: categoryId,
-    essentiality,
-    confidence: 'very_high' as const,
-    source: 'manual' as const,
-  }
-  const entry = db.select().from(merchantClassifications).where(eq(merchantClassifications.merchant_key, key)).get()
-  if (entry === undefined) {
-    db.insert(merchantClassifications).values({ merchant_key: key, ...entryValues }).run()
-  } else {
-    const changes = changedValues(entry, entryValues)
-    if (Object.keys(changes).length) {
-      db.update(merchantClassifications).set(changes).where(eq(merchantClassifications.merchant_key, key)).run()
-    }
-  }
-
-  applyRule(db, rule)
 }
