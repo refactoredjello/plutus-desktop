@@ -116,6 +116,23 @@ describe('Settings: new rule', () => {
     await waitFor(() => expect(fetches.count).toBeGreaterThan(before))
   })
 
+  it('sends no essentiality after choosing "Not set"', async () => {
+    const bodies = recordRulePosts()
+    const { user, dialog } = await openDialog()
+    await user.type(within(dialog).getByRole('textbox', { name: 'Pattern' }), 'netflix')
+    await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+    await user.click(await screen.findByRole('option', { name: 'TV and movies' }))
+    const essentiality = within(dialog).getByRole('combobox', { name: 'Essentiality' })
+    await user.click(essentiality)
+    await user.click(await screen.findByRole('option', { name: 'Discretionary' }))
+    await user.click(essentiality)
+    await user.click(await screen.findByRole('option', { name: 'Not set' }))
+    expect(essentiality).toHaveTextContent('Not set')
+    await user.click(within(dialog).getByRole('button', { name: 'Create rule' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toEqual({ match_type: 'exact', pattern: 'netflix', category_id: 10 })
+  })
+
   it('leaves essentiality out when not chosen, and shows a server error', async () => {
     const bodies: unknown[] = []
     server.use(

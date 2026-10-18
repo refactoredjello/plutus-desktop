@@ -311,15 +311,23 @@ describe('PATCH /api/transactions/{id}', () => {
     expect((await patch(app, tx.id, { category_id: cat, save_as_rule: true, rule_pattern: '   ' })).status).toBe(400)
   })
 
-  it('a contains rule defaults to the payee, else the raw description (backlog 17)', async () => {
+  it('a contains rule defaults to the payee when the description contains it, else the description (backlog 17)', async () => {
     const { app, db } = makeApp()
     const acct = makeAccount(db)
     const cat = categoryId(db, 'FOOD_AND_DRINK_COFFEE')
     const withPayee = makeTx(db, acct, '-4.00', 'SQ *BLUE BOTTLE COFFEE 1234', '2026-01-10', { payee: 'Blue Bottle' })
-    const without = makeTx(db, acct, '-4.00', 'PAYPAL *RITUAL ROASTERS 5555', '2026-01-10')
-    await patched(app, withPayee.id, { category_id: cat, save_as_rule: true, rule_match_type: 'contains' })
-    await patched(app, without.id, { category_id: cat, save_as_rule: true, rule_match_type: 'contains' })
-    expect(db.select().from(rules).all().map((r) => r.pattern)).toEqual(['Blue Bottle', 'PAYPAL *RITUAL ROASTERS 5555'])
+    const folded = makeTx(db, acct, '-4.00', 'MARKT STRASSE 12', '2026-01-10', { payee: 'Markt Straße' })
+    const elsewhere = makeTx(db, acct, '-4.00', 'PAYPAL *RITUAL ROASTERS 5555', '2026-01-10', { payee: 'Ritual Coffee' })
+    const without = makeTx(db, acct, '-4.00', 'SQ *SIGHTGLASS 9876', '2026-01-10')
+    for (const tx of [withPayee, folded, elsewhere, without]) {
+      await patched(app, tx.id, { category_id: cat, save_as_rule: true, rule_match_type: 'contains' })
+    }
+    expect(db.select().from(rules).all().map((r) => r.pattern)).toEqual([
+      'Blue Bottle',
+      'Markt Straße', // contained under case folding
+      'PAYPAL *RITUAL ROASTERS 5555', // the payee is not in the description
+      'SQ *SIGHTGLASS 9876',
+    ])
   })
 
   it('save_as_rule computes a missing merchant key', async () => {

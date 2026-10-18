@@ -62,6 +62,17 @@ describe('Review queue', () => {
     await waitFor(() => expect(row!.isConnected).toBe(false))
   })
 
+  it('starts a contains rule from the bank description when it does not contain the payee', async () => {
+    const user = userEvent.setup()
+    renderAt('/review')
+    const [row] = (await screen.findAllByText('Amazon')).map((el) => el.closest('tr')!)
+    await user.click(within(row!).getByRole('combobox', { name: /Category for/ }))
+    await user.click(await screen.findByRole('option', { name: 'Groceries' }))
+    await user.click(await within(row!).findByRole('combobox', { name: 'Match type' }))
+    await user.click(await screen.findByRole('option', { name: 'Bank description contains' }))
+    expect(within(row!).getByRole('textbox', { name: 'Pattern' })).toHaveValue('AMZN Mktp US*2K4LM0 AMZN.COM/BILL WA')
+  })
+
   it('filters to uncategorized transactions', async () => {
     const urls: URL[] = []
     server.use(
