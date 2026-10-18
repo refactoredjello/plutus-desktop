@@ -67,7 +67,7 @@ describe('Settings: new rule', () => {
     const bodies: Schemas['RuleCreate'][] = []
     server.use(
       http.post('/api/rules', async ({ request }) => {
-        bodies.push((await request.json()) as Schemas['RuleCreate'])
+        bodies.push((await request.clone().json()) as Schemas['RuleCreate']) // the mock reads the original
         return undefined
       }),
     )
@@ -92,7 +92,7 @@ describe('Settings: new rule', () => {
     const matchType = within(dialog).getByRole('combobox', { name: 'Match type' })
     expect(matchType).toHaveTextContent('Merchant is')
     await user.click(matchType)
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
+    expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual([
       'Merchant is',
       'Merchant starts with',
       'Bank description contains',
