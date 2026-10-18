@@ -25,6 +25,11 @@ export class OsEncryptionUnavailableError extends Error {
 export class SafeStorageSecretStore implements SecretStore {
   readonly #safeStorage: SafeStorageLike
 
+  /** The settings error for an unreadable secret; there is no SECRET_KEY on the desktop. */
+  readonly undecryptableReason =
+    'the encryption key changed or the "Plutus Safe Storage" Keychain item was reset. ' +
+    'Reconnect SimpleFIN, or re-enter the API key, in Settings.'
+
   /** Touches nothing until a secret is used, so launching never prompts for the Keychain. */
   constructor(safeStorage: SafeStorageLike) {
     this.#safeStorage = safeStorage

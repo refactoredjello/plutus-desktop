@@ -10,6 +10,11 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 export interface SecretStore {
   encrypt(plain: string): string
   decrypt(blob: string): string
+  /**
+   * Why a stored secret can't be read and what to do, for the settings error. Defaults to the
+   * headless wording (the secret key changed); the desktop store blames the Keychain.
+   */
+  readonly undecryptableReason?: string
 }
 
 /** The blob cannot be decrypted: wrong key, or not a blob this store wrote. */

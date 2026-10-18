@@ -38,6 +38,7 @@ Overview. The shell asks `GET /api/settings/simplefin` before it opens the windo
 |---|---|
 | Data (database `plutus.sqlite`, Chromium caches) | `~/Library/Application Support/Plutus` |
 | Log file | `~/Library/Application Support/Plutus/logs/plutus.log` (JSON lines; over 5 MB it moves to `plutus.log.1` at the next launch) |
+| Backups | `~/Library/Application Support/Plutus/backups/`: a verified copy made just before each database update, `plutus-<UTC time>-before-<migration>.sqlite`; the newest 5 are kept. A rejected update's database is set aside there as `failed-<UTC time>.sqlite`. |
 | Development runs | `~/Library/Application Support/Plutus Dev`, same layout, so a branch's migrations never touch the installed app's database |
 | Smoke runs | a temp dir, printed as `dataDir` |
 
@@ -52,6 +53,24 @@ single-instance lock in that folder, so two profiles run side by side:
 npx electron . --data-dir /tmp/plutus-try      # development, in desktop/
 "$(sh scripts/packaged-app.sh)" --data-dir /tmp/plutus-try   # the app in release/
 ```
+
+**Restoring a backup by hand** (for example to go back to an older Plutus after an update
+changed the database; the older app refuses data from a newer one):
+
+1. Quit Plutus and make sure it is gone from Activity Monitor.
+2. In the data folder, move `plutus.sqlite`, `plutus.sqlite-wal` and `plutus.sqlite-shm`
+   (whichever exist) into a dated folder. Don't delete them; the `-wal` file can hold recent
+   changes.
+3. Copy the backup you want from `backups/` to `plutus.sqlite`.
+4. Install the matching Plutus version and open it.
+
+Anything changed since that backup is lost; transactions come back at the next SimpleFIN sync.
+Secrets in the backup still decrypt on the same Mac. If Plutus restored a backup itself, its
+dialog names the file.
+
+If Settings says a secret cannot be decrypted, the Keychain item "Plutus Safe Storage" was
+reset or access to it was denied: reconnect SimpleFIN and re-enter API keys in Settings. When
+a new build asks to use that item, choose Always Allow.
 
 Load demo data into a profile with the app closed:
 `PLUTUS_DB_PATH=<folder>/plutus.sqlite npm run demo -- load` in `server/`.
@@ -71,7 +90,8 @@ Load demo data into a profile with the app closed:
 - `src/lib/`: the parts with logic, unit-tested: command-line flags, paths for development and
   packaged builds, the log file, the desktop server config and listener, the first page, the
   per-launch guard token, `SafeStorageSecretStore`, navigation rules,
-  DevTools, signing, and the smoke poller.
+  DevTools, signing, the smoke poller, and the startup error dialog (`startup.ts`: a plain
+  message when `openDb` refused data from a newer Plutus, did not update, or restored a backup).
 - The shell imports the server through its package exports (`plutus-server/app`,
   `plutus-server/db`, ...). At run time they resolve to `server/dist`; the tsconfig
   (`customConditions`) and Vitest (`ssr.resolve.conditions`) add the `plutus-source`

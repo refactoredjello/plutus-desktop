@@ -3,7 +3,8 @@
  * logic (routes stay thin).
  *
  * Encryption goes through the SecretStore. With KeySecretStore the
- * key is derived from PLUTUS_SECRET_KEY, so rotating it invalidates stored secrets.
+ * key is derived from PLUTUS_SECRET_KEY, so rotating it invalidates stored secrets. A store
+ * may explain an unreadable secret itself (undecryptableReason).
  */
 
 import { eq } from 'drizzle-orm'
@@ -15,6 +16,9 @@ import { SecretDecryptError, type SecretStore } from '../secrets.js'
 
 export const SIMPLEFIN_ACCESS_URL = 'simplefin_access_url'
 export const SIMPLEFIN_CONNECTED_AT = 'simplefin_connected_at'
+
+/** The headless server's key is PLUTUS_SECRET_KEY (or SECRET_KEY); wording kept from Python. */
+const HEADLESS_UNDECRYPTABLE = 'SECRET_KEY has changed. Reconnect.'
 
 export function setSetting(
   db: Db,
@@ -44,7 +48,7 @@ export function getSetting(db: Db, secrets: SecretStore, key: string): string | 
   } catch (err) {
     if (err instanceof SecretDecryptError) {
       throw new DomainError(
-        `Stored setting '${key}' cannot be decrypted; SECRET_KEY has changed. Reconnect.`,
+        `Stored setting '${key}' cannot be decrypted; ${secrets.undecryptableReason ?? HEADLESS_UNDECRYPTABLE}`,
       )
     }
     throw err
