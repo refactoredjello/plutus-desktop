@@ -62,6 +62,16 @@ describe('bridgePayload', () => {
     expect(p.accounts[1]?.transactions).toEqual([])
   })
 
+  it('adds an account without an institution and with a lowercase accented name', () => {
+    const p = bridgePayload(FIXTURE, TODAY, 'ok', CLOCK) as Payload
+    expect(p.accounts).toHaveLength(3)
+    const extra = p.accounts[2] as unknown as { id: string; name: string; org?: unknown; transactions: unknown[] }
+    expect(extra.id).toBe('PARITY-NO-ORG')
+    expect(extra.org).toBeUndefined()
+    expect(extra.name).toBe('\u00e9pargne parity savings')
+    expect(extra.transactions).toHaveLength(1)
+  })
+
   it('reports a bridge error and leaves out one pending row in errors mode', () => {
     const p = bridgePayload(FIXTURE, TODAY, 'errors', CLOCK) as Payload
     expect(p.errors).toHaveLength(1)
