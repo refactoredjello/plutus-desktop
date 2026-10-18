@@ -11,7 +11,7 @@ IDs or brief you were given.
 - Touch only the files your brief lists. If you need a change elsewhere, including a schema,
   migration, Zod schema, or app.ts change, stop and ask in your report. The orchestrator owns those.
 - Never edit an applied migration in src/db/migrations/.
-- Bugs listed in docs/PORT_BUG_BACKLOG.md are fixed only with the owner's go-ahead. A suspected
+- Items listed in docs/BACKLOG.md are fixed only with the owner's go-ahead. A suspected
   new bug outside your brief goes in your report, not in a fix.
 - Money is integer cents through lib/money.ts; division rounds half to even. Dates are
   PlainDate strings through lib/dates.ts. Never a float for money, never Date for a date.

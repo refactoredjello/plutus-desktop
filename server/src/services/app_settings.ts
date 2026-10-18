@@ -68,7 +68,7 @@ export function simplefinStatus(db: Db, secrets: SecretStore): SimpleFINStatus {
   const stamp = getSetting(db, secrets, SIMPLEFIN_CONNECTED_AT)
   return {
     connected: connected !== null,
-    // datetime.fromisoformat then serialization: the same instant, in the server's format.
+    // Any ISO stamp, written back as the same instant in the server's format.
     connected_at: connected !== null && stamp ? new Date(stamp).toISOString() : null,
   }
 }
