@@ -1,6 +1,8 @@
 /**
  * Open the SQLite database: pragmas, migrations, and the category seed. Migrations run at app
- * start because a desktop has no release step.
+ * start because a desktop has no release step, so openDb guards them (safety.ts): refuse data
+ * newer than the app, back up before migrating, migrate with foreign keys off, check, and
+ * restore the backup if the checks fail.
  */
 
 import { mkdirSync, readFileSync } from 'node:fs'
@@ -9,7 +11,26 @@ import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
 import { type BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import {
+  DatabaseOpenError,
+  backupBeforeMigrating,
+  bundledMigrations,
+  guardSchema,
+  hasData,
+  pendingMigrations,
+  postMigrationProblems,
+  recordAppVersion,
+  restoreBackup,
+} from './safety.js'
 import * as schema from './schema.js'
+
+export {
+  APP_VERSION,
+  DatabaseOpenError,
+  type DatabaseOpenErrorKind,
+  KEEP_BACKUPS,
+  LAST_APP_VERSION_KEY,
+} from './safety.js'
 
 export type Db = BetterSQLite3Database<typeof schema> & { $client: Database.Database }
 
@@ -18,6 +39,8 @@ export const MIGRATIONS_FOLDER = fileURLToPath(new URL('./migrations', import.me
 export interface OpenDbOptions {
   /** Where the drizzle-kit migrations and seed live; packaged apps may relocate them. */
   migrationsFolder?: string
+  /** Where pre-migration backups go; defaults to `backups/` beside the database file. */
+  backupDir?: string
 }
 
 interface SeedCategory {
@@ -46,16 +69,92 @@ export function seedCategories(db: Db, migrationsFolder = MIGRATIONS_FOLDER): vo
   })
 }
 
+function isFilePath(path: string): boolean {
+  return path !== '' && path !== ':memory:' && !path.startsWith('file:')
+}
+
+/**
+ * Open, guard, back up, migrate, check, and seed. Throws a DatabaseOpenError, with the
+ * connection closed, when the data is newer than the app, the backup fails, the migration
+ * fails, or the checks after it fail; in the last case the backup has been restored.
+ * Backups are only for a database file that already has tables and pending migrations.
+ */
 export function openDb(path: string, options: OpenDbOptions = {}): Db {
   const migrationsFolder = options.migrationsFolder ?? MIGRATIONS_FOLDER
-  if (path !== ':memory:' && !path.startsWith('file:')) {
-    mkdirSync(dirname(path), { recursive: true })
-  }
+  const isFile = isFilePath(path)
+  if (isFile) mkdirSync(dirname(path), { recursive: true })
+  const backupDir = options.backupDir ?? join(dirname(path), 'backups')
   const client = new Database(path)
-  client.pragma('journal_mode = WAL')
-  client.pragma('foreign_keys = ON')
-  const db = drizzle({ client, schema })
-  migrate(db, { migrationsFolder })
-  seedCategories(db, migrationsFolder)
-  return db
+  try {
+    client.pragma('journal_mode = WAL')
+    // Off while migrating, outside any transaction: SQLite ignores this pragma inside one, and
+    // with it on, a table rebuild's DROP TABLE cascades into the child tables.
+    client.pragma('foreign_keys = OFF')
+    const bundled = bundledMigrations(migrationsFolder)
+    guardSchema(client, bundled)
+    const next = pendingMigrations(client, bundled)[0]
+    const backupPath =
+      next !== undefined && isFile && hasData(client)
+        ? backupBeforeMigrating(client, path, backupDir, next.tag)
+        : null
+
+    const db = drizzle({ client, schema })
+    if (next !== undefined) {
+      try {
+        migrate(db, { migrationsFolder })
+      } catch (err) {
+        throw new DatabaseOpenError(
+          'migration_failed',
+          `Plutus could not update your data to this version (${String(err)}). ` +
+            'Your data has not been changed. Reinstall the previous version of Plutus.',
+          { backupPath, cause: err },
+        )
+      }
+      const problems = postMigrationProblems(client)
+      if (problems.length > 0) failChecks(client, path, backupPath, backupDir, problems)
+    }
+    client.pragma('foreign_keys = ON')
+    seedCategories(db, migrationsFolder)
+    if (isFile) recordAppVersion(client)
+    return db
+  } catch (err) {
+    if (client.open) client.close()
+    throw err
+  }
+}
+
+/** The checks after migrating failed: put the backup back, or say there was none. */
+function failChecks(
+  client: Database.Database,
+  path: string,
+  backupPath: string | null,
+  backupDir: string,
+  problems: string[],
+): never {
+  const found = problems.join('; ')
+  client.close()
+  if (backupPath === null) {
+    throw new DatabaseOpenError(
+      'migration_failed',
+      `Updating the database left it inconsistent (${found}), and there was no backup to restore.`,
+    )
+  }
+  let failedPath: string
+  try {
+    failedPath = restoreBackup(path, backupPath, backupDir)
+  } catch (err) {
+    throw new DatabaseOpenError(
+      'migration_failed',
+      `Updating your data failed its checks (${found}), and restoring the backup also failed ` +
+        `(${String(err)}). Your data from before the update is in ${backupPath}; copy it to ${path} by hand.`,
+      { backupPath, cause: err },
+    )
+  }
+  throw new DatabaseOpenError(
+    'restored',
+    `Updating your data failed its checks (${found}), so Plutus restored the backup it made just ` +
+      `before. Nothing was lost. The backup is ${backupPath}; the rejected copy is ${failedPath}. ` +
+      'Reinstall the previous version of Plutus.',
+    { backupPath },
+  )
 }
