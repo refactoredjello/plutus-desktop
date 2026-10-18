@@ -12,11 +12,6 @@ Grouped by the change that carries them; the entries below keep their full descr
 
 - **Rule builder:** 35, with 15, 16, 17, 18 and 20.
 - **Transfer matching and Unpair:** 36 (stricter pairing and an Unpair action), closing 21.
-- **Local "today":** 38, with 24.
-- **Balance history:** 37.
-- **Recurring detection:** 5, with 3.
-- **What changed:** 28.
-- **Sync interval from the environment:** 33.
 
 Everything else stays open for later.
 
@@ -39,9 +34,7 @@ Everything else stays open for later.
 
 1. Changing a charge's cadence can set its next expected date in the past. `updateRecurring` in `services/recurring.ts` steps once from the last seen date, unlike `markRecurring`, which rolls forward past today. Wanted: keep stepping by the new cadence until the date is after today, with a test for a charge last seen more than one period ago.
 2. Semimonthly `nthOccurrence(anchor, n = 0)` in `services/schedule.ts` isn't always the anchor: an anchor on the 28th to 30th of a long month moves to the month's last day. `occurrences` and the projection inherit it.
-3. `detectRecurring` in `services/recurring.ts` can count one row as two changes when it refreshes dates and fills essentiality in the same run.
 4. `detectRecurring` never updates a stored charge's cadence, even when the detected cadence differs.
-5. For a charge detection can't confirm (for example a hand-marked yearly fee), the fallback in `detectRecurring` refreshes the dates but not the amount, so a renewal at a new price keeps the old amount.
 
 ## Scrubbing
 
@@ -62,22 +55,17 @@ Everything else stays open for later.
 
 22. A goal that is already reached can show "not on track" when recent monthly net is negative: `computeProgress` in `services/goals.ts` compares the recent average with the required monthly saving even when nothing is left to save.
 23. Marking one occurrence of a recurring planned entry as paid hides all its future occurrences: `project` in `services/projection.ts` drops every entry with a `fulfilled_transaction_id`.
-37. Balance history includes pending transactions and invents history. `balanceHistory` in `services/reports.ts` walks back from the latest snapshot by daily sums that include pending transactions (the ledger balance usually excludes them), and draws a flat line back to the start of the window (180 days) even before the account's first transaction or snapshot. Wanted: sum posted transactions only, and start each account's series at its earliest transaction or snapshot when that is later than the window's start.
-38. The server's "today" is the UTC date. `today()` in `server/src/lib/dates.ts` rolls over at UTC midnight, so on the last evening of a month in US time zones the server's reports, projection, and "What changed" treat the next month as current and the current one as complete. The web app's helpers (`web/src/lib/dates.ts`) already use local time, so for those hours the two disagree. Wanted: the server's "today" in the machine's local zone (or a time zone setting).
 
 ## What changed
 
-24. S9 in `services/changes.ts` uses `project`, which reads the real "today", not the `today` passed to `compute`, so computing for another day gives an S9 for the wrong day.
 25. `merchantLabel` in `services/changes.ts` orders by `posted_on desc` with no tiebreak, so with two payees on the same day the label is arbitrary.
 26. S4 (`s4CategoryAbove`) builds "usual" from the span between the first and last active month, so inactive months in between are included; this matters only when a month's spending nets to zero.
 27. S7 (`s7ReviewBacklog`) takes its "biggest" item from at most `REVIEW_SCAN_LIMIT` (500) of the newest review rows, while its total counts every row.
-28. S5's "seen before" (`s5NewMerchants`) and S6's "similar before" (`seenSimilarBefore`) count pending and transfer transactions.
 
 ## Sync and scheduler
 
 29. A scheduled sync that fires more than a second late is skipped and pushed a full interval later (`MISFIRE_GRACE_SECONDS` in `server/src/scheduler.ts`). On a laptop that sleeps this skips due syncs.
 30. Jitter is added to the previous jittered run time (`server/src/scheduler.ts`), so the schedule drifts by about a minute per interval.
-33. The scheduler clamps a zero or negative interval to one second (`clampedInterval` in `server/src/scheduler.ts`). Settings rejects an interval under one hour, but `SYNC_INTERVAL_HOURS` seeds any integer from the environment on first run, so a bad seed syncs every second until the daily request guard refuses.
 
 ## Closed without a change
 
@@ -93,3 +81,10 @@ Entries that today's code does not have, or that the owner closed, kept so their
 ## Fixed
 
 31. The scheduler read its interval and on/off setting once at start, so Settings changes waited for a restart while `GET /api/sync/schedule` showed the stored values. Fixed in aebc9b3, owner approved 2026-10-17: the timer reads the stored config each time it arms, and `PUT /api/settings/config` reschedules.
+38. The server's "today" is the UTC date. `today()` in `server/src/lib/dates.ts` rolls over at UTC midnight, so on the last evening of a month in US time zones the server's reports, projection, and "What changed" treat the next month as current and the current one as complete. The web app's helpers (`web/src/lib/dates.ts`) already use local time, so for those hours the two disagree. Wanted: the server's "today" in the machine's local zone (or a time zone setting). Fixed 2026-10-18, owner approved: the server's today is the machine's local date (lib/dates.ts), tests pin TZ.
+24. S9 in `services/changes.ts` uses `project`, which reads the real "today", not the `today` passed to `compute`, so computing for another day gives an S9 for the wrong day. Fixed 2026-10-18, owner approved: S9 projects from the day passed to compute.
+5. For a charge detection can't confirm (for example a hand-marked yearly fee), the fallback in `detectRecurring` refreshes the dates but not the amount, so a renewal at a new price keeps the old amount. Fixed 2026-10-18, owner approved: a hand-marked charge takes the latest amount when it shows up again.
+3. `detectRecurring` in `services/recurring.ts` can count one row as two changes when it refreshes dates and fills essentiality in the same run. Fixed 2026-10-18, owner approved: each recurrence counts once per detection run.
+37. Balance history includes pending transactions and invents history. `balanceHistory` in `services/reports.ts` walks back from the latest snapshot by daily sums that include pending transactions (the ledger balance usually excludes them), and draws a flat line back to the start of the window (180 days) even before the account's first transaction or snapshot. Wanted: sum posted transactions only, and start each account's series at its earliest transaction or snapshot when that is later than the window's start. Fixed 2026-10-18, owner approved: balance history sums posted transactions only and starts each account at its first data.
+33. The scheduler clamps a zero or negative interval to one second (`clampedInterval` in `server/src/scheduler.ts`). Settings rejects an interval under one hour, but `SYNC_INTERVAL_HOURS` seeds any integer from the environment on first run, so a bad seed syncs every second until the daily request guard refuses. Fixed 2026-10-18, owner approved: SYNC_INTERVAL_HOURS and SYNC_FIRST_HISTORY_DAYS must be integers of at least 1, or startup fails with a ConfigError.
+28. S5's "seen before" (`s5NewMerchants`) and S6's "similar before" (`seenSimilarBefore`) count pending and transfer transactions. Fixed 2026-10-18, owner approved: seen before and similar before count only posted, non-transfer rows.

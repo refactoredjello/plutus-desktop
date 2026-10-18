@@ -123,7 +123,8 @@ it('balances reconstruct from latest snapshot', async () => {
     '2026-10-12': '1000.00',
     '2026-10-13': '1000.00',
   })
-  expect(series.Card?.['2026-10-10']).toBe('-700.00')
+  // The card's first transaction is on 10-11: no invented history before it.
+  expect(Object.keys(series.Card ?? {})).toEqual(['2026-10-11', '2026-10-12', '2026-10-13'])
   expect(series.Card?.['2026-10-11']).toBe('-800.00')
   expect(series.Card?.['2026-10-12']).toBe('-500.00')
   expect(series.Card?.['2026-10-13']).toBe('-500.00')
@@ -132,6 +133,7 @@ it('balances reconstruct from latest snapshot', async () => {
 it('balances default to 180 days ending today', async () => {
   const { app, db } = makeApp()
   const chk = makeAccount(db)
+  snapshot(db, chk.id, '90.00', '2025-01-01') // the account predates the window
   snapshot(db, chk.id, '100.00', TODAY)
   const points = (await getJson(app, '/api/reports/balances'))[0].points
   expect(points).toHaveLength(181)
@@ -151,6 +153,7 @@ it('balances: start after end is an empty list', async () => {
 it('balances: an inactive account has no series; a lone start counts back from today', async () => {
   const { app, db } = makeApp()
   const chk = makeAccount(db, 'checking', 'Open')
+  snapshot(db, chk.id, '90.00', '2026-03-01') // the account predates the window
   snapshot(db, chk.id, '100.00', TODAY)
   const closed = makeAccount(db, 'savings', 'Closed')
   snapshot(db, closed.id, '5.00', TODAY)
@@ -167,6 +170,70 @@ it('balances: an inactive account has no series; a lone start counts back from t
       ],
     },
   ])
+})
+
+function pointsByName(body: { name: string; points: { on: string; balance: string }[] }[]) {
+  return Object.fromEntries(body.map((s) => [s.name, s.points.map((p) => [p.on, p.balance])]))
+}
+
+it('balances: an account opened mid-window starts at its first transaction', async () => {
+  const { app, db } = makeApp()
+  const acct = makeAccount(db, 'savings', 'New')
+  makeTx(db, acct, '500.00', 'OPENING DEPOSIT', '2026-03-10')
+  makeTx(db, acct, '-50.00', undefined, '2026-03-12')
+  snapshot(db, acct.id, '450.00', '2026-03-13')
+  const body = await getJson(app, '/api/reports/balances?start=2026-03-01&end=2026-03-15')
+  expect(pointsByName(body)).toEqual({
+    New: [
+      ['2026-03-10', '500.00'],
+      ['2026-03-11', '500.00'],
+      ['2026-03-12', '450.00'],
+      ['2026-03-13', '450.00'],
+      ['2026-03-14', '450.00'],
+      ['2026-03-15', '450.00'],
+    ],
+  })
+})
+
+it('balances: pending transactions are not walked back from the snapshot', async () => {
+  const { app, db } = makeApp()
+  const chk = makeAccount(db, 'checking', 'Checking')
+  snapshot(db, chk.id, '90.00', '2026-03-01')
+  snapshot(db, chk.id, '100.00', TODAY)
+  makeTx(db, chk, '-20.00', undefined, TODAY)
+  makeTx(db, chk, '-5.00', 'PENDING CHARGE', TODAY, { pending: true })
+  makeTx(db, chk, '-7.00', 'OLD PENDING', '2026-03-14', { pending: true })
+  const body = await getJson(app, '/api/reports/balances?start=2026-03-13&end=2026-03-15')
+  expect(pointsByName(body)).toEqual({
+    Checking: [
+      ['2026-03-13', '120.00'],
+      ['2026-03-14', '120.00'],
+      ['2026-03-15', '100.00'],
+    ],
+  })
+})
+
+it('balances: an account with only a snapshot starts on the snapshot day', async () => {
+  const { app, db } = makeApp()
+  const acct = makeAccount(db, 'other', 'Brokerage')
+  snapshot(db, acct.id, '2500.00', '2026-03-12')
+  const body = await getJson(app, '/api/reports/balances')
+  expect(pointsByName(body)).toEqual({
+    Brokerage: [
+      ['2026-03-12', '2500.00'],
+      ['2026-03-13', '2500.00'],
+      ['2026-03-14', '2500.00'],
+      ['2026-03-15', '2500.00'],
+    ],
+  })
+})
+
+it('balances: an account that starts after the window has no series', async () => {
+  const { app, db } = makeApp()
+  const acct = makeAccount(db, 'checking', 'Later')
+  makeTx(db, acct, '10.00', undefined, '2026-03-12')
+  snapshot(db, acct.id, '10.00', TODAY)
+  expect(await getJson(app, '/api/reports/balances?start=2026-03-01&end=2026-03-11')).toEqual([])
 })
 
 it('monthly: defaults to 12 months and enforces 1..60', async () => {

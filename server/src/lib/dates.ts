@@ -75,13 +75,14 @@ function fromDayNumber(n: number): PlainDate {
 }
 
 /**
- * The one place "today" comes from: PLUTUS_TODAY when set, else the UTC date. Tests pin it
- * with PLUTUS_TODAY.
+ * The one place "today" comes from: PLUTUS_TODAY when set (read at call time), else the
+ * machine's local date, as the web app's helpers use. Tests pin it with PLUTUS_TODAY.
  */
 export function today(): PlainDate {
   const pinned = process.env.PLUTUS_TODAY
   if (pinned) return plainDate(pinned)
-  return plainDate(new Date().toISOString().slice(0, 10))
+  const now = new Date()
+  return fromParts(now.getFullYear(), now.getMonth() + 1, now.getDate())
 }
 
 /** The current instant as an ISO 8601 UTC timestamp, the format stored for timestamps. */

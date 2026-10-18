@@ -39,12 +39,36 @@ describe('plainDate', () => {
 })
 
 describe('today', () => {
-  it('returns the UTC date when PLUTUS_TODAY is unset', () => {
+  // The machine's local date (backlog item 38). TZ is pinned per test so results are deterministic.
+  const originalTz = process.env.TZ
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ
+    else process.env.TZ = originalTz
+  })
+
+  it('returns the local date, not the UTC date, on the evening before UTC midnight', () => {
     vi.stubEnv('PLUTUS_TODAY', '')
+    process.env.TZ = 'America/New_York'
     vi.useFakeTimers()
-    // 23:30 on the 14th in New York is already the 15th in UTC.
-    vi.setSystemTime(new Date('2026-03-15T03:30:00Z'))
+    // 21:00 on Oct 31 in New York (EDT, UTC-4) is already Nov 1 in UTC.
+    vi.setSystemTime(new Date('2026-11-01T01:00:00Z'))
+    expect(today()).toBe('2026-10-31')
+  })
+
+  it('returns the local date when the zone is ahead of UTC', () => {
+    vi.stubEnv('PLUTUS_TODAY', '')
+    process.env.TZ = 'Asia/Tokyo'
+    vi.useFakeTimers()
+    // 20:00 UTC on Mar 14 is 05:00 on Mar 15 in Tokyo.
+    vi.setSystemTime(new Date('2026-03-14T20:00:00Z'))
     expect(today()).toBe('2026-03-15')
+  })
+
+  it('reads PLUTUS_TODAY at call time', () => {
+    vi.stubEnv('PLUTUS_TODAY', '2026-01-31')
+    expect(today()).toBe('2026-01-31')
+    vi.stubEnv('PLUTUS_TODAY', '2026-02-01')
+    expect(today()).toBe('2026-02-01')
   })
 
   it('returns PLUTUS_TODAY when set', () => {

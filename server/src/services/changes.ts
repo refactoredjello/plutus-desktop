@@ -459,6 +459,7 @@ function s4CategoryAbove(db: Db, month: MonthKey, used: readonly MonthTotals[], 
   return items
 }
 
+/** Large expenses at merchants with no posted, non-transfer row before this month. */
 function s5NewMerchants(db: Db, month: MonthKey): [Item[], Set<string>] {
   const [start, end] = monthBounds(month)
   const txs = transactionsByIds(db, expenseIds(db, start, end, NEW_MERCHANT_MIN))
@@ -470,7 +471,14 @@ function s5NewMerchants(db: Db, month: MonthKey): [Item[], Set<string>] {
       : db
           .selectDistinct({ key: transactions.merchant_key })
           .from(transactions)
-          .where(and(inArray(transactions.merchant_key, keys), lt(transactions.posted_on, start)))
+          .where(
+            and(
+              inArray(transactions.merchant_key, keys),
+              lt(transactions.posted_on, start),
+              eq(transactions.pending, false),
+              eq(transactions.is_transfer, false),
+            ),
+          )
           .all()
           .map((r) => r.key),
   )
@@ -535,7 +543,7 @@ function s6LargeExpenses(
   return items
 }
 
-/** Same merchant charged within 15% of this amount in the ~3 months before this month. */
+/** Same merchant charged within 15% of this amount in the ~3 months before this month (posted, non-transfer rows only). */
 function seenSimilarBefore(db: Db, t: Transaction, monthStart: PlainDate): boolean {
   if (!t.merchant_key) return false
   // amount * (1 -/+ 0.15), in hundredths of a cent: compared with amount * 100.
@@ -551,6 +559,8 @@ function seenSimilarBefore(db: Db, t: Transaction, monthStart: PlainDate): boole
         eq(transactions.merchant_key, t.merchant_key),
         sql`${transactions.posted_on} >= ${addDays(monthStart, -SIMILAR_LOOKBACK_DAYS)}`,
         lt(transactions.posted_on, monthStart),
+        eq(transactions.pending, false),
+        eq(transactions.is_transfer, false),
         sql`${transactions.amount} * ${pd} between ${low} and ${high}`,
       ),
     )
@@ -611,8 +621,8 @@ function s8DiscretionaryPace(db: Db, current: MonthTotals, used: readonly MonthT
   ]
 }
 
-function s9ProjectionNegative(db: Db, month: MonthKey): Item[] {
-  const endBalance = (project(db, 1).months[0] as { projected_end_balance: Cents }).projected_end_balance
+function s9ProjectionNegative(db: Db, month: MonthKey, today: PlainDate): Item[] {
+  const endBalance = (project(db, 1, today).months[0] as { projected_end_balance: Cents }).projected_end_balance
   if (endBalance >= 0) return []
   // "Only when the previous projection was not" needs history we don't store; the
   // month in the key means one dismissal holds for the month (see PR notes).
@@ -655,7 +665,7 @@ export function compute(db: Db, today: PlainDate, { includeAll = false }: { incl
     ...s6LargeExpenses(db, month, today, s5Merchants, recurringKeys),
     ...s7ReviewBacklog(db),
     ...s8DiscretionaryPace(db, current, used, day, month),
-    ...s9ProjectionNegative(db, month),
+    ...s9ProjectionNegative(db, month, today),
   ]
   const dismissed = new Set(
     db
