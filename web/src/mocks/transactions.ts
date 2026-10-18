@@ -115,4 +115,16 @@ export const transactionHandlers = [
     }
     return HttpResponse.json<Txn>(txn)
   }),
+  http.post('/api/transactions/:id/unpair', ({ params }) => {
+    const txn = transactions.find((t) => t.id === Number(params.id))
+    if (!txn) return HttpResponse.json({ title: 'Not Found', status: 404, detail: 'Transaction not found' }, { status: 404 })
+    if (!txn.is_transfer) {
+      return HttpResponse.json({ title: 'Bad Request', status: 400, detail: `Transaction ${txn.id} is not a transfer` }, { status: 400 })
+    }
+    txn.is_transfer = false
+    if (txn.categorization?.category_id === byDetailed('TRANSFER_OUT_ACCOUNT_TRANSFER') && txn.categorization.source === 'rule') {
+      txn.categorization = null
+    }
+    return HttpResponse.json<Txn>(txn)
+  }),
 ]
