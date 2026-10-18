@@ -1,15 +1,13 @@
 /**
- * Ports api/tests/test_sync_routes.py: the sync routes. Its SimpleFIN settings tests
- * (test_simplefin_status_connect_disconnect, test_connect_with_bad_token_is_502) live in
- * test/settings_routes.test.ts and test_accounts_empty in test/accounts.test.ts.
+ * The sync routes. The SimpleFIN settings tests live in test/settings_routes.test.ts and the
+ * empty accounts list in test/accounts.test.ts.
  *
- * Python's mocked_simplefin swapped the HTTP client for one that answers the claim with
- * ACCESS_URL and /accounts with the fixture. Here the claim is the settings route's hook and
- * the provider's fetch is the global fetch, stubbed. FastAPI's TestClient ran background tasks
- * before returning; here the test awaits `backgroundSyncsSettled()` instead.
+ * The claim is the settings route's hook, answering with ACCESS_URL, and the provider's fetch
+ * is the global fetch, stubbed to answer /accounts with the fixture. A test awaits
+ * `backgroundSyncsSettled()` for the run POST /api/sync starts.
  *
- * The last block is not in Python: the 202 answers before the run finishes, and the detached
- * run records its own failure.
+ * The last block: the 202 answers before the run finishes, and the detached run records its
+ * own failure.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -48,12 +46,12 @@ async function connect(): Promise<void> {
   expect(r.status, await r.clone().text()).toBe(200)
 }
 
-describe('sync routes (test_sync_routes.py)', () => {
-  it('test_sync_requires_connection', async () => {
+describe('sync routes', () => {
+  it('sync requires connection', async () => {
     expect((await post('/api/sync')).status).toBe(400)
   })
 
-  it('test_sync_happy_path_and_runs', async () => {
+  it('sync happy path and runs', async () => {
     await connect()
     const r = await post('/api/sync')
     expect(r.status).toBe(202)
@@ -78,14 +76,14 @@ describe('sync routes (test_sync_routes.py)', () => {
     expect(visa?.balance_as_of).toBeTruthy()
   })
 
-  it('test_sync_conflict_when_running', async () => {
+  it('sync conflict when running', async () => {
     await connect()
     sync.startRun(ctx.db, new KeySecretStore(ctx.config.secretKey), ctx.config.defaults, 'simplefin', 'manual')
     const r = await post('/api/sync')
     expect(r.status).toBe(409)
   })
 
-  it('test_run_not_found', async () => {
+  it('run not found', async () => {
     expect((await ctx.app.request('/api/sync/runs/999999')).status).toBe(404)
   })
 })

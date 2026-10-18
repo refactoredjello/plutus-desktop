@@ -1,4 +1,4 @@
-/** Ports api/tests/test_transfers.py. */
+/** Internal transfer matching. */
 
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -22,7 +22,7 @@ function reload(tx: Transaction): Transaction {
   return row
 }
 
-describe('match_transfers (test_transfers.py)', () => {
+describe('matchTransfers', () => {
   it('pairs the fixture card payments and savings transfers', () => {
     const loaded = loadSimplefinFixture(db)
     const marked = matchTransfers(db)

@@ -1,6 +1,6 @@
 /**
- * Ports api/tests/test_category_routes.py. test_llm_status lives in settings_routes.test.ts
- * (brief 1E), with the settings routes it exercises.
+ * Category and rule routes. The LLM status test lives in settings_routes.test.ts, with the
+ * settings routes it exercises.
  */
 
 import { eq } from 'drizzle-orm'
@@ -17,7 +17,7 @@ function send(method: string, body?: unknown): RequestInit {
     : { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }
 }
 
-describe('categories (test_category_routes.py)', () => {
+describe('categories', () => {
   it('hides hidden categories by default', async () => {
     const { app, db } = makeApp()
     const all = (await (await app.request('/api/categories')).json()) as Body[]

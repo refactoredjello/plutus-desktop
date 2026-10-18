@@ -1,8 +1,6 @@
 /**
- * GET /api/accounts. Ports the accounts assertions of api/tests/test_sync_routes.py
- * (test_accounts_empty, and the account fields test_sync_happy_path checks after a sync, here
- * with rows inserted directly), plus the ordering and latest-snapshot rules of
- * api/app/routers/accounts.py, which no Python test pins.
+ * GET /api/accounts: an empty list, the account fields after a sync (rows inserted directly),
+ * the ordering, and the latest-snapshot rule.
  */
 
 import { eq } from 'drizzle-orm'
@@ -30,12 +28,12 @@ async function list(app: ReturnType<typeof makeApp>['app']): Promise<any[]> {
   return (await r.json()) as any[]
 }
 
-it('test_accounts_empty', async () => {
+it('accounts empty', async () => {
   const { app } = makeApp()
   expect(await list(app)).toEqual([])
 })
 
-it('shows each account with its latest snapshot (test_sync_happy_path fields)', async () => {
+it('shows each account with its latest snapshot (the fields a sync fills)', async () => {
   const { app, db } = makeApp()
   const visa = makeAccount(db, 'credit', 'Rewards Visa')
   snapshot(db, visa.id, '-800.00', '2026-03-01T12:00:00.000Z', '7200.00')
@@ -79,7 +77,7 @@ it('a same-instant tie picks the later snapshot id', async () => {
   expect((await list(app)).map((a) => a.balance)).toEqual(['2.00'])
 })
 
-it('orders by institution name (no institution last, as Postgres sorts NULLs), name, then id', async () => {
+it('orders by institution name (no institution last), name, then id', async () => {
   const { app, db } = makeApp()
   const setInstitution = (id: number, name: string) =>
     db.update(accounts).set({ institution_name: name }).where(eq(accounts.id, id)).run()

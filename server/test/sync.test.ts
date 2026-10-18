@@ -1,13 +1,12 @@
 /**
- * Ports api/tests/test_sync.py.
+ * SimpleFIN sync runs.
  *
- * Python passed `Settings(secret_key=...)`; here the history window comes from the config
- * service, so the calls take the secret store and the config defaults that seed it (180 days,
- * as in Python). The provider's fetch is async, so run_sync is too.
+ * The history window comes from the config service, so the calls take the secret store and
+ * the config defaults that seed it (180 days). The provider's fetch is async, so runSync is
+ * too.
  *
- * The block after the port is not in Python: it pins what the port had to spell out (the
- * pipeline steps after the upsert, the request count, the error text, the clock the window
- * reads) and the detached background run that FastAPI's BackgroundTasks used to own.
+ * The later blocks pin the pipeline steps after the upsert, the request count, the error text,
+ * the clock the window reads, the detached background run, and the demo loader.
  */
 
 import { count, eq } from 'drizzle-orm'
@@ -133,8 +132,8 @@ function insertRun(values: Partial<typeof syncRuns.$inferInsert> & { started_at:
     .get()
 }
 
-describe('sync (test_sync.py)', () => {
-  it('test_first_and_second_sync_with_fixture', async () => {
+describe('sync', () => {
+  it('first and second sync with fixture', async () => {
     const provider = new SimpleFINProvider(ACCESS_URL, mockFetch())
     const run1 = await run(provider)
     expect(run1.status).toBe('success')
@@ -153,7 +152,7 @@ describe('sync (test_sync.py)', () => {
     expect(rows(balanceSnapshots)).toBe(6)
   })
 
-  it('test_window_first_run_and_overlap', async () => {
+  it('window first run and overlap', async () => {
     const provider = new FakeProvider(snap(), snap())
     const first = await run(provider)
     const [start, end] = provider.windows[0] as [PlainDate, PlainDate]
@@ -164,14 +163,14 @@ describe('sync (test_sync.py)', () => {
     expect(start2).toBe(dateBefore(first.started_at, 5))
   })
 
-  it('test_changed_field_counts_as_update', async () => {
+  it('changed field counts as update', async () => {
     const provider = new FakeProvider(snap([tx('T1')]), snap([tx('T1', { amount: '-6.00' })]))
     await run(provider)
     const second = await run(provider)
     expect([second.added, second.updated]).toEqual([0, 1])
   })
 
-  it('test_pending_posts_in_place_and_with_new_id', async () => {
+  it('pending posts in place and with new id', async () => {
     // Posted today: a stale pending row is only dropped inside the second run's overlap window.
     const today = new Date().toISOString().slice(0, 10) as PlainDate
     const provider = new FakeProvider(
@@ -187,7 +186,7 @@ describe('sync (test_sync.py)', () => {
     expect([second.added, second.updated]).toEqual([1, 1])
   })
 
-  it('test_provider_errors_mark_run_error_and_keep_pending', async () => {
+  it('provider errors mark run error and keep pending', async () => {
     const provider = new FakeProvider(snap([tx('P1', { pending: true })]), snap([], ['Bank needs attention']))
     await run(provider)
     const second = await run(provider)
@@ -197,7 +196,7 @@ describe('sync (test_sync.py)', () => {
     expect(rows(transactions)).toBe(1)
   })
 
-  it('test_provider_exception_marks_run_error', async () => {
+  it('provider exception marks run error', async () => {
     const boom: BankProvider = {
       name: 'simplefin',
       fetch: async () => {
@@ -211,14 +210,14 @@ describe('sync (test_sync.py)', () => {
     expect(result.finished_at).not.toBeNull()
   })
 
-  it('test_guard_refuses_concurrent_run', async () => {
+  it('guard refuses concurrent run', async () => {
     sync.startRun(db, secrets, defaults, 'simplefin', 'manual')
     const attempt = run(new FakeProvider(snap()))
     await expect(attempt).rejects.toBeInstanceOf(ConflictError)
     await expect(attempt).rejects.toThrow(/already running/)
   })
 
-  it('test_guard_refuses_over_daily_budget', async () => {
+  it('guard refuses over daily budget', async () => {
     const now = Date.now()
     insertRun({
       started_at: new Date(now - 5 * 60_000).toISOString(),
@@ -232,14 +231,14 @@ describe('sync (test_sync.py)', () => {
     await expect(attempt).rejects.toThrow(/budget/)
   })
 
-  it('test_old_runs_do_not_count_toward_budget', async () => {
+  it('old runs do not count toward budget', async () => {
     const old = ago(30 * 3_600_000)
     for (let i = 0; i < 25; i++) insertRun({ started_at: old })
     const result = await run(new FakeProvider(snap()))
     expect(result.status).toBe('success')
   })
 
-  it('test_encryption_round_trip_and_not_plaintext', () => {
+  it('encryption round trip and not plaintext', () => {
     appSettingsService.setSetting(db, secrets, appSettingsService.SIMPLEFIN_ACCESS_URL, ACCESS_URL, { encrypt: true })
     const row = db.select().from(appSettings).where(eq(appSettings.key, appSettingsService.SIMPLEFIN_ACCESS_URL)).get()
     expect(row).toBeDefined()
@@ -254,13 +253,13 @@ describe('sync (test_sync.py)', () => {
     expect(appSettingsService.getSetting(db, secrets, appSettingsService.SIMPLEFIN_ACCESS_URL)).toBeNull()
   })
 
-  it('test_build_provider_requires_connection', () => {
+  it('build provider requires connection', () => {
     expect(() => sync.buildProvider(db, secrets)).toThrow(sync.NotConnectedError)
     appSettingsService.setSetting(db, secrets, appSettingsService.SIMPLEFIN_ACCESS_URL, ACCESS_URL, { encrypt: true })
     expect(sync.buildProvider(db, secrets).name).toBe('simplefin')
   })
 
-  it('test_stale_running_run_is_recovered', async () => {
+  it('stale running run is recovered', async () => {
     const stale = insertRun({ status: 'running', started_at: ago((sync.STALE_RUN_MINUTES + 5) * 60_000) })
     const result = await run(new FakeProvider(snap()))
     expect(result.status).toBe('success')
@@ -271,7 +270,7 @@ describe('sync (test_sync.py)', () => {
     expect(after?.error_text?.startsWith('Interrupted')).toBe(true)
   })
 
-  it('test_fresh_running_run_still_blocks', async () => {
+  it('fresh running run still blocks', async () => {
     insertRun({ status: 'running', started_at: ago(60_000) })
     const attempt = run(new FakeProvider(snap()))
     await expect(attempt).rejects.toBeInstanceOf(ConflictError)
@@ -310,7 +309,7 @@ describe('sync: what the port spells out', () => {
     expect(result.error_text).toBe('SimpleFIN returned HTTP 500.')
   })
 
-  it("other errors read like Python's repr(exc), cut to 2000 characters", async () => {
+  it('other errors read as Name(\'message\'), cut to 2000 characters', async () => {
     const fail = (message: string): BankProvider => ({
       name: 'simplefin',
       fetch: async () => {
@@ -420,7 +419,7 @@ describe('sync: the manual run and its background half', () => {
   })
 })
 
-describe('demo loader (app/demo.py)', () => {
+describe('demo loader', () => {
   it('load syncs the fixture through the real pipeline under provider demo', async () => {
     expect(await demo.load(db, secrets, defaults)).toEqual(['demo sync success: added 295, updated 0'])
     expect(db.select().from(accounts).all().map((a) => a.provider)).toEqual(['demo', 'demo', 'demo'])

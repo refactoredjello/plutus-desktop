@@ -1,7 +1,6 @@
 /**
- * Ports api/tests/test_aggregates.py. The tests under "beyond test_aggregates.py" pin the
- * aggregates functions the Python suite only reaches through projection, goals, and changes
- * (other briefs' tests), read off the docstrings in api/app/services/aggregates.py.
+ * The shared aggregates. The tests under "other aggregates" pin functions that the other
+ * suites only reach through projection, goals, and changes.
  */
 
 import { eq } from 'drizzle-orm'
@@ -45,11 +44,11 @@ function snapshot(db: Db, accountId: number, balance: string, asOf: string): voi
   db.insert(balanceSnapshots).values({ account_id: accountId, balance: m(balance), as_of: asOf }).run()
 }
 
-it('test_month_range_crosses_year_boundary', () => {
+it('month range crosses year boundary', () => {
   expect(monthRange(d8('2026-02-15'), 4)).toEqual(['2025-11', '2025-12', '2026-01', '2026-02'])
 })
 
-it('test_monthly_totals_definitions', () => {
+it('monthly totals definitions', () => {
   const db = makeDb()
   const chk = makeAccount(db, 'checking')
   const sav = makeAccount(db, 'savings')
@@ -79,7 +78,7 @@ it('test_monthly_totals_definitions', () => {
   expect(mar?.net).toBe(m('999.50'))
 })
 
-it('test_category_totals', () => {
+it('category totals', () => {
   const db = makeDb()
   const chk = makeAccount(db)
   for (const [day, amount] of [
@@ -104,7 +103,7 @@ it('test_category_totals', () => {
   expect(rows[2]?.category_id).toBeNull()
 })
 
-it('test_current_total_balance_uses_latest_snapshot_of_active_accounts', () => {
+it('current total balance uses latest snapshot of active accounts', () => {
   const db = makeDb()
   const chk = makeAccount(db, 'checking')
   const cc = makeAccount(db, 'credit')
@@ -119,7 +118,7 @@ it('test_current_total_balance_uses_latest_snapshot_of_active_accounts', () => {
   expect(currentTotalBalance(db)).toBe(m('210.00'))
 })
 
-it('test_category_totals_filtered_by_essentiality', () => {
+it('category totals filtered by essentiality', () => {
   const db = makeDb()
   const chk = makeAccount(db)
   const d = '2026-05-03'
@@ -138,7 +137,7 @@ it('test_category_totals_filtered_by_essentiality', () => {
   expect(labels('unset')).toEqual(['Gifts and novelties', 'Uncategorized'])
 })
 
-it('test_money_movement_excluded_and_deposits_are_income', () => {
+it('money movement excluded and deposits are income', () => {
   const db = makeDb()
   const chk = makeAccount(db, 'checking')
   const d = '2026-06-10'
@@ -162,7 +161,7 @@ it('test_money_movement_excluded_and_deposits_are_income', () => {
   expect(labels).not.toContain('Savings')
 })
 
-describe('beyond test_aggregates.py', () => {
+describe('other aggregates', () => {
   it('keeps INCOME_PRIMARIES and MONEY_MOVEMENT unchanged', () => {
     expect(INCOME_PRIMARIES).toEqual(['INCOME', 'TRANSFER_IN'])
     expect(MONEY_MOVEMENT).toEqual([

@@ -1,7 +1,6 @@
 /**
- * Test harness. Ports api/tests/conftest.py: where Python migrated one Postgres database and
- * rolled each test back, every test here gets its own in-memory SQLite database, migrated and
- * seeded, so there is nothing to roll back.
+ * Test harness. Every test gets its own in-memory SQLite database, migrated and seeded, so
+ * there is nothing to roll back.
  */
 
 import { fileURLToPath } from 'node:url'
@@ -18,7 +17,7 @@ export function makeDb(): Db {
   return openDb(':memory:')
 }
 
-/** Test config: like conftest.py's environment, with no web build to serve. */
+/** Test config: the test environment, with no web build to serve. */
 export function testConfig(overrides: Partial<Config> = {}): Config {
   return {
     ...loadConfig({

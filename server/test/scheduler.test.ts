@@ -1,8 +1,7 @@
 /**
- * Ports api/tests/test_scheduler.py, then tests the timer that replaces APScheduler (plan 5.8):
- * a setTimeout chain that keeps the job's settings in app/scheduler.py (an interval job with
- * 120 s of jitter, coalesce, one instance at a time) and APScheduler's defaults that shaped
- * what ran (a one-second misfire grace, jitter added to the previous jittered run time).
+ * The scheduler: firstRunAt, then the setTimeout chain (an interval job with 120 s of jitter,
+ * coalesce, one instance at a time, a one-second misfire grace, and jitter added to the
+ * previous jittered run time).
  *
  * Fake timers fake Date too, so the scheduler's default clock follows them.
  */
@@ -39,13 +38,13 @@ const secrets = new KeySecretStore(config.secretKey)
 
 const at = (ms: number) => new Date(ms).toISOString()
 
-describe('first_run_at (test_scheduler.py)', () => {
-  it('test_first_run_keeps_cadence_after_restart', () => {
+describe('firstRunAt', () => {
+  it('first run keeps cadence after restart', () => {
     const last = new Date(NOW.getTime() - 2 * HOUR)
     expect(firstRunAt(last, SIX_HOURS, NOW)).toEqual(new Date(last.getTime() + SIX_HOURS))
   })
 
-  it('test_first_run_soon_when_overdue_or_never_synced', () => {
+  it('first run soon when overdue or never synced', () => {
     expect(firstRunAt(new Date(NOW.getTime() - 9 * HOUR), SIX_HOURS, NOW)).toEqual(new Date(NOW.getTime() + 2 * MINUTE))
     expect(firstRunAt(null, SIX_HOURS, NOW)).toEqual(new Date(NOW.getTime() + 2 * MINUTE))
   })
@@ -62,7 +61,7 @@ describe('GET /api/sync/schedule', () => {
     })
   }
 
-  it('test_schedule_endpoint', async () => {
+  it('schedule endpoint', async () => {
     const app = appWith({ nextRunAt: () => at(NOW.getTime() + SIX_HOURS), reschedule: () => {} })
     const body = (await (await app.request('/api/sync/schedule')).json()) as Record<string, unknown>
     expect(body.interval_hours).toBe(6)
@@ -139,7 +138,7 @@ describe('scheduler timer', () => {
 
     await vi.advanceTimersByTimeAsync(second - Date.now())
     expect(job).toHaveBeenCalledTimes(2)
-    // APScheduler adds the interval to the previous jittered run time, so jitter accumulates.
+    // The interval is added to the previous jittered run time, so jitter accumulates.
     expect(s.nextRunAt()).toBe(at(second + SIX_HOURS + 0.5 * JITTER_SECONDS * 1000))
   })
 

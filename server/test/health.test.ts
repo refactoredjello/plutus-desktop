@@ -1,4 +1,4 @@
-/** Port of api/tests/test_health.py. */
+/** GET /api/health. */
 
 import { describe, expect, it } from 'vitest'
 import { makeApp } from './setup.js'
@@ -28,7 +28,7 @@ describe('health', () => {
     }
   })
 
-  // Not in test_health.py; covers the except branch of routers/health.py.
+  // The database check fails.
   it('reports degraded when the database is unreachable', async () => {
     const { app, db } = makeApp()
     db.$client.close()

@@ -1,10 +1,9 @@
 /**
- * Settings routes. Ports test_sync_routes.py::test_simplefin_status_connect_disconnect and
- * ::test_connect_with_bad_token_is_502, and test_category_routes.py::test_llm_status; adds the
- * new GET/PUT /api/settings/config contract (plan 5.7) and the privacy guarantees: the access
+ * Settings routes: SimpleFIN status, connect (a bad token is 502), and disconnect; the LLM
+ * status; the GET/PUT /api/settings/config contract; and the privacy guarantees: the access
  * URL and the API key are never returned and never logged.
  *
- * SimpleFIN's claim is swapped for a fake, like Python's mocked_simplefin: it decodes the token
+ * SimpleFIN's claim is swapped for a fake: it decodes the token
  * and answers with ACCESS_URL. test/wiring.test.ts covers the real claim's default.
  */
 
@@ -63,7 +62,7 @@ function appWith(defaults: Partial<RuntimeDefaults> = {}) {
   return makeApp({ config: { ...config, defaults: { ...config.defaults, ...defaults } } })
 }
 
-describe('SimpleFIN connection (test_sync_routes.py)', () => {
+describe('SimpleFIN connection', () => {
   it('reports status, connects, and disconnects', async () => {
     const { app } = makeApp()
     expect(await body(await app.request('/api/settings/simplefin'))).toEqual({
@@ -100,7 +99,7 @@ describe('SimpleFIN connection (test_sync_routes.py)', () => {
   })
 })
 
-describe('GET /api/settings/llm (test_category_routes.py::test_llm_status)', () => {
+describe('GET /api/settings/llm', () => {
   const llmStatus = async (defaults: Partial<RuntimeDefaults>) =>
     body(await appWith(defaults).app.request('/api/settings/llm'))
 

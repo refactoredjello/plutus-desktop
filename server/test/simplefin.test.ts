@@ -1,7 +1,6 @@
 /**
- * Port of api/tests/test_simplefin.py, plus cases for the behaviour the brief names (45-day
- * chunks, request counting, no retries, the pending rule, the access URL never logged) read
- * off api/app/providers/bank/simplefin.py.
+ * The SimpleFIN adapter: claiming a setup token, fetching in 45-day chunks, request counting,
+ * no retries, the pending rule, field normalisation, and the access URL never logged.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -47,7 +46,7 @@ describe('claimSetupToken', () => {
     expect(error.detail).toMatch(/403/)
   })
 
-  it('uses the same messages as the Python app', async () => {
+  it('explains a bad setup token in plain words', async () => {
     expect((await rejection(claimSetupToken('!!!not base64!!!', mockFetch()))).detail).toBe(
       'The SimpleFIN setup token is not valid base64.',
     )
@@ -93,7 +92,7 @@ describe('claimSetupToken', () => {
     await rejection(claimSetupToken('tök', mockFetch()))
   })
 
-  it('does not follow redirects, as httpx does not', async () => {
+  it('does not follow redirects', async () => {
     const seen: Request[] = []
     await claimSetupToken(makeToken(), mockFetch(() => new Response(ACCESS_URL), seen))
     expect(seen[0]?.redirect).toBe('manual')
@@ -262,7 +261,7 @@ describe('requests', () => {
     expect(down.requestsMade).toBe(1)
   })
 
-  it('reports a timeout by the httpx exception name', async () => {
+  it('reports a timeout as ReadTimeout', async () => {
     const slow = new SimpleFINProvider(
       ACCESS_URL,
       mockFetch(() => {
@@ -274,7 +273,7 @@ describe('requests', () => {
     )
   })
 
-  it('does not follow redirects, as httpx does not', async () => {
+  it('does not follow redirects', async () => {
     const requests: Request[] = []
     await new SimpleFINProvider(ACCESS_URL, mockFetch(undefined, requests)).fetch(d('2026-09-01'), d('2026-09-01'))
     expect((requests[0] as Request).redirect).toBe('manual')
@@ -354,7 +353,7 @@ describe('parsing', () => {
     expect(chunked.accounts[0]?.transactions[0]?.posted_on).toBe('2026-02-14')
   })
 
-  it('normalises account fields like the Python adapter', async () => {
+  it('normalises account fields', async () => {
     const snap = await fetchOne({
       accounts: [
         account([], { currency: 'usdollars', 'available-balance': '' }),
@@ -367,12 +366,12 @@ describe('parsing', () => {
     expect(a?.balance_as_of).toBe('2026-09-30T12:00:00.000Z')
     expect(b).toMatchObject({ name: 'ACT-2', type: 'other', currency: 'USD', institution_name: 'bank.example', available: null })
     expect(c?.institution_name).toBeNull()
-    // NUMERIC(14,2) rounds extra places half away from zero when the sync stores the value.
+    // Extra places round half away from zero (stored amounts' rule).
     expect(c?.balance).toBe(1235)
     expect(Date.parse(c?.balance_as_of ?? '')).toBeGreaterThan(Date.UTC(2026, 0, 1))
   })
 
-  it('normalises transaction fields like the Python adapter', async () => {
+  it('normalises transaction fields', async () => {
     const snap = await fetchOne({
       accounts: [
         account([
@@ -388,7 +387,7 @@ describe('parsing', () => {
     expect(t3).toMatchObject({ amount: 0, description: '', pending: false })
   })
 
-  it('rejects a non-numeric amount with the Python message', async () => {
+  it('rejects a non-numeric amount, quoting the value', async () => {
     const bad = fetchOne({ accounts: [account([{ id: 'T1', posted: 1790769600, amount: 'abc' }])] })
     expect((await rejection(bad)).detail).toBe("SimpleFIN returned a non-numeric amount: 'abc'")
     const missing = fetchOne({ accounts: [account([{ id: 'T1', posted: 1790769600, amount: null }])] })

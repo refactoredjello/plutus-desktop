@@ -30,15 +30,14 @@ describe('parseMoney', () => {
     expect(parseMoney(text)).toBe(expected)
   })
 
-  // NUMERIC(14,2) in Postgres rounds extra digits half away from zero on insert;
-  // the parsed value is what the Python app would have stored.
+  // Extra digits round half away from zero (stored amounts' rule).
   it.each([
     ['1.005', 101],
     ['1.004', 100],
     ['-1.005', -101],
     ['2.675', 268],
     ['0.125', 13],
-  ])('rounds %j to two places like NUMERIC(14,2): %d', (text, expected) => {
+  ])('rounds %j to two places, half away from zero: %d', (text, expected) => {
     expect(parseMoney(text)).toBe(expected)
   })
 
@@ -101,7 +100,7 @@ describe('divHalfEven', () => {
     [20, 3, 7],
     [-10, 3, -3],
     [-20, 3, -7],
-    // ties go to the even neighbour, like Decimal.quantize(ROUND_HALF_EVEN)
+    // ties go to the even neighbour
     [5, 2, 2],
     [7, 2, 4],
     [15, 10, 2],

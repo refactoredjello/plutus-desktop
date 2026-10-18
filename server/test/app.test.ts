@@ -1,6 +1,6 @@
 /**
- * createApp: the parts of app/main.py and app/errors.py that are not routes, plus serving the
- * SPA (web/nginx.conf) and the API guard (plan section 5.9).
+ * createApp: the parts that are not routes (error handling, request ids, the OpenAPI
+ * document), serving the SPA, and the API guard.
  */
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
@@ -81,7 +81,7 @@ describe('error handler (register_error_handlers)', () => {
     expect(await res.json()).toEqual({ limit: 50 })
   })
 
-  it('answers unknown API paths with a JSON 404 like FastAPI', async () => {
+  it('answers unknown API paths with a JSON 404', async () => {
     const res = await app.request('/api/nope')
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ detail: 'Not Found' })
@@ -172,7 +172,7 @@ describe('SPA static handler (web/nginx.conf)', () => {
   })
 })
 
-describe('API guard (plan 5.9)', () => {
+describe('API guard', () => {
   let dist: string
 
   beforeAll(() => {
@@ -230,7 +230,7 @@ describe('API guard (plan 5.9)', () => {
 })
 
 describe('OpenAPI document', () => {
-  it('describes the API like FastAPI did', () => {
+  it('describes the API as OpenAPI 3.1 with its title and version', () => {
     const doc = openApiDocument(makeApp().app)
     expect(doc.openapi).toBe('3.1.0')
     expect(doc.info).toEqual({ title: 'Plutus API', version: '0.1.0' })
@@ -243,7 +243,7 @@ describe('OpenAPI document', () => {
   })
 })
 
-describe('a required JSON body that is missing (FastAPI: 422 at body)', () => {
+describe('a required JSON body that is missing (422 at body)', () => {
   const send = (method: string, path: string) => makeApp().app.request(path, { method })
 
   it.each([

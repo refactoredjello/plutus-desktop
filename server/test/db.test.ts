@@ -1,6 +1,6 @@
 /**
- * The SQLite schema must match the final state of the Alembic migrations (0001 to 0006) and the
- * SQLAlchemy models, so a Postgres export imports without renaming (plan section 5.4).
+ * The SQLite schema: tables, columns and their order, nullability, keys, foreign keys,
+ * defaults, and the category seed.
  */
 
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
@@ -15,7 +15,7 @@ import { FIXTURES, makeDb } from './setup.js'
 
 type Col = [name: string, notNull: boolean]
 
-// Final column lists, in Postgres column order, with NOT NULL as in the migrations.
+// Column lists in column order, with NOT NULL as in the migrations.
 const TABLES: Record<string, { pk: string[]; columns: Col[] }> = {
   accounts: {
     pk: ['id'],
@@ -253,7 +253,7 @@ describe('schema', () => {
   const db = makeDb()
   const raw = db.$client
 
-  it('has exactly the fourteen Python tables', () => {
+  it('has exactly the fourteen tables', () => {
     const names = raw
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__drizzle%' ORDER BY name",
@@ -263,7 +263,7 @@ describe('schema', () => {
     expect(names).toEqual(Object.keys(TABLES).sort())
   })
 
-  it.each(Object.entries(TABLES))('%s has the Python columns, nullability and key', (table, spec) => {
+  it.each(Object.entries(TABLES))('%s has its columns, nullability and key', (table, spec) => {
     const info = raw.prepare(`PRAGMA table_info("${table}")`).all() as ColumnInfo[]
     expect(info.map((c) => [c.name, c.notnull === 1 || c.pk > 0])).toEqual(spec.columns)
     const pk = info
@@ -309,7 +309,7 @@ describe('schema', () => {
     expect(all.filter((n) => !expected.includes(n))).toEqual([])
   })
 
-  it('has the Python foreign keys and ON DELETE behaviour', () => {
+  it('has its foreign keys and ON DELETE behaviour', () => {
     const found: [string, string, string, string][] = []
     for (const table of Object.keys(TABLES)) {
       const fks = raw.prepare(`PRAGMA foreign_key_list("${table}")`).all() as {
@@ -377,7 +377,7 @@ describe('openDb', () => {
     again.$client.close()
   })
 
-  it('applies Python client-side defaults and server timestamps in ISO UTC', () => {
+  it('applies application defaults and SQL timestamps in ISO UTC', () => {
     const db = makeDb()
     const row = db.insert(accounts).values({ provider: 'test', external_id: 'A1', name: 'Acct' }).returning().get()
     expect(row.type).toBe('other')
@@ -408,7 +408,7 @@ describe('openDb', () => {
     expect(row?.updated_at).toBe('2026-02-03T04:05:06.789Z')
   })
 
-  it('never reuses an id after the newest row is deleted, like a Postgres sequence', () => {
+  it('never reuses an id after the newest row is deleted', () => {
     const db = makeDb()
     const a = db.insert(accounts).values({ provider: 'test', external_id: 'A1', name: 'A' }).returning().get()
     db.delete(accounts).where(eq(accounts.id, a.id)).run()
@@ -430,7 +430,7 @@ describe('money column', () => {
   })
 })
 
-/** Port of label_for in api/alembic/versions/0002_seed_categories.py. */
+/** The seed's labelling rule, written out independently: FOOD_AND_DRINK_COFFEE -> 'Coffee'. */
 const ACRONYMS: Record<string, string> = { Tv: 'TV', Atm: 'ATM' }
 const capitalize = (w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
 function labelFor(primary: string, detailed: string): string {
@@ -474,16 +474,16 @@ function readCsv(text: string): Record<string, string>[] {
   return body.map((r) => Object.fromEntries(header.map((h, i) => [h, r[i] ?? ''])))
 }
 
-describe('category seed (alembic 0002)', () => {
+describe('category seed', () => {
   const csv = readCsv(readFileSync(join(FIXTURES, 'plaid_pfc_v2.csv'), 'utf8'))
 
-  it('has as many rows as the Python migration inserts', () => {
+  it('has one row per taxonomy row', () => {
     const db = makeDb()
     expect(csv).toHaveLength(127)
     expect(db.$client.prepare('SELECT count(*) FROM categories').pluck().get()).toBe(csv.length)
   })
 
-  it('matches the Python migration row for row, ids in CSV order', () => {
+  it('matches the taxonomy row for row, ids in CSV order', () => {
     const db = makeDb()
     const rows = db.select().from(categories).orderBy(categories.id).all()
     expect(rows).toEqual(

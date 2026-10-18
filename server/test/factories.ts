@@ -1,6 +1,6 @@
 /**
- * Helpers that insert accounts and transactions directly, without the sync service.
- * Ports api/tests/factories.py and api/tests/simplefin_helpers.py.
+ * Helpers that insert accounts and transactions directly, without the sync service, and
+ * build SimpleFIN fixtures.
  */
 
 import { readFileSync } from 'node:fs'
@@ -22,7 +22,7 @@ export const OWNER_TOKENS = ['ALEX', 'SAMPLE']
 const TYPES: Record<string, AccountType> = { chk: 'checking', cc: 'credit', sav: 'savings' }
 let counter = 0
 
-/** settings_with_owner(): the fake owner's name tokens and the fake LLM. */
+/** A config with the fake owner's name tokens and the fake LLM. */
 export function settingsWithOwner(): Config {
   const config = testConfig()
   return { ...config, defaults: { ...config.defaults, ownerNameTokens: OWNER_TOKENS, llmProvider: 'fake' } }
@@ -33,7 +33,7 @@ export function makeAccount(db: Db, type: AccountType = 'checking', name = 'Acct
   return db.insert(accounts).values({ provider: 'test', external_id: `A${counter}`, name, type }).returning().get()
 }
 
-/** make_tx: `amount` is a decimal string, as Decimal(amount) in Python; `extra` is **kwargs. */
+/** `amount` is a decimal string; `extra` overrides any column. */
 export function makeTx(
   db: Db,
   account: Account,
@@ -85,7 +85,7 @@ export interface SimpleFINPayload {
   accounts: SimpleFINAccount[]
 }
 
-/** simplefin_helpers.load_fixture: the fake SimpleFIN /accounts response. */
+/** The fake SimpleFIN /accounts response. */
 export function loadFixture(): SimpleFINPayload {
   return JSON.parse(readFileSync(join(FIXTURES, 'simplefin_accounts.json'), 'utf8')) as SimpleFINPayload
 }
@@ -120,7 +120,7 @@ export function categoryId(db: Db, detailed: string): number {
   return rows[0].id
 }
 
-// simplefin_helpers.py
+// SimpleFIN helpers
 
 export const ACCESS_URL = 'https://user123:pass456@bridge.example/simplefin'
 

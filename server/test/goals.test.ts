@@ -1,4 +1,4 @@
-/** Ports api/tests/test_goals.py. */
+/** Savings goals and their progress. */
 
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

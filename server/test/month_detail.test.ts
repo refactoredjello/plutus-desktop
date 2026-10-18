@@ -1,8 +1,8 @@
 /**
- * Ports api/tests/test_month_detail.py, plus the float ratios (`share`, `savings_rate`), which
- * Python computes as round(float(Decimal / Decimal), 4): half to even on the double's exact
- * value. JavaScript's toFixed and Math.round round those ties up, so the cases below are
- * chosen where the two disagree (0.03125 is 0.0312 in Python, 0.0313 with toFixed).
+ * The month detail report, plus the float ratios (`share`, `savings_rate`): the exact
+ * quotient as a double, rounded to 4 decimals half to even on the double's exact value.
+ * JavaScript's toFixed and Math.round round those ties up, so the cases below are chosen
+ * where the two disagree (0.03125 is 0.0312 here, 0.0313 with toFixed).
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -22,7 +22,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-/** tests.test_aggregates.categorize. */
+/** Categorize a transaction directly, as the aggregates tests do. */
 function categorize(db: Db, txId: number, detailed: string, ess: Essentiality | null = null): void {
   db.insert(categorizations)
     .values({
@@ -75,7 +75,7 @@ async function detail(app: ReturnType<typeof makeApp>['app'], month: string): Pr
   return r.json()
 }
 
-it('test_month_detail_totals_averages_and_breakdown', async () => {
+it('month detail totals averages and breakdown', async () => {
   const { app, db } = makeApp()
   seed(db)
   const d = await detail(app, '2026-09')
@@ -105,7 +105,7 @@ it('test_month_detail_totals_averages_and_breakdown', async () => {
   expect(d.review_count).toBe(1)
 })
 
-it('test_current_month_is_in_progress', async () => {
+it('current month is in progress', async () => {
   const { app, db } = makeApp()
   seed(db)
   const d = await detail(app, '2026-10')
@@ -115,7 +115,7 @@ it('test_current_month_is_in_progress', async () => {
   expect(d.average_months).toBe(3)
 })
 
-it('test_no_history_means_no_averages', async () => {
+it('no history means no averages', async () => {
   const { app } = makeApp()
   const d = await detail(app, '2026-09')
   expect(d.average_months).toBe(0)
@@ -123,14 +123,14 @@ it('test_no_history_means_no_averages', async () => {
   expect(d.savings_rate).toBeNull()
 })
 
-it('test_future_and_invalid_months_rejected', async () => {
+it('future and invalid months rejected', async () => {
   const { app } = makeApp()
   expect((await app.request('/api/reports/month/2026-11')).status).toBe(400)
   expect((await app.request('/api/reports/month/2026-13')).status).toBe(400)
   expect((await app.request('/api/reports/month/sept')).status).toBe(422)
 })
 
-describe('beyond test_month_detail.py', () => {
+describe('month detail details', () => {
   it('serializes the largest expenses as TransactionRead, categorization included', async () => {
     const { app, db } = makeApp()
     seed(db)
@@ -172,7 +172,7 @@ describe('beyond test_month_detail.py', () => {
     expect(mystery.categorization).toBeNull()
   })
 
-  it('rounds shares half to even on the float, as Python round() does', async () => {
+  it('rounds shares half to even on the float', async () => {
     const { app, db } = makeApp()
     const chk = makeAccount(db)
     const pay = makeTx(db, chk, '64.00', 'PAY', '2026-09-01')
@@ -229,7 +229,7 @@ describe('beyond test_month_detail.py', () => {
     expect(d.savings_rate_average).toBeNull()
   })
 
-  it('roundedRatio: Decimal quotient, float, then round(x, 4)', () => {
+  it('roundedRatio: 28-digit quotient, then double, then 4 decimals', () => {
     const r = (a: number, b: number) => roundedRatio(cents(a), cents(b))
     expect(r(100, 3200)).toBe(0.0312)
     expect(r(-100, 3200)).toBe(-0.0312)
