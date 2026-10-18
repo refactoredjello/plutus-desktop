@@ -26,6 +26,7 @@ describe('initialPath', () => {
       webDist,
       dataDir: '/data',
       databasePath: ':memory:',
+      backupDir: '/data/backups',
       logFile: '/data/logs/plutus.log',
     })
     running = await startServer({ db, secrets, config, log: silentLogger(), guardToken: token })

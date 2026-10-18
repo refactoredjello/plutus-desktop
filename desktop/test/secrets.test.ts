@@ -1,4 +1,6 @@
+import { openDb } from 'plutus-server/db'
 import { KeySecretStore, SecretDecryptError } from 'plutus-server/secrets'
+import { SIMPLEFIN_ACCESS_URL, getSetting, setSetting } from 'plutus-server/settings'
 import { describe, expect, it, vi } from 'vitest'
 import { type SafeStorageLike, SafeStorageSecretStore } from '../src/lib/secrets.js'
 
@@ -89,5 +91,26 @@ describe('SafeStorageSecretStore', () => {
     }
     expect(message).not.toBe('')
     expect(message).not.toContain('bridge.example.test')
+  })
+
+  it('explains an unreadable secret as a Keychain change, not a SECRET_KEY change', () => {
+    const db = openDb(':memory:')
+    setSetting(db, new SafeStorageSecretStore(fakeSafeStorage()), SIMPLEFIN_ACCESS_URL, accessUrl, { encrypt: true })
+    const reset = fakeSafeStorage()
+    reset.decryptString.mockImplementation(() => {
+      throw new Error('Error while decrypting the ciphertext provided to safeStorage.decryptString.')
+    })
+    let message = ''
+    try {
+      getSetting(db, new SafeStorageSecretStore(reset), SIMPLEFIN_ACCESS_URL)
+    } catch (err) {
+      message = (err as Error).message
+    }
+    expect(message).toMatch(/cannot be decrypted/)
+    expect(message).toMatch(/encryption key changed|Keychain/)
+    expect(message).toMatch(/reconnect SimpleFIN/i)
+    expect(message).toMatch(/Settings/)
+    expect(message).not.toMatch(/SECRET_KEY/)
+    db.$client.close()
   })
 })

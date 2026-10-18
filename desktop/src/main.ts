@@ -37,6 +37,7 @@ import { resolvePaths, userDataDir } from './lib/paths.js'
 import { SafeStorageSecretStore } from './lib/secrets.js'
 import { type RunningServer, desktopConfig, startServer } from './lib/server.js'
 import { pollUntil } from './lib/smoke.js'
+import { startupDialog } from './lib/startup.js'
 
 const SMOKE = process.env.PLUTUS_SMOKE === '1'
 const SMOKE_TIMEOUT_MS = 30_000
@@ -70,6 +71,7 @@ let server: RunningServer | null = null
 let scheduler: Scheduler | null = null
 let mainWindow: BrowserWindow | null = null
 let origin = ''
+let logFile: string | null = null
 let stopped = false
 
 function openOutside(url: string): void {
@@ -135,8 +137,11 @@ async function start(): Promise<void> {
     userDataPath: app.getPath('userData'),
   })
   config = desktopConfig(loadConfig(process.env), paths)
+  logFile = paths.logFile
   log = createLogger({ level: config.logLevel }, fileLogDestination(paths.logFile))
-  db = openDb(paths.databasePath)
+  // Guards, backs up, migrates, and checks; throws (database closed) rather than open data
+  // that failed, so the server never starts on it.
+  db = openDb(paths.databasePath, { backupDir: paths.backupDir, appVersion: app.getVersion() })
   scheduler = createScheduler({ db, secrets, defaults: config.defaults, log })
   const guardToken = newGuardToken()
   server = await startServer({ db, secrets, config, log, guardToken, scheduler })
@@ -267,7 +272,8 @@ if (!app.requestSingleInstanceLock()) {
       if (SMOKE) {
         console.log(JSON.stringify({ smoke: 'failed', error: String(err) }, null, 2))
       } else {
-        dialog.showErrorBox('Plutus could not start', err instanceof Error ? err.message : String(err))
+        const { title, message } = startupDialog(err, logFile)
+        dialog.showErrorBox(title, message)
       }
       void shutdown().finally(() => app.exit(1))
     })
