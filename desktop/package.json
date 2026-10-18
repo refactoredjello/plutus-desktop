@@ -17,6 +17,7 @@
     "smoke": "npm run build:all && PLUTUS_SMOKE=1 electron .",
     "dist": "npm run build:all && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config electron-builder.yml",
     "smoke:dist": "PLUTUS_SMOKE=1 \"$(ls -d release/mac*/Plutus.app | head -n 1)/Contents/MacOS/Plutus\"",
+    "icons": "sh scripts/icons.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "oxlint",
