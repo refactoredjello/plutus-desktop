@@ -205,6 +205,64 @@ describe.skipIf(process.platform !== 'darwin')('scripts/update.sh', () => {
     expect(previousApps()).toEqual(['Plutus-0.2.0.zip', 'Plutus-0.3.0.zip'])
   })
 
+  it('keeps the two most recently saved apps, not the two highest versions', () => {
+    // Saves 0.1.0, then 0.9.0, 0.2.0, 0.3.0: the newest two are 0.2.0 and 0.3.0.
+    for (const v of ['0.9.0', '0.2.0', '0.3.0', '0.4.0']) {
+      const r = run([], { env: { PLUTUS_UPDATE_ZIP: makeZip(v) } })
+      expect(r.status, r.out).toBe(0)
+    }
+    expect(previousApps()).toEqual(['Plutus-0.2.0.zip', 'Plutus-0.3.0.zip'])
+  })
+
+  it('keeps its newest five data copies and leaves everything else in backups alone', () => {
+    const b = join(data, 'backups')
+    const old = [
+      'manual-20200101T000000Z',
+      'manual-20200102T000000Z',
+      'before-rollback-20200103T000000Z',
+      'before-restore-20200104T000000Z',
+      'manual-20200105T000000Z',
+      'manual-20200105T000000Z-2',
+    ]
+    for (const n of old) mkdirSync(join(b, n), { recursive: true })
+    // Not the script's: pre-migration backups and anything else stay.
+    writeFileSync(join(b, 'plutus-20200101T000000Z-v0.1.0-before-0001.sqlite'), 'x')
+    mkdirSync(join(b, 'notes'))
+
+    const r = run([], { env: { PLUTUS_UPDATE_ZIP: makeZip('0.2.0') } })
+
+    expect(r.status, r.out).toBe(0)
+    const fresh = backups('manual-').filter((n) => !old.includes(n))
+    expect(fresh).toHaveLength(1)
+    const current = fresh[0]
+    expect(readdirSync(b).sort()).toEqual(
+      [
+        'before-restore-20200104T000000Z',
+        'manual-20200102T000000Z',
+        'manual-20200105T000000Z',
+        'manual-20200105T000000Z-2',
+        current!,
+        'notes',
+        'plutus-20200101T000000Z-v0.1.0-before-0001.sqlite',
+        'plutus-earlier.sqlite.d',
+      ].sort(),
+    )
+  })
+
+  it('never prunes the copy made in this run, even when others look newer', () => {
+    const b = join(data, 'backups')
+    const future = ['01', '02', '03', '04', '05'].map((d) => `manual-299901${d}T000000Z`)
+    for (const n of future) mkdirSync(join(b, n), { recursive: true })
+
+    const r = run([], { env: { PLUTUS_UPDATE_ZIP: makeZip('0.2.0') } })
+
+    expect(r.status, r.out).toBe(0)
+    const mine = backups('manual-')
+    expect(mine).toHaveLength(5)
+    expect(mine.filter((n) => !n.startsWith('manual-2999'))).toHaveLength(1)
+    expect(mine).not.toContain('manual-29990101T000000Z')
+  })
+
   it('downloads the latest release, or a given version, for this Mac with gh', () => {
     const zip = makeZip('0.2.0')
     const log = join(root, 'gh.log')
