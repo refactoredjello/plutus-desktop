@@ -212,6 +212,7 @@ const SAMPLES: Record<string, { query?: string; body?: unknown }> = {
   update_transaction: {
     body: { category_id: 1, note: '', save_as_rule: true, rule_match_type: 'prefix', rule_pattern: 'UBER' },
   },
+  unpair_transaction: {},
   list_categories: { query: 'include_hidden=true' },
   create_category: { body: { primary: 'FOOD_AND_DRINK', label: 'Snacks' } },
   update_category: { body: { label: 'Snacks', is_hidden: false } },
