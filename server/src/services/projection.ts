@@ -169,8 +169,7 @@ function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many
 }
 
-export function project(db: Db, months = 3): Projection {
-  const today = scheduleToday()
+export function project(db: Db, months = 3, today: PlainDate = scheduleToday()): Projection {
   const allConfirmed = db.select().from(recurrences).where(eq(recurrences.status, 'confirmed')).all()
   const confirmed = allConfirmed.filter((c) => !isLapsed(c, today))
   const lapsed = allConfirmed.length - confirmed.length
