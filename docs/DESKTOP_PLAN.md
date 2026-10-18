@@ -338,7 +338,7 @@ The orchestrator then, in `~/dev/plutus-desktop`:
 | Wave 1 | Every Wave 1 module's ported tests pass. The Electron shell opens the SPA against the stubbed server and shows the health card. The parity harness passes a Python-versus-Python self-check. |
 | Wave 2 | Transactions, categories, rules, projection, manual entries, goals, and suggestions routes return real data in tests. Settings config card works against MSW. Postgres export of the demo database imports into SQLite with equal row counts. |
 | Wave 3 | `npm run demo` in `server/` loads the fixture through the real pipeline. All ported tests pass. Every route stub is gone. |
-| Wave 4 | Parity diff is empty, or every remaining difference is listed with a reason and accepted at Fable checkpoint B. The Electron app with demo data matches the Docker app page by page. |
+| Wave 4 | Parity diff is empty, or every remaining difference is listed with a reason and accepted at Fable checkpoint B. The Electron audit is clean: every page loads with no console errors or failed requests, and every request the pages send is compared by the harness. |
 | Wave 5 | No Python, Docker, or Postgres in the repo. CI green on Node only. An unsigned macOS build launches, syncs demo data, and survives a restart with its data. Docs and AGENTS.md describe the new shape. The owner's real data imports and the SimpleFIN connection survives. |
 | Wave 6 | Tag `wave-6`. Every doc listed in brief 6A describes the repo as it is at `wave-5`: each command in README.md, AGENTS.md, and the package READMEs was run as written and works; no doc mentions Python, Docker, Postgres, FastAPI, or `api/` except as history (the decisions log, `PLAN.md`, `AGENT_PLAN.md` history notes, `DESKTOP_PLAN.md`, `PORT_BUG_BACKLOG.md`, `HANDOFF_RULES_AND_BUGS.md`); every relative link resolves; the agent role files match the final layout and ownership. `make check` stays green. The owner reviews the finished port after this tag. |
 
@@ -611,9 +611,9 @@ Done when: all ported tests pass.
 
 Wave 4. Depends on everything above.
 
-Tasks: run the harness; for each difference, classify it as port bug, Python bug, or accepted (timestamps, ordering); write the fix list grouped by owning brief. The orchestrator sends each group to the agent that owns the module via `SendMessage`. Re-run until the diff is empty or every remaining line is accepted. Then launch the Electron app with demo data next to the Docker app and compare each page by eye; list visual differences. Fable checkpoint B reads the final report.
+Tasks: run the harness; for each difference, classify it as port bug, Python bug, or accepted (timestamps, ordering); write the fix list grouped by owning brief. The orchestrator sends each group to the agent that owns the module via `SendMessage`. Re-run until the diff is empty or every remaining line is accepted. Then audit the Electron app with demo data: visit every page (and one deep link), record each request it sends, console errors, and failed or blocked requests, and take one screenshot per page for a sanity glance. Every request the pages send must match a harness case; add cases for any that don't. The frontend is the same code in both apps, so this checks the desktop shell and harness coverage rather than comparing screenshots of the two apps. Fable checkpoint B reads the final report.
 
-Done when: the harness exits zero or the accepted list is approved; the page-by-page check is clean.
+Done when: the harness exits zero or the accepted list is approved; the Electron audit is clean.
 
 ### 5A — Cutover (server-engineer)
 
