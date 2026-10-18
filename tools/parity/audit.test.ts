@@ -1,0 +1,258 @@
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+import {
+  AuditLog,
+  ROUTES,
+  auditExitCode,
+  coverageGaps,
+  fileName,
+  harnessKeys,
+  renderAudit,
+  replayEvents,
+  requestKey,
+  uiKeys,
+} from './visual/audit_lib.ts'
+
+const TODAY = '2026-09-30'
+
+describe('ROUTES', () => {
+  it('has every route the web router registers, once, and one deep link loaded directly', () => {
+    const paths = ROUTES.map((r) => r.path)
+    for (const p of ['/', '/month', '/transactions', '/review', '/spending', '/recurring', '/goals', '/planned', '/settings']) {
+      expect(paths).toContain(p)
+    }
+    expect(new Set(paths).size).toBe(paths.length)
+    const deep = ROUTES.filter((r) => r.direct === true)
+    expect(deep).toHaveLength(1)
+    expect(deep[0]?.path).toMatch(/^\/month\/\d{4}-\d{2}$/)
+  })
+
+  it('matches every path in web/src/app/router.tsx', () => {
+    const router = readFileSync(new URL('../../web/src/app/router.tsx', import.meta.url), 'utf8')
+    const registered = [...router.matchAll(/path: '([^']+)'/g)].map((m) => `/${m[1]}`)
+    expect(registered.length).toBeGreaterThan(5)
+    for (const r of registered) {
+      const pattern = new RegExp(`^${r.replace(/:[a-z]+/g, '[^/]+')}$`)
+      expect(ROUTES.some((route) => pattern.test(route.path))).toBe(true)
+    }
+  })
+
+  it('gives each route a distinct file name', () => {
+    const names = ROUTES.map((r) => fileName(r.path))
+    expect(new Set(names).size).toBe(names.length)
+    expect(fileName('/')).toBe('overview')
+    expect(fileName('/month/2026-08')).toBe('month-2026-08')
+  })
+})
+
+describe('requestKey', () => {
+  it('reduces an API request to method, endpoint template, and sorted query keys', () => {
+    expect(requestKey('GET', 'http://127.0.0.1:5123/api/transactions?start=2026-09-01&limit=50&offset=0')).toEqual({
+      endpoint: 'GET /api/transactions',
+      params: 'limit,offset,start',
+    })
+    expect(requestKey('GET', 'http://127.0.0.1:5123/api/reports/month/2026-08')).toEqual({
+      endpoint: 'GET /api/reports/month/{month}',
+      params: '',
+    })
+    expect(requestKey('GET', 'http://x/api/transactions?account_id=1&account_id=2')?.params).toBe('account_id')
+  })
+
+  it('ignores requests outside /api', () => {
+    expect(requestKey('GET', 'http://127.0.0.1:5123/assets/index.js')).toBeNull()
+    expect(requestKey('GET', 'data:image/png;base64,xx')).toBeNull()
+  })
+})
+
+describe('harnessKeys', () => {
+  const keys = harnessKeys(TODAY)
+
+  it('holds every GET the harness compares, initial cases and re-reads', () => {
+    expect(keys.has('GET /api/transactions?limit,offset')).toBe(true)
+    expect(keys.has('GET /api/reports/month/{month}?')).toBe(true)
+    expect(keys.has('GET /api/projection?months')).toBe(true)
+    // A re-read path after a write step.
+    expect(keys.has('GET /api/transactions?limit,q')).toBe(true)
+  })
+
+  it('holds the request shapes the Electron audit found uncovered', () => {
+    // The Review page and the review badge: needs_review with limit and offset.
+    expect(keys.has('GET /api/transactions?limit,needs_review,offset')).toBe(true)
+    // TypeScript only, compared with the env both apps got (config_check.ts).
+    expect(keys.has('GET /api/settings/config?')).toBe(true)
+  })
+
+  it('holds the write endpoints the steps send', () => {
+    expect(keys.has('PATCH /api/transactions/{transaction_id}?')).toBe(true)
+    expect(keys.has('POST /api/sync?')).toBe(true)
+  })
+})
+
+describe('coverageGaps', () => {
+  it('lists the distinct UI requests the harness never compares', () => {
+    const harness = new Set(['GET /api/accounts?', 'GET /api/transactions?limit'])
+    const gaps = coverageGaps(
+      [
+        { endpoint: 'GET /api/accounts', params: '' },
+        { endpoint: 'GET /api/transactions', params: 'limit' },
+        { endpoint: 'GET /api/transactions', params: 'limit,start' },
+        { endpoint: 'GET /api/transactions', params: 'limit,start' },
+      ],
+      harness,
+    )
+    expect(gaps).toEqual(['GET /api/transactions?limit,start'])
+  })
+})
+
+describe('AuditLog', () => {
+  it('records requests, responses, failures, console messages, and page errors per route', () => {
+    const log = new AuditLog()
+    log.route('/')
+    log.request('1', 'GET', 'http://127.0.0.1:9/api/accounts')
+    log.response('1', 200, 'application/json')
+    log.request('2', 'GET', 'http://127.0.0.1:9/assets/missing.js')
+    log.response('2', 404, 'text/plain')
+    log.request('3', 'GET', 'http://127.0.0.1:9/api/health')
+    log.failed('3', 'net::ERR_BLOCKED_BY_CLIENT', 'csp')
+    log.console('warning', 'Electron Security Warning')
+    log.console('log', 'ignored')
+    log.exception('TypeError: x is undefined')
+    log.route('/month')
+    log.request('4', 'GET', 'http://127.0.0.1:9/api/reports/monthly?months=12')
+    log.response('4', 401, 'application/problem+json')
+
+    const [overview, month] = log.results()
+    expect(overview?.path).toBe('/')
+    expect(overview?.requests).toEqual([
+      { method: 'GET', url: '/api/accounts', status: 200, contentType: 'application/json' },
+      { method: 'GET', url: '/assets/missing.js', status: 404, contentType: 'text/plain' },
+      { method: 'GET', url: '/api/health', status: null, contentType: null, failed: 'net::ERR_BLOCKED_BY_CLIENT (csp)' },
+    ])
+    expect(overview?.console).toEqual(['warning: Electron Security Warning'])
+    expect(overview?.exceptions).toEqual(['TypeError: x is undefined'])
+    expect(overview?.problems).toEqual([
+      'GET /assets/missing.js: 404',
+      'GET /api/health: net::ERR_BLOCKED_BY_CLIENT (csp)',
+      'console warning: Electron Security Warning',
+      'page error: TypeError: x is undefined',
+    ])
+    expect(month?.problems).toEqual(['GET /api/reports/monthly?months=12: 401'])
+  })
+
+  it('does not count Chromium\'s cache-only web font probe as a failure when the font then loads', () => {
+    // Accepted class: Chromium first asks the HTTP cache alone for a web font
+    // (ERR_CACHE_MISS when absent), then fetches it. The request stays listed.
+    const log = new AuditLog()
+    log.route('/')
+    log.request('1', 'GET', 'http://h/assets/geist.woff2')
+    log.failed('1', 'net::ERR_CACHE_MISS')
+    log.request('2', 'GET', 'http://h/assets/geist.woff2')
+    log.response('2', 200, 'font/woff2')
+    log.request('3', 'GET', 'http://h/assets/other.woff2')
+    log.failed('3', 'net::ERR_CACHE_MISS')
+    const [r] = log.results()
+    expect(r?.requests).toHaveLength(3)
+    expect(r?.problems).toEqual(['GET /assets/other.woff2: net::ERR_CACHE_MISS'])
+  })
+
+  it('tracks requests still in flight', () => {
+    const log = new AuditLog()
+    log.route('/')
+    log.request('1', 'GET', 'http://h/api/a')
+    expect(log.inFlight()).toBe(1)
+    log.response('1', 200, 'application/json')
+    log.finished('1')
+    expect(log.inFlight()).toBe(0)
+  })
+})
+
+describe('replayEvents', () => {
+  const lines = [
+    { t: 'route', path: '/' },
+    { t: 'request', id: 1, method: 'GET', url: 'http://127.0.0.1:9/' },
+    { t: 'response', id: 1, status: 200, contentType: 'text/html; charset=utf-8' },
+    { t: 'finished', id: 1 },
+    { t: 'request', id: 2, method: 'GET', url: 'http://127.0.0.1:9/api/accounts' },
+    { t: 'response', id: 2, status: 200, contentType: 'application/json' },
+    { t: 'request', id: 3, method: 'GET', url: 'devtools://devtools/bundled/x.js' },
+    { t: 'request', id: 4, method: 'GET', url: 'data:image/png;base64,xx' },
+    { t: 'console', level: 'warning', text: 'Electron Security Warning (Insecure Content-Security-Policy)' },
+    { t: 'route', path: '/month/2026-08' },
+    { t: 'request', id: 5, method: 'GET', url: 'http://127.0.0.1:9/api/reports/month/2026-08' },
+    { t: 'failed', id: 5, error: 'net::ERR_BLOCKED_BY_CLIENT' },
+    { t: 'exception', text: 'TypeError: boom' },
+    { t: 'screenshot', path: '/month/2026-08', file: 'month-2026-08.png' },
+  ].map((e) => JSON.stringify(e))
+
+  it('rebuilds the per-route log from the Electron event stream, keeping only http requests', () => {
+    const [overview, month] = replayEvents([...lines, ''])
+    expect(overview?.path).toBe('/')
+    expect(overview?.requests).toEqual([
+      { method: 'GET', url: '/', status: 200, contentType: 'text/html' },
+      { method: 'GET', url: '/api/accounts', status: 200, contentType: 'application/json' },
+    ])
+    expect(overview?.console).toEqual(['warning: Electron Security Warning (Insecure Content-Security-Policy)'])
+    expect(month?.problems).toEqual([
+      'GET /api/reports/month/2026-08: net::ERR_BLOCKED_BY_CLIENT',
+      'page error: TypeError: boom',
+    ])
+  })
+
+  it('reports an unreadable line as a problem of the current route instead of dropping it', () => {
+    const [overview] = replayEvents([JSON.stringify({ t: 'route', path: '/' }), '{"t":'])
+    expect(overview?.problems).toEqual(['page error: audit: unreadable event {"t":'])
+  })
+})
+
+describe('uiKeys', () => {
+  it('reduces every /api request the pages sent to its request key, skipping documents and assets', () => {
+    const log = new AuditLog()
+    log.route('/')
+    log.request('1', 'GET', 'http://h/')
+    log.request('2', 'GET', 'http://h/assets/index.js')
+    log.request('3', 'GET', 'http://h/api/transactions?limit=50&offset=0')
+    log.request('4', 'PATCH', 'http://h/api/transactions/7')
+    expect(uiKeys(log.results())).toEqual([
+      { endpoint: 'GET /api/transactions', params: 'limit,offset' },
+      { endpoint: 'PATCH /api/transactions/{transaction_id}', params: '' },
+    ])
+  })
+})
+
+describe('renderAudit and auditExitCode', () => {
+  function results() {
+    const log = new AuditLog()
+    log.route('/')
+    log.request('1', 'GET', 'http://h/api/accounts')
+    log.response('1', 200, 'application/json')
+    log.route('/goals')
+    log.request('2', 'GET', 'http://h/api/goals')
+    log.response('2', 500, 'application/problem+json')
+    return log.results()
+  }
+
+  it('lists every route with its requests, problems, and screenshot, then the coverage gaps', () => {
+    const md = renderAudit(results(), ['GET /api/goals?limit'], { '/': 'overview.png' })
+    expect(md).toMatch(/^# Electron request audit/)
+    expect(md).toContain('## `/`')
+    expect(md).toContain('| GET | `/api/accounts` | 200 | application/json |')
+    expect(md).toContain('Screenshot: `overview.png`')
+    expect(md).toContain('## `/goals`')
+    expect(md).toContain('- GET /api/goals: 500')
+    expect(md).toContain('## Coverage gaps')
+    expect(md).toContain('- `GET /api/goals?limit`')
+  })
+
+  it('says so when a route has no problems and the harness covers every request', () => {
+    const clean = results().slice(0, 1)
+    const md = renderAudit(clean, [], {})
+    expect(md).toContain('Problems: none.')
+    expect(md).toContain('Every request the pages sent matches a harness case.')
+    expect(auditExitCode(clean, [])).toBe(0)
+  })
+
+  it('exits non-zero on any problem or coverage gap', () => {
+    expect(auditExitCode(results(), [])).toBe(1)
+    expect(auditExitCode(results().slice(0, 1), ['GET /api/x?'])).toBe(1)
+  })
+})

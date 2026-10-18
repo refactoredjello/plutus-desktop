@@ -10,7 +10,7 @@
  * the run drops and recreates plutus_parity (and plutus_parity_self for the self-check).
  */
 
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +22,7 @@ import {
   demoLoadPython,
   demoLoadTs,
   dropDatabase,
+  freePort,
   migratePython,
   pythonEnv,
   recreateDatabase,
@@ -30,15 +31,19 @@ import {
   startTs,
   tsEnv,
 } from './apps.ts'
+import { type Bridge, compareBridgeRequests, startBridge } from './bridge.ts'
 import { makeApi } from './client.ts'
 import { NOT_COMPARED, getCases, monthOffset, ruleNotes } from './endpoints.ts'
+import { CONFIG_PATH, configCheck, expectedConfig } from './config_check.ts'
 import { compareGet, runStep } from './harness.ts'
 import { collectTsPrompts, comparePrompts, dumpPythonPrompts, loadTsPrompts, type TsPrompt } from './prompts.ts'
+import type { Json } from './normalize.ts'
 import { type CaseResult, type CheckResult, type RunReport, exitCode, renderReport, summarize } from './report.ts'
-import { WRITE_STEPS } from './writes.ts'
+import { writeSteps } from './sync_steps.ts'
 
 const REPORT = fileURLToPath(new URL('./report.md', import.meta.url))
 const TS_PROMPTS = join(SERVER_DIR, 'src', 'providers', 'llm', 'prompts.ts')
+const FIXTURE = join(SERVER_DIR, 'test', 'fixtures', 'simplefin_accounts.json')
 const DB = 'plutus_parity'
 const SELF_DB = 'plutus_parity_self'
 
@@ -84,8 +89,11 @@ async function main(): Promise<number> {
   const work = mkdtempSync(join(tmpdir(), 'plutus-parity-'))
   const setup: CheckResult[] = [check('work directory', true, `logs and SQLite file in ${work}`)]
   const apps: AppProcess[] = []
+  let bridge: Bridge | null = null
   const stopAll = async () => {
     await Promise.all(apps.map((a) => a.stop()))
+    await bridge?.close()
+    bridge = null
   }
   process.on('SIGINT', () => void stopAll().then(() => process.exit(130)))
 
@@ -154,16 +162,29 @@ async function main(): Promise<number> {
         ? first.category_id
         : null
 
+    if (selfCheck) {
+      setup.push(check('runtime config (TypeScript only)', true, 'not run in a self-check: Python has no such endpoint'))
+    } else {
+      const llm = await py.send('GET', '/api/settings/llm')
+      const schedule = await py.send('GET', '/api/sync/schedule')
+      setup.push(configCheck(expectedConfig(otherEnv, llm.body, schedule.body), await ot.send('GET', CONFIG_PATH)))
+    }
+
     const gets = getCases(today, { categoryId })
     log(`${gets.length} GET cases`)
     for (const c of gets) cases.push(await compareGet(py, ot, c.path, 'initial'))
 
-    log(`${WRITE_STEPS.length} write steps`)
+    const fixture = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Json
+    const live = await startBridge(fixture, today, await freePort())
+    bridge = live
+    const steps = writeSteps(live)
+    log(`${steps.length} write steps; fake SimpleFIN bridge on ${live.url}`)
     const pySide = { api: py, state: {} }
     const otSide = { api: ot, state: {} }
-    for (const [i, step] of WRITE_STEPS.entries()) {
+    for (const [i, step] of steps.entries()) {
       cases.push(...(await runStep(step, i + 1, pySide, otSide, today)))
     }
+    setup.push(compareBridgeRequests(live.requests()))
 
     const report: RunReport = {
       mode: selfCheck ? 'self-check' : 'python-vs-typescript',

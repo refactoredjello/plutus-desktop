@@ -3,6 +3,7 @@
  * templates that group the report, and the per-endpoint normalization (tie rules).
  */
 
+import { ACCEPTED_NOTES } from './accepted.ts'
 import type { NormalizeOptions, TieRule } from './normalize.ts'
 
 /** Every operation either app serves, as `METHOD /path/{param}`. */
@@ -63,15 +64,43 @@ export const NOT_COMPARED: readonly { endpoint: string; reason: string }[] = [
   { endpoint: 'POST /api/auth/logout', reason: 'Python only stub; the desktop contract drops auth.' },
   {
     endpoint: 'GET /api/settings/config',
-    reason: 'TypeScript only: the runtime config endpoint is new in the desktop contract (0B).',
+    reason:
+      'TypeScript only: new in the desktop contract (0B). Not diffed; checked instead against the env ' +
+      'both apps got and Python\'s own LLM and schedule answers (config_check.ts, a setup check).',
   },
   {
     endpoint: 'PUT /api/settings/config',
     reason: 'TypeScript only: the runtime config endpoint is new in the desktop contract (0B).',
   },
   {
-    endpoint: 'POST /api/settings/simplefin',
-    reason: 'Claiming a setup token calls the SimpleFIN bridge over the network; covered by unit tests.',
+    endpoint: 'POST /api/settings/simplefin (live bridge)',
+    reason:
+      'Never sent to the real SimpleFIN bridge (network, one claim per token). A fake bridge on ' +
+      'loopback (bridge.ts) answers the claims and syncs instead.',
+  },
+  {
+    endpoint: 'POST /api/recurring, 400 "no merchant yet"',
+    reason:
+      'Unreachable through the API: categorize_pending sets a merchant key ("UNKNOWN" at worst) in ' +
+      'the same run that stores a transaction, so no stored transaction lacks one.',
+  },
+  {
+    endpoint: 'PATCH /api/transactions/{transaction_id} on an uncategorized transaction',
+    reason:
+      'Unreachable with the fake LLM, which classifies every key and never fails, so no transaction ' +
+      'stays uncategorized (and `?uncategorized=true` lists nothing). Backlog 20; unit-tested.',
+  },
+  {
+    endpoint: 'GET /api/settings/simplefin, 400 after a secret key change',
+    reason: 'Needs an app restarted with another key (backlog 13); unit-tested in both apps.',
+  },
+  {
+    endpoint: 'POST /api/sync, stale run recovery',
+    reason: 'Needs a run left running for 30 minutes; unit-tested in both apps.',
+  },
+  {
+    endpoint: 'Scheduled syncs',
+    reason: 'The scheduler is off in both apps for a deterministic run; its timing is unit-tested.',
   },
 ]
 
@@ -109,7 +138,7 @@ export function getCases(today: string, lookup: Lookup): GetCase[] {
   const cases: Record<string, string[]> = {
     'GET /api/health': [''],
     'GET /api/accounts': [''],
-    'GET /api/categories': ['', '?include_hidden=true'],
+    'GET /api/categories': ['', '?include_hidden=true', '?include_hidden=0', '?include_hidden=nope'],
     'GET /api/rules': [''],
     'GET /api/transactions': [
       '',
@@ -129,14 +158,30 @@ export function getCases(today: string, lookup: Lookup): GetCase[] {
       '?essentiality=unset&limit=500',
       '?uncategorized=true&limit=500',
       '?needs_review=true&limit=500',
+      // The review badge and the Review page (found by the Electron audit).
+      '?needs_review=true&limit=1&offset=0',
+      '?needs_review=true&limit=50&offset=0',
       '?include_transfers=true&limit=500',
       `?include_transfers=true&start=${monthStart}&q=transfer`,
       '?limit=0',
       '?start=not-a-date',
       '?essentiality=bogus',
+      '?limit=501',
+      '?offset=-1',
+      '?account_id=abc',
+      '?uncategorized=yes&limit=500',
+      '?include_transfers=1&limit=500',
+      '?needs_review=false&limit=500',
+      '?q=',
+      '?q=%25',
+      '?q=_',
+      '?q=caf%C3%A9',
+      '?q=CAF%C3%89',
+      '?start=2026-09-31',
+      '?end=',
     ],
-    'GET /api/reports/monthly': ['', '?months=1', '?months=6', '?months=24', '?months=0'],
-    'GET /api/reports/month/{month}': [m0, m1, m6, m7, next, '2026-13'].map((m) => `/${m}`),
+    'GET /api/reports/monthly': ['', '?months=1', '?months=6', '?months=24', '?months=0', '?months=60', '?months=61', '?months=abc'],
+    'GET /api/reports/month/{month}': [m0, m1, m6, m7, next, '2026-13', '2026-9', '2026-00'].map((m) => `/${m}`),
     'GET /api/reports/by-category': [
       `?month=${m0}`,
       `?month=${m1}`,
@@ -147,6 +192,8 @@ export function getCases(today: string, lookup: Lookup): GetCase[] {
       `?month=${m1}&essentiality=unset`,
       `?month=${m7}`,
       '?month=2026-13',
+      '?month=2026-9',
+      `?month=${m1}&essentiality=bogus`,
       '',
     ],
     'GET /api/reports/balances': [
@@ -155,19 +202,23 @@ export function getCases(today: string, lookup: Lookup): GetCase[] {
       `?start=${m6}-01`,
       `?end=${addDays(monthStart, -1)}`,
       `?start=${today}&end=${monthStart}`,
+      '?start=bad',
+      `?start=${monthStart}&end=${monthStart}`,
     ],
-    'GET /api/reports/changes': ['', '?all=true'],
-    'GET /api/projection': ['', '?months=1', '?months=12', '?months=13'],
-    'GET /api/recurring': ['', '?status=proposed', '?status=confirmed', '?status=dismissed'],
+    'GET /api/reports/changes': ['', '?all=true', '?all=1', '?all=nope'],
+    'GET /api/projection': ['', '?months=1', '?months=12', '?months=13', '?months=0', '?months=abc'],
+    'GET /api/recurring': ['', '?status=proposed', '?status=confirmed', '?status=dismissed', '?status=bogus'],
     'GET /api/manual-entries': [''],
     'GET /api/goals': [''],
-    'GET /api/goals/{goal_id}': ['/999999'],
-    'GET /api/goals/{goal_id}/suggestions': ['/999999/suggestions'],
+    'GET /api/goals/{goal_id}': ['/999999', '/abc', '/0'],
+    'GET /api/goals/{goal_id}/suggestions': ['/999999/suggestions', '/abc/suggestions'],
     'GET /api/settings/simplefin': [''],
     'GET /api/settings/llm': [''],
     'GET /api/sync/schedule': [''],
-    'GET /api/sync/runs': ['', '?limit=1'],
-    'GET /api/sync/runs/{run_id}': ['/1', '/999999'],
+    'GET /api/sync/runs': ['', '?limit=1', '?limit=0', '?limit=100', '?limit=101'],
+    'GET /api/sync/runs/{run_id}': ['/1', '/999999', '/abc'],
+    // No such operation: both apps' not-found answer for an unknown /api path.
+    'GET /api/nope': [''],
   }
   const out: GetCase[] = []
   for (const [endpoint, suffixes] of Object.entries(cases)) {
@@ -227,6 +278,7 @@ export function ruleNotes(): string[] {
     'Object key order is ignored (JSON objects are unordered). List order is compared except ' +
       'for the tie rules below.',
     'Status code and media type (without parameters) are compared with the body.',
+    ...ACCEPTED_NOTES,
   ]
   for (const [endpoint, rules] of Object.entries(TIE_RULES)) {
     for (const r of rules) {

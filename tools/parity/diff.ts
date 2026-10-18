@@ -3,6 +3,7 @@
  * `actual` is the TypeScript server, or a second Python app in self-check mode.
  */
 
+import { acceptEnvelope } from './accepted.ts'
 import { type Json, type NormalizeOptions, normalize } from './normalize.ts'
 
 export interface Difference {
@@ -74,17 +75,19 @@ export function diff(expected: Json, actual: Json, path = ''): Difference[] {
   return expected === actual ? [] : [{ path, expected, actual }]
 }
 
-/** Normalize both responses (normalize.ts) and diff status, content type, and body. */
+/**
+ * Reduce the accepted classes (accepted.ts), normalize both bodies (normalize.ts), and diff
+ * status, content type, and body.
+ */
 export function compareResponses(
   expected: Envelope,
   actual: Envelope,
   options: NormalizeOptions = {},
 ): Difference[] {
-  const shape = (r: Envelope): Json => ({
-    status: r.status,
-    content_type: r.contentType,
-    body: normalize(r.body, options),
-  })
+  const shape = (raw: Envelope): Json => {
+    const r = acceptEnvelope(raw)
+    return { status: r.status, content_type: r.contentType, body: normalize(r.body, options) }
+  }
   // Tie rules address the body, so normalize the body on its own before wrapping it.
   return diff(shape(expected), shape(actual))
 }

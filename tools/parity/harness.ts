@@ -92,6 +92,16 @@ export async function runStep(
     }
   }
 
+  if (step.settle !== undefined) {
+    const [se, sa] = await Promise.all([
+      statuses.expected === null ? null : step.settle(expected.api, expected.state),
+      statuses.actual === null ? null : step.settle(actual.api, actual.state),
+    ])
+    if (se !== null || sa !== null) {
+      differences.push({ path: '(settle)', expected: se, actual: sa, note: 'the app did not settle after the write' })
+    }
+  }
+
   const results: CaseResult[] = [{ endpoint: step.endpoint, label, request, differences, statuses }]
   const ePaths = step.reread(expected.state, today)
   const aPaths = step.reread(actual.state, today)

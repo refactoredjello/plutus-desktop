@@ -42,6 +42,8 @@ export interface EndpointSummary {
   cases: number
   differing: number
   differences: number
+  /** Distinct statuses the Python app answered, ascending: which success and error paths ran. */
+  statuses: number[]
 }
 
 export interface Summary {
@@ -59,8 +61,13 @@ function sortKey(endpoint: string): string {
 export function summarize(report: RunReport): Summary {
   const by = new Map<string, EndpointSummary>()
   for (const c of report.cases) {
-    const s = by.get(c.endpoint) ?? { endpoint: c.endpoint, cases: 0, differing: 0, differences: 0 }
+    const s = by.get(c.endpoint) ?? { endpoint: c.endpoint, cases: 0, differing: 0, differences: 0, statuses: [] }
     s.cases += 1
+    const status = c.statuses?.expected
+    if (typeof status === 'number' && !s.statuses.includes(status)) {
+      s.statuses.push(status)
+      s.statuses.sort((a, b) => a - b)
+    }
     if (c.differences.length > 0) s.differing += 1
     s.differences += c.differences.length
     by.set(c.endpoint, s)
@@ -107,9 +114,9 @@ export function renderReport(report: RunReport, options: { maxPerCase?: number }
       (summary.clean ? 'Clean.' : 'Not clean: exit status 1.'),
     '',
   )
-  lines.push('| Endpoint | Cases | Differing cases | Differences |', '|---|---|---|---|')
+  lines.push('| Endpoint | Cases | Differing cases | Differences | Python statuses |', '|---|---|---|---|---|')
   for (const e of summary.endpoints) {
-    lines.push(`| \`${e.endpoint}\` | ${e.cases} | ${e.differing} | ${e.differences} |`)
+    lines.push(`| \`${e.endpoint}\` | ${e.cases} | ${e.differing} | ${e.differences} | ${e.statuses.join(', ')} |`)
   }
   lines.push('')
 

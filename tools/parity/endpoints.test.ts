@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { ACCEPTED_NOTES } from './accepted.ts'
 import {
   ENDPOINTS,
   NOT_COMPARED,
@@ -8,6 +9,7 @@ import {
   getCases,
   monthOffset,
   normalizeOptionsFor,
+  ruleNotes,
   templateFor,
 } from './endpoints.ts'
 
@@ -67,6 +69,50 @@ describe('getCases', () => {
     expect(paths.some((p) => p.startsWith('/api/transactions?limit=0'))).toBe(true)
   })
 
+  it('has validation and not-found cases for every GET that takes a parameter', () => {
+    const paths = cases.map((c) => c.path)
+    for (const p of [
+      '/api/nope',
+      '/api/goals/abc',
+      '/api/goals/abc/suggestions',
+      '/api/sync/runs/abc',
+      '/api/sync/runs?limit=0',
+      '/api/sync/runs?limit=101',
+      '/api/reports/month/2026-9',
+      '/api/reports/month/2026-00',
+      '/api/reports/monthly?months=61',
+      '/api/reports/by-category?month=2026-9',
+      '/api/reports/balances?start=bad',
+      '/api/reports/changes?all=nope',
+      '/api/projection?months=0',
+      '/api/recurring?status=bogus',
+      '/api/categories?include_hidden=nope',
+      '/api/transactions?limit=501',
+      '/api/transactions?offset=-1',
+      '/api/transactions?account_id=abc',
+    ]) {
+      expect(paths).toContain(p)
+    }
+  })
+
+  it('probes query parsing and search edge cases', () => {
+    const paths = cases.map((c) => c.path)
+    for (const p of [
+      '/api/transactions?uncategorized=yes&limit=500',
+      '/api/transactions?include_transfers=1&limit=500',
+      '/api/transactions?q=',
+      '/api/transactions?q=%25',
+      '/api/transactions?q=_',
+      '/api/transactions?q=caf%C3%A9',
+      '/api/transactions?start=2026-09-31',
+      '/api/transactions?end=',
+      '/api/reports/changes?all=1',
+      '/api/categories?include_hidden=0',
+    ]) {
+      expect(paths).toContain(p)
+    }
+  })
+
   it('leaves out the category case when no category was found', () => {
     expect(getCases('2026-09-30', { categoryId: null }).some((c) => c.path.includes('category_id'))).toBe(false)
   })
@@ -113,5 +159,12 @@ describe('NOT_COMPARED', () => {
     for (const n of NOT_COMPARED) expect(n.reason.length).toBeGreaterThan(10)
     expect(skipped.has('GET /api/settings/config')).toBe(true)
     expect(skipped.has('GET /api/auth/session')).toBe(true)
+  })
+})
+
+describe('ruleNotes', () => {
+  it('lists every accepted difference class in the report', () => {
+    const notes = ruleNotes()
+    for (const note of ACCEPTED_NOTES) expect(notes).toContain(note)
   })
 })
