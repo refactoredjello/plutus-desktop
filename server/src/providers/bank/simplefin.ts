@@ -26,12 +26,12 @@ export type FetchFn = (input: string | URL | Request, init?: RequestInit) => Pro
 // --- Coercing JSON values -------------------------------------------------------------------
 
 /** Whitespace for stripping: ASCII whitespace, \x1c-\x1f, and the Unicode spaces. */
-const PY_SPACE = '\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'
-const PY_STRIP = new RegExp(`^[${PY_SPACE}]+|[${PY_SPACE}]+$`, 'g')
+const UNICODE_SPACE = '\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'
+const UNICODE_STRIP = new RegExp(`^[${UNICODE_SPACE}]+|[${UNICODE_SPACE}]+$`, 'g')
 
-/** Strip PY_SPACE from both ends. */
+/** Strip UNICODE_SPACE from both ends. */
 function pyStrip(text: string): string {
-  return text.replace(PY_STRIP, '')
+  return text.replace(UNICODE_STRIP, '')
 }
 
 /** False for null, false, 0, "", [], and {}; true otherwise. */

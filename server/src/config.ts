@@ -142,7 +142,3 @@ export function loadConfig(env: Env = process.env): Config {
     },
   }
 }
-
-export function jsonLogs(config: Config): boolean {
-  return config.environment === 'production'
-}

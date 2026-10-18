@@ -610,7 +610,7 @@ describe('formatting (pinned values)', () => {
     ['\u0130stanbul', 'I\u0307stanbul', '\u0130stanbul'],
     ['\u0130I', 'I\u0307i', '\u0130i'],
   ])('capwords uses Unicode 16 title case on %j', (input, ofLowered, direct) => {
-    expect(changes.capwords(changes.pyLower(input))).toBe(ofLowered)
+    expect(changes.capwords(changes.fullLower(input))).toBe(ofLowered)
     expect(changes.capwords(input)).toBe(direct)
   })
 
@@ -625,7 +625,7 @@ describe('formatting (pinned values)', () => {
     ['\u02b0\u03a3', '\u02b0\u03c3'],
     ['\ua7ce\u{16ea0}X', '\ua7ce\u{16ea0}x'],
     ['A\u03a3 \u03a3', 'a\u03c2 \u03c3'],
-  ])('pyLower lowers with final sigma and Unicode 16 casing on %j', (input, lowered) => {
-    expect(changes.pyLower(input)).toBe(lowered)
+  ])('fullLower lowers with final sigma and Unicode 16 casing on %j', (input, lowered) => {
+    expect(changes.fullLower(input)).toBe(lowered)
   })
 })

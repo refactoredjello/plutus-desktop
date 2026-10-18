@@ -19,7 +19,7 @@
  *   in id order. The sort is stable, so this decides equal-impact ties.
  * - `money()` formats whole dollars with thousands separators, rounding half to even.
  * - Labels are capitalized word by word and lowered with Unicode 16's casing tables, final
- *   sigma included (pyLower, capitalize), so they do not shift with the Node version.
+ *   sigma included (fullLower, capitalize), so they do not shift with the Node version.
  * - `shortDate()` uses the English month abbreviation.
  * - Links encode each query key and value as form data: UTF-8 bytes, `A-Za-z0-9_.-~` kept,
  *   space as `+`, everything else `%XX`.
@@ -149,7 +149,7 @@ export function transactionsHref(start: PlainDate, endExclusive: PlainDate, para
 
 /** Whitespace runs: ASCII whitespace, \x1c-\x1f, and the Unicode spaces. */
 // oxlint-disable-next-line no-control-regex -- \x1c-\x1f count as whitespace.
-const PY_WHITESPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/
+const UNICODE_WHITESPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/
 
 /**
  * Characters whose title case (Unicode 16) differs from JavaScript's toUpperCase and is not
@@ -270,7 +270,7 @@ function lowerAt(chars: readonly string[], i: number): string {
 }
 
 /** Lowercase with the Unicode 16 tables and the final-sigma rule. */
-export function pyLower(text: string): string {
+export function fullLower(text: string): string {
   const chars = Array.from(text)
   return chars.map((_, i) => lowerAt(chars, i)).join('')
 }
@@ -297,7 +297,7 @@ function capitalize(word: string): string {
 /** Split on whitespace runs, capitalize each word, join with one space. */
 export function capwords(text: string): string {
   return text
-    .split(PY_WHITESPACE)
+    .split(UNICODE_WHITESPACE)
     .filter((word) => word !== '')
     .map(capitalize)
     .join(' ')
@@ -312,12 +312,12 @@ export function merchantLabel(db: Db, merchantKey: string): string {
     .orderBy(desc(transactions.posted_on))
     .limit(1)
     .get()?.payee
-  return payee || capwords(pyLower(merchantKey))
+  return payee || capwords(fullLower(merchantKey))
 }
 
 function txLabel(tx: Transaction): string {
   if (tx.payee) return tx.payee
-  return capwords(pyLower(tx.merchant_key || tx.raw_description))
+  return capwords(fullLower(tx.merchant_key || tx.raw_description))
 }
 
 /** The percentage excess / expected, with excess = num / n and expected = whole / n, both positive. */

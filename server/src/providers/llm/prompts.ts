@@ -109,12 +109,12 @@ export const SUGGESTION_BATCH_JSON_SCHEMA = {
 
 /** Whitespace runs: ASCII whitespace, \x1c-\x1f, and the Unicode spaces. */
 // oxlint-disable-next-line no-control-regex -- \x1c-\x1f count as whitespace.
-const PY_WHITESPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/
+const UNICODE_WHITESPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/
 
 /** Runs of whitespace become one space; leading and trailing whitespace goes. */
 function collapseWhitespace(text: string): string {
   return text
-    .split(PY_WHITESPACE)
+    .split(UNICODE_WHITESPACE)
     .filter((part) => part !== '')
     .join(' ')
 }

@@ -44,7 +44,7 @@ import { FIXTURES, testConfig } from './setup.js'
 /**
  * The JSON schemas sent as output_config.format.schema, snapshotted in llm_prompts.json.
  */
-const PY_SCHEMAS = (
+const EXPECTED_SCHEMAS = (
   JSON.parse(readFileSync(join(FIXTURES, 'llm_prompts.json'), 'utf8')) as {
     claude_output_schemas: { ClassificationBatch: unknown; SuggestionBatch: unknown }
   }
@@ -209,7 +209,7 @@ describe('ClaudeProvider', () => {
     expect(kwargs.max_tokens).toBe(MAX_TOKENS)
     expect(MAX_TOKENS).toBe(8000)
     expect(kwargs.output_config.format.type).toBe('json_schema')
-    expect(kwargs.output_config.format.schema).toEqual(PY_SCHEMAS.ClassificationBatch)
+    expect(kwargs.output_config.format.schema).toEqual(EXPECTED_SCHEMAS.ClassificationBatch)
     expect(kwargs).not.toHaveProperty('thinking')
     const system = kwargs.system
     expect(system[0]?.text).toBe(classifySystemPrompt())
@@ -293,7 +293,7 @@ describe('ClaudeProvider', () => {
     const out = await provider.suggestSavings(CONTEXT)
 
     const kwargs = call(parse)
-    expect(kwargs.output_config.format.schema).toEqual(PY_SCHEMAS.SuggestionBatch)
+    expect(kwargs.output_config.format.schema).toEqual(EXPECTED_SCHEMAS.SuggestionBatch)
     expect(kwargs.system[0]?.text).toBe(savingsSystemPrompt())
     expect(kwargs.system[0]?.cache_control).toEqual({ type: 'ephemeral' })
     const user = kwargs.messages[0]?.content ?? ''
@@ -362,10 +362,10 @@ describe('ClaudeProvider over the real SDK', () => {
       max_tokens: 8000,
       system: [{ type: 'text', text: classifySystemPrompt(), cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: classifyUserMessage(ITEMS) }],
-      output_config: { format: { type: 'json_schema', schema: PY_SCHEMAS.ClassificationBatch } },
+      output_config: { format: { type: 'json_schema', schema: EXPECTED_SCHEMAS.ClassificationBatch } },
     })
     expect(sent).not.toHaveProperty('thinking')
-    expect(sent.output_config).toEqual({ format: { type: 'json_schema', schema: PY_SCHEMAS.ClassificationBatch } })
+    expect(sent.output_config).toEqual({ format: { type: 'json_schema', schema: EXPECTED_SCHEMAS.ClassificationBatch } })
   })
 
   it('reports output that fails validation', async () => {

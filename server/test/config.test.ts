@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { jsonLogs, loadConfig } from '../src/config.js'
+import { loadConfig } from '../src/config.js'
 
 describe('loadConfig defaults', () => {
   const config = loadConfig({})
@@ -117,13 +117,5 @@ describe('loadConfig from the environment', () => {
     ['PORT', '-1'],
   ])('refuses %s=%j', (name, value) => {
     expect(() => loadConfig({ [name]: value })).toThrow(name)
-  })
-})
-
-describe('jsonLogs', () => {
-  it('is on only in production', () => {
-    expect(jsonLogs(loadConfig({ ENVIRONMENT: 'production' }))).toBe(true)
-    expect(jsonLogs(loadConfig({ ENVIRONMENT: 'development' }))).toBe(false)
-    expect(jsonLogs(loadConfig({ ENVIRONMENT: 'test' }))).toBe(false)
   })
 })

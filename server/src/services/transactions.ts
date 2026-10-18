@@ -3,7 +3,7 @@
  *
  * - `fields` holds the fields the client sent (defaults excluded); the route takes it from
  *   the request body's keys.
- * - Search lowers both sides; SQLite's lower() is ASCII-only, so `q` goes through pg_lower
+ * - Search lowers both sides; SQLite's lower() is ASCII-only, so `q` goes through simple_lower
  *   (categorize.ts).
  * - A column is written only when its value changes, so a row whose values are all unchanged
  *   keeps its updated_at (`changedValues`).

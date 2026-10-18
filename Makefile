@@ -25,7 +25,7 @@ dev: ## Build web, server, and the shell, then open the desktop app (data in "Pl
 dev-server: ## Run the headless server on :8000 with reload, serving web/dist (build web first)
 	cd server && npm run dev
 
-dist: ## Package an unsigned desktop app into desktop/release/
+dist: ## Package the macOS app into desktop/release/ (ad hoc signed unless a signing identity is set)
 	cd desktop && npm run dist
 
 smoke: ## Open the desktop app on a throwaway data dir and check the SPA reaches /api/health

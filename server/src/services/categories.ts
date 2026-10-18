@@ -18,12 +18,12 @@ export type Rule = typeof rules.$inferSelect
 const MAX_SLUG = 90
 
 /** Whitespace for stripping: ASCII whitespace, \x1c-\x1f, and the Unicode spaces (not trim()'s set). */
-const PY_SPACE = String.raw`[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]`
-const PY_STRIP = new RegExp(`^${PY_SPACE}+|${PY_SPACE}+$`, 'gu')
+const UNICODE_SPACE = String.raw`[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]`
+const UNICODE_STRIP = new RegExp(`^${UNICODE_SPACE}+|${UNICODE_SPACE}+$`, 'gu')
 
-/** Strip PY_SPACE from both ends. */
+/** Strip UNICODE_SPACE from both ends. */
 export function pyStrip(text: string): string {
-  return text.replace(PY_STRIP, '')
+  return text.replace(UNICODE_STRIP, '')
 }
 
 /** Strip leading and trailing underscores. */

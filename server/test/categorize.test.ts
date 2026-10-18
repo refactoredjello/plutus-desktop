@@ -27,7 +27,7 @@ import { classifyUserMessage } from '../src/providers/llm/prompts.js'
 import { FakeLLMProvider } from '../src/providers/llm/fake.js'
 import type { LLMProvider, MerchantClassification, MerchantInput, SavingsSuggestion } from '../src/providers/llm/types.js'
 import { KeySecretStore } from '../src/secrets.js'
-import { applyRule, casefold, categorizePending, pgLower } from '../src/services/categorize.js'
+import { applyRule, casefold, categorizePending, simpleLower } from '../src/services/categorize.js'
 import { matchTransfers } from '../src/services/transfers.js'
 import { type Transaction, categoryId, loadSimplefinFixture, makeAccount, makeTx, settingsWithOwner } from './factories.js'
 import { makeDb, testConfig } from './setup.js'
@@ -432,13 +432,13 @@ describe('case folding', () => {
     expect(casefold('\ufb03')).toBe('ffi')
   })
 
-  it('pgLower is the simple lowercase mapping, one code point at a time', () => {
-    expect(pgLower('CAF\u00c9')).toBe('caf\u00e9')
-    expect(pgLower('\u0130STANBUL')).toBe('istanbul')
-    expect(pgLower('\u039f\u0394\u039f\u03a3')).toBe('\u03bf\u03b4\u03bf\u03c3')
-    expect(pgLower('\u1e9e')).toBe('\u00df') // no expansion to ss
-    expect(pgLower('\u13a0')).toBe('\uab70')
-    expect(pgLower('\u24b6')).toBe('\u24b6') // circled letters are left alone
+  it('simpleLower is the simple lowercase mapping, one code point at a time', () => {
+    expect(simpleLower('CAF\u00c9')).toBe('caf\u00e9')
+    expect(simpleLower('\u0130STANBUL')).toBe('istanbul')
+    expect(simpleLower('\u039f\u0394\u039f\u03a3')).toBe('\u03bf\u03b4\u03bf\u03c3')
+    expect(simpleLower('\u1e9e')).toBe('\u00df') // no expansion to ss
+    expect(simpleLower('\u13a0')).toBe('\uab70')
+    expect(simpleLower('\u24b6')).toBe('\u24b6') // circled letters are left alone
   })
 
   it('rule matching casefolds; applyRule lowers with the simple mapping', async () => {

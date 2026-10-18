@@ -31,7 +31,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - name: Unsigned (ad hoc) desktop build, dmg and zip for arm64 and x64
+      - name: Ad hoc signed desktop build, dmg and zip for arm64 and x64
         run: npm run dist --workspace desktop
         env:
           # No certificate here: the build is signed ad hoc. electron-builder skips all signing

@@ -10,7 +10,7 @@
  *   llmProvider), never from the environment.
  * - Contains rules compare with full case folding; applying a rule to past transactions (and
  *   transaction search) match with a simple lowercase mapping. JavaScript has neither and
- *   SQLite's lower() is ASCII-only: see casefold and pgLower.
+ *   SQLite's lower() is ASCII-only: see casefold and simpleLower.
  * - Keys sort by code point; JavaScript's default sort compares UTF-16 units.
  */
 
@@ -69,7 +69,7 @@ export function casefold(text: string): string {
  * does: U+0130 becomes a plain "i" and circled letters stay as they are. Used for
  * case-insensitive matching in SQL, where lower() is ASCII-only.
  */
-export function pgLower(text: string): string {
+export function simpleLower(text: string): string {
   if (ASCII.test(text)) return text.toLowerCase()
   let out = ''
   for (const ch of text) {
@@ -84,20 +84,20 @@ export function pgLower(text: string): string {
 const withPgLower = new WeakSet<object>()
 
 /**
- * Register `pg_lower(text)` on the connection, so SQL can match a substring
+ * Register `simple_lower(text)` on the connection, so SQL can match a substring
  * case-insensitively beyond ASCII.
  */
 export function ensurePgLower(db: Db): void {
   if (withPgLower.has(db.$client)) return
-  db.$client.function('pg_lower', { deterministic: true }, (value: unknown) =>
-    typeof value === 'string' ? pgLower(value) : value,
+  db.$client.function('simple_lower', { deterministic: true }, (value: unknown) =>
+    typeof value === 'string' ? simpleLower(value) : value,
   )
   withPgLower.add(db.$client)
 }
 
 /** A literal (no wildcards), case-insensitive substring match on a column. */
 export function icontains(column: Column, text: string) {
-  return sql`instr(pg_lower(${column}), ${pgLower(text)}) > 0`
+  return sql`instr(simple_lower(${column}), ${simpleLower(text)}) > 0`
 }
 
 /** String ordering by code point. */

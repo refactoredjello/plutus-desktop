@@ -7,7 +7,7 @@ import { type DestinationStream, type Logger, pino } from 'pino'
 
 export type { Logger }
 
-const PY_LEVELS: Record<string, string> = {
+const LOG_LEVELS: Record<string, string> = {
   debug: 'debug',
   info: 'info',
   warning: 'warn',
@@ -18,7 +18,7 @@ const PY_LEVELS: Record<string, string> = {
 }
 
 export function createLogger(options: { level: string }, destination?: DestinationStream): Logger {
-  const level = PY_LEVELS[options.level.toLowerCase()]
+  const level = LOG_LEVELS[options.level.toLowerCase()]
   if (!level) throw new Error(`Unknown log level: ${options.level}`)
   return pino(
     {

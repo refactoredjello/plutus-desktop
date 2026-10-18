@@ -22,7 +22,7 @@ export interface LlmSettings {
 
 /** Blank strings: empty or only whitespace (ASCII, \x1c-\x1f, and the Unicode spaces). */
 // oxlint-disable-next-line no-control-regex -- \x1c-\x1f count as whitespace.
-const PY_BLANK = /^[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$/
+const UNICODE_BLANK = /^[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$/
 
 /** `log` reaches the Claude provider's debug line. */
 export function getLlmProvider(settings: LlmSettings, log?: Logger): LLMProvider {
@@ -31,7 +31,7 @@ export function getLlmProvider(settings: LlmSettings, log?: Logger): LLMProvider
       return new FakeLLMProvider()
     case 'claude': {
       const key = settings.anthropic_api_key
-      if (key === null || PY_BLANK.test(key)) {
+      if (key === null || UNICODE_BLANK.test(key)) {
         throw new ProviderError('LLM_PROVIDER=claude requires ANTHROPIC_API_KEY to be set')
       }
       return new ClaudeProvider(key, settings.llm_model, undefined, log)
