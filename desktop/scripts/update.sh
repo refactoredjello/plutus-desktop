@@ -33,7 +33,7 @@ restore_data=0
 want=""
 
 usage() {
-  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 die() {
@@ -272,14 +272,15 @@ restore_data_from() {
 }
 
 finish() {
-  local old="$1" new="$2"
+  local old="$1" new="$2" next="$3"
   echo
   echo "Plutus $old -> $new, installed in $TARGET."
   echo
   echo "Open Plutus. A new build asks once to use \"Plutus Safe Storage\" in your Keychain:"
   echo "choose Always Allow (Deny makes the saved SimpleFIN and API keys unreadable)."
-  echo "Data copies: $BACKUPS   Previous apps: $PREV"
-  echo "To undo: npm run update:app -- --rollback (in desktop/)"
+  echo "Data copies:   $BACKUPS"
+  echo "Previous apps: $PREV"
+  echo "$next"
 }
 
 # --- main ----------------------------------------------------------------------------------
@@ -291,11 +292,15 @@ old="none"
 if [ -d "$APP" ]; then old="$(app_version "$APP")"; fi
 
 if [ "$mode" = install ]; then
-  say "Fetching the ${want:+v$want }release for $ARCH"
+  if [ -n "${PLUTUS_UPDATE_ZIP:-}" ]; then
+    say "Using $PLUTUS_UPDATE_ZIP"
+  else
+    say "Downloading the ${want:+v}${want:-latest} release for $ARCH"
+  fi
   zip="$(fetch_zip)"
   new_app="$(unpack_app "$zip")"
   new="$(app_version "$new_app")"
-  say "Downloaded Plutus $new; signature verified"
+  say "Unpacked Plutus $new; signature verified"
   if [ "$new" = "$old" ]; then
     say "Plutus $new is already installed; reinstalling it"
   elif is_version "$new" && is_version "$old" && [[ "$(version_key "$new")" < "$(version_key "$old")" ]]; then
@@ -308,7 +313,7 @@ if [ "$mode" = install ]; then
   keep_installed_app
   swap_in "$new_app"
   prune_saved_apps
-  finish "$old" "$new"
+  finish "$old" "$new" "To undo: npm run update:app -- --rollback (in desktop/)"
   exit 0
 fi
 
@@ -356,4 +361,4 @@ else
   swap_in "$back_app"
 fi
 prune_saved_apps
-finish "$old" "$back"
+finish "$old" "$back" "To go forward again: npm run update:app (in desktop/)"
