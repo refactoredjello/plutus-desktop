@@ -45,6 +45,12 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - `server/` is the TypeScript port (Hono, Drizzle, better-sqlite3), laid out per docs/DESKTOP_PLAN.md 4.3. `server/test/setup.ts` gives each test its own in-memory SQLite via `makeDb()`.
 - `server/src/services/config.ts` is the runtime config: knobs live in `app_settings`, seeded once from env; read them with `runtimeConfig()`/`llmSettings()`, never `process.env`.
 - `desktop/` is the Electron shell: it runs `plutus-server/dist` in-process (build server first), testable parts in `desktop/src/lib/`. `npm run smoke` in desktop/ opens the real window on a throwaway data dir and checks the SPA reaches `/api/health` through the cookie guard; `smoke:dist` does the same for the packaged app.
+
+## Working on the desktop app
+
+- Most features touch only `server/` and `web/`: build and check them as a web app (server tests, MSW frontend tests, `npm run dev` in `server/` opened in a browser). Use the real window only for shell work or a final check.
+- Dev runs (`npm run dev` in `desktop/`, or `npx electron .` after a build) keep data in `~/Library/Application Support/Plutus Dev/plutus.sqlite`, separate from the installed app's. Load demo data with the app closed: `PLUTUS_DB_PATH="$HOME/Library/Application Support/Plutus Dev/plutus.sqlite" npm run demo -- load` in `server/`.
+- Debug the real window with `npx electron . --remote-debugging-port=9222` in `desktop/`. A human attaches Chrome DevTools from `chrome://inspect`; an agent reads `http://127.0.0.1:9222/json/list`, opens the page's `webSocketDebuggerUrl` with Node's built-in `WebSocket`, and sends DevTools Protocol commands (`Runtime.evaluate`, `Page.captureScreenshot`, `Network.enable`). Code run in the page passes the cookie guard, so `fetch('/api/...')` works there; the same origin opened in another browser answers 401. Dev builds and demo data only, since any local program can drive an open port; quit the app when done.
 - `tools/parity/` compares the Python and TypeScript apps endpoint by endpoint (`make parity`).
 - `web/src/api` is generated; never edit it. `src/pages` one file per route; `src/features/<area>` components and queries; `src/mocks` MSW handlers for tests.
 - `docs/` requirements (with a decisions log and known limitations), architecture, plans, and PRDs.
