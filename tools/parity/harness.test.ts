@@ -142,4 +142,47 @@ describe('runStep', () => {
     expect(results[0]?.differences[0]?.note).toBe('Python could not prepare the step')
     expect(ts.api.calls).not.toContain('POST /api/goals')
   })
+
+  it('settles both apps after both writes and before the re-reads', async () => {
+    const order: string[] = []
+    const slow: WriteStep = {
+      ...step,
+      async settle(api) {
+        order.push(`settle ${(api as { name?: string }).name}`)
+        return null
+      },
+    }
+    const named = (name: string) => {
+      const api = fake(pythonRoutes)
+      const send = api.send.bind(api)
+      return Object.assign(api, {
+        name,
+        async send(method: string, path: string, body?: Json) {
+          order.push(`${name} ${method} ${path}`)
+          return send(method, path, body)
+        },
+      })
+    }
+    const results = await runStep(slow, 2, { api: named('py'), state: {} }, { api: named('ts'), state: {} }, '2026-09-30')
+    expect(order.filter((o) => !o.includes('GET /api/categories'))).toEqual([
+      'py POST /api/goals',
+      'ts POST /api/goals',
+      'settle py',
+      'settle ts',
+      'py GET /api/goals',
+      'ts GET /api/goals',
+      'py GET /api/goals/4',
+      'ts GET /api/goals/4',
+    ])
+    expect(results[0]?.differences).toEqual([])
+  })
+
+  it('reports an app that does not settle', async () => {
+    const stuck: WriteStep = { ...step, settle: async (api) => ((api as { name?: string }).name === 'ts' ? 'sync still running after 60 s' : null) }
+    const ts = Object.assign(fake(pythonRoutes), { name: 'ts' })
+    const results = await runStep(stuck, 2, { api: fake(pythonRoutes), state: {} }, { api: ts, state: {} }, '2026-09-30')
+    expect(results[0]?.differences).toEqual([
+      { path: '(settle)', expected: null, actual: 'sync still running after 60 s', note: 'the app did not settle after the write' },
+    ])
+  })
 })
