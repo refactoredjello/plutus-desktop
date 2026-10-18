@@ -104,16 +104,21 @@ export function recordAppVersion(client: Database.Database, version = APP_VERSIO
 }
 
 /** Throws when the database has a migration newer than any this app bundles. */
-export function guardSchema(client: Database.Database, bundled: JournalEntry[]): void {
+export function guardSchema(
+  client: Database.Database,
+  bundled: JournalEntry[],
+  appVersion = APP_VERSION,
+): void {
   const applied = newestApplied(client)
   const newest = bundled.at(-1)?.when ?? 0
   if (applied === null || applied <= newest) return
   const last = lastAppVersion(client)
-  const install = last && last !== APP_VERSION ? `Plutus ${last} or later` : 'the newer version'
-  const by = last && last !== APP_VERSION ? `Plutus ${last}, ` : ''
+  const known = last !== null && last !== appVersion
+  const install = known ? `Plutus ${last} or later` : 'the newer version'
+  const by = known ? `Plutus ${last}, ` : ''
   throw new DatabaseOpenError(
     'too_new',
-    `This data was last opened by ${by}a newer version of Plutus than this one (${APP_VERSION}). ` +
+    `This data was last opened by ${by}a newer version of Plutus than this one (${appVersion}). ` +
       `Install ${install} to open it. ${UNCHANGED}`,
   )
 }

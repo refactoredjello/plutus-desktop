@@ -5,13 +5,14 @@
  * restore the backup if the checks fail.
  */
 
-import { mkdirSync, readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
 import { type BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import {
+  APP_VERSION,
   DatabaseOpenError,
   backupBeforeMigrating,
   bundledMigrations,
@@ -41,6 +42,8 @@ export interface OpenDbOptions {
   migrationsFolder?: string
   /** Where pre-migration backups go; defaults to `backups/` beside the database file. */
   backupDir?: string
+  /** Recorded as last_app_version and named by the schema guard; the desktop passes its own. */
+  appVersion?: string
 }
 
 interface SeedCategory {
@@ -77,13 +80,15 @@ function isFilePath(path: string): boolean {
  * Open, guard, back up, migrate, check, and seed. Throws a DatabaseOpenError, with the
  * connection closed, when the data is newer than the app, the backup fails, the migration
  * fails, or the checks after it fail; in the last case the backup has been restored.
- * Backups are only for a database file that already has tables and pending migrations.
+ * Backups are only for a database file that already has tables and pending migrations; a
+ * new database file that fails to migrate is deleted instead, so the next start retries.
  */
 export function openDb(path: string, options: OpenDbOptions = {}): Db {
   const migrationsFolder = options.migrationsFolder ?? MIGRATIONS_FOLDER
   const isFile = isFilePath(path)
   if (isFile) mkdirSync(dirname(path), { recursive: true })
   const backupDir = options.backupDir ?? join(dirname(path), 'backups')
+  const appVersion = options.appVersion ?? APP_VERSION
   const client = new Database(path)
   try {
     client.pragma('journal_mode = WAL')
@@ -91,10 +96,11 @@ export function openDb(path: string, options: OpenDbOptions = {}): Db {
     // with it on, a table rebuild's DROP TABLE cascades into the child tables.
     client.pragma('foreign_keys = OFF')
     const bundled = bundledMigrations(migrationsFolder)
-    guardSchema(client, bundled)
+    guardSchema(client, bundled, appVersion)
     const next = pendingMigrations(client, bundled)[0]
+    const isNewFile = isFile && !hasData(client)
     const backupPath =
-      next !== undefined && isFile && hasData(client)
+      next !== undefined && isFile && !isNewFile
         ? backupBeforeMigrating(client, path, backupDir, next.tag)
         : null
 
@@ -103,6 +109,7 @@ export function openDb(path: string, options: OpenDbOptions = {}): Db {
       try {
         migrate(db, { migrationsFolder })
       } catch (err) {
+        if (isNewFile) discardNewDatabase(client, path, String(err), err)
         throw new DatabaseOpenError(
           'migration_failed',
           `Plutus could not update your data to this version (${String(err)}). ` +
@@ -111,16 +118,31 @@ export function openDb(path: string, options: OpenDbOptions = {}): Db {
         )
       }
       const problems = postMigrationProblems(client)
-      if (problems.length > 0) failChecks(client, path, backupPath, backupDir, problems)
+      if (problems.length > 0) {
+        if (isNewFile) discardNewDatabase(client, path, problems.join('; '))
+        failChecks(client, path, backupPath, backupDir, problems)
+      }
     }
     client.pragma('foreign_keys = ON')
     seedCategories(db, migrationsFolder)
-    if (isFile) recordAppVersion(client)
+    if (isFile) recordAppVersion(client, appVersion)
     return db
   } catch (err) {
     if (client.open) client.close()
     throw err
   }
+}
+
+/** A database file created by this open failed to migrate: it holds no user data, so delete it. */
+function discardNewDatabase(client: Database.Database, path: string, reason: string, cause?: unknown): never {
+  client.close()
+  for (const suffix of ['', '-wal', '-shm']) rmSync(path + suffix, { force: true })
+  throw new DatabaseOpenError(
+    'migration_failed',
+    `Plutus could not set up a new database (${reason}). It held no data and was removed; ` +
+      'Plutus will try again at the next start.',
+    { cause },
+  )
 }
 
 /** The checks after migrating failed: put the backup back, or say there was none. */
