@@ -34,6 +34,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 | `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the TypeScript server, then `schema.d.ts`. A test fails if they're stale. `server/test/contract.test.ts` also checks the spec against FastAPI's, frozen in `server/test/fixtures/fastapi-openapi.json`. |
 | `make parity-self` / `make parity` | Parity harness (`tools/parity`): Python against itself (must be zero differences), then Python against the TypeScript server on demo data; writes `tools/parity/report.md`. Needs the compose Postgres; not part of `make check`. |
 | `make import-check` | Postgres export (`python -m app.export_json`) to SQLite import (`server/scripts/import-json.ts`) on demo data in a throwaway `plutus_export` database; counts, secrets, runtime config, and the monthly report must match. See docs/MIGRATING_DATA.md. |
+| `npm run demo -- load` / `-- clear` (in `server/`) | Fake demo data in the TypeScript server's database through the real sync pipeline (same 295 transactions as `make demo-data`). |
 | `make revision m="..."` | New Alembic migration (autogenerate), then review it. |
 | `make help` | The rest. |
 

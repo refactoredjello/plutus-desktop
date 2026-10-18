@@ -54,3 +54,14 @@ Each entry names the brief that found it and where it lives in the TypeScript po
 26. S4 builds "usual" from the span between the first and last active month, so inactive months in between are included; this matters only when a month's spending nets to zero.
 27. S7's "biggest" item is taken from at most 500 of the newest review rows, while its total counts every row.
 28. S5's "seen before" and S6's "similar before" count pending and transfer transactions.
+
+## Sync and scheduler (brief 3A)
+
+29. A scheduled sync that fires more than a second late is skipped and pushed a full interval later (APScheduler's default 1 s misfire grace, never overridden). On a laptop that sleeps this skips due syncs.
+30. Jitter is added to the previous jittered time, so the schedule drifts by about a minute per interval.
+
+## Port behaviour to revisit (not Python bugs; same ask-first rule)
+
+31. The scheduler reads its interval and on/off setting once at start. The desktop can now change them through Settings, but the running scheduler keeps the old values until the app restarts, while `GET /api/sync/schedule` shows the stored ones.
+32. A sync commits per step (better-sqlite3 can't hold a transaction across the LLM call), so a failure after the account and transaction upsert leaves those rows committed where Python rolled the whole run back.
+33. The port clamps a zero or negative sync interval to one second; Python's scheduler would loop forever on a negative one.
