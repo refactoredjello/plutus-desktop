@@ -12,7 +12,6 @@ Grouped by the change that carries them; the entries below keep their full descr
 
 - **Rule builder:** 35, with 15, 16, 17, 18 and 20.
 - **Transfer matching and Unpair:** 36 (stricter pairing and an Unpair action), closing 21.
-- **What changed:** 28.
 
 Everything else stays open for later.
 
@@ -62,7 +61,6 @@ Everything else stays open for later.
 25. `merchantLabel` in `services/changes.ts` orders by `posted_on desc` with no tiebreak, so with two payees on the same day the label is arbitrary.
 26. S4 (`s4CategoryAbove`) builds "usual" from the span between the first and last active month, so inactive months in between are included; this matters only when a month's spending nets to zero.
 27. S7 (`s7ReviewBacklog`) takes its "biggest" item from at most `REVIEW_SCAN_LIMIT` (500) of the newest review rows, while its total counts every row.
-28. S5's "seen before" (`s5NewMerchants`) and S6's "similar before" (`seenSimilarBefore`) count pending and transfer transactions.
 
 ## Sync and scheduler
 
@@ -89,3 +87,4 @@ Entries that today's code does not have, or that the owner closed, kept so their
 3. `detectRecurring` in `services/recurring.ts` can count one row as two changes when it refreshes dates and fills essentiality in the same run. Fixed 2026-10-18, owner approved: each recurrence counts once per detection run.
 37. Balance history includes pending transactions and invents history. `balanceHistory` in `services/reports.ts` walks back from the latest snapshot by daily sums that include pending transactions (the ledger balance usually excludes them), and draws a flat line back to the start of the window (180 days) even before the account's first transaction or snapshot. Wanted: sum posted transactions only, and start each account's series at its earliest transaction or snapshot when that is later than the window's start. Fixed 2026-10-18, owner approved: balance history sums posted transactions only and starts each account at its first data.
 33. The scheduler clamps a zero or negative interval to one second (`clampedInterval` in `server/src/scheduler.ts`). Settings rejects an interval under one hour, but `SYNC_INTERVAL_HOURS` seeds any integer from the environment on first run, so a bad seed syncs every second until the daily request guard refuses. Fixed 2026-10-18, owner approved: SYNC_INTERVAL_HOURS and SYNC_FIRST_HISTORY_DAYS must be integers of at least 1, or startup fails with a ConfigError.
+28. S5's "seen before" (`s5NewMerchants`) and S6's "similar before" (`seenSimilarBefore`) count pending and transfer transactions. Fixed 2026-10-18, owner approved: seen before and similar before count only posted, non-transfer rows.
