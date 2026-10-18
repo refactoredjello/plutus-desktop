@@ -52,6 +52,8 @@ export interface AppDeps {
   log?: Logger
   /** The per-launch token for the API guard; random when the guard is on and none is given. */
   guardToken?: string
+  /** The periodic sync, for GET /api/sync/schedule; none when it is not running here. */
+  scheduler?: { nextRunAt(): string | null }
 }
 
 export interface AppEnv {
@@ -61,6 +63,7 @@ export interface AppEnv {
     config: Config
     log: Logger
     requestId: string
+    scheduler: { nextRunAt(): string | null } | null
   }
 }
 
@@ -181,6 +184,7 @@ export function createApp(deps: AppDeps): App {
     c.set('secrets', secrets)
     c.set('config', config)
     c.set('log', log)
+    c.set('scheduler', deps.scheduler ?? null)
     await next()
   })
   app.use('*', requestId())

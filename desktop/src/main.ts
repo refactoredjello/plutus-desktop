@@ -15,6 +15,7 @@ import { BrowserWindow, app, dialog, safeStorage, shell } from 'electron'
 import { loadConfig } from 'plutus-server/dist/config.js'
 import { type Db, openDb } from 'plutus-server/dist/db/index.js'
 import { type Logger, createLogger } from 'plutus-server/dist/lib/log.js'
+import { type Scheduler, createScheduler } from 'plutus-server/dist/scheduler.js'
 import { newGuardToken } from './lib/guard.js'
 import { classifyNavigation } from './lib/navigation.js'
 import { resolvePaths, userDataDir } from './lib/paths.js'
@@ -36,6 +37,7 @@ app.setPath(
 let log: Logger | null = null
 let db: Db | null = null
 let server: RunningServer | null = null
+let scheduler: Scheduler | null = null
 let mainWindow: BrowserWindow | null = null
 let origin = ''
 let stopped = false
@@ -88,13 +90,14 @@ async function start(): Promise<void> {
   log = createLogger({ level: config.logLevel })
   const secrets = new SafeStorageSecretStore(safeStorage)
   db = openDb(paths.databasePath)
-  server = await startServer({ db, secrets, config, log, guardToken: newGuardToken() })
+  scheduler = createScheduler({ db, secrets, defaults: config.defaults, log })
+  server = await startServer({ db, secrets, config, log, guardToken: newGuardToken(), scheduler })
   origin = server.origin
   log.info(
     { origin, database: paths.databasePath, web: paths.webDist, electron: process.versions.electron },
     'Plutus desktop started',
   )
-  // Brief 3A: start the scheduler here, once the server is up.
+  scheduler.start() // only when the config enables it
   mainWindow = createWindow()
   if (SMOKE) void smoke(mainWindow)
 }
@@ -103,7 +106,8 @@ async function start(): Promise<void> {
 async function shutdown(): Promise<void> {
   if (stopped) return
   stopped = true
-  // Brief 3A: stop the scheduler here, before the server and database close.
+  scheduler?.stop()
+  scheduler = null
   await server?.close()
   server = null
   db?.$client.close()
