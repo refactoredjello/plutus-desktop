@@ -27,6 +27,8 @@ export interface WriteStep {
   endpoint: string
   prepare(api: Api, state: State, today: string): Promise<StepRequest> | StepRequest
   capture?(response: Envelope, state: State): void
+  /** Wait for background work the write started (a sync); null when done, else why not. */
+  settle?(api: Api, state: State): Promise<string | null>
   /** GET paths to compare after the write. */
   reread(state: State, today: string): string[]
 }

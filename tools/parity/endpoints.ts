@@ -71,8 +71,34 @@ export const NOT_COMPARED: readonly { endpoint: string; reason: string }[] = [
     reason: 'TypeScript only: the runtime config endpoint is new in the desktop contract (0B).',
   },
   {
-    endpoint: 'POST /api/settings/simplefin',
-    reason: 'Claiming a setup token calls the SimpleFIN bridge over the network; covered by unit tests.',
+    endpoint: 'POST /api/settings/simplefin (live bridge)',
+    reason:
+      'Never sent to the real SimpleFIN bridge (network, one claim per token). A fake bridge on ' +
+      'loopback (bridge.ts) answers the claims and syncs instead.',
+  },
+  {
+    endpoint: 'POST /api/recurring, 400 "no merchant yet"',
+    reason:
+      'Unreachable through the API: categorize_pending sets a merchant key ("UNKNOWN" at worst) in ' +
+      'the same run that stores a transaction, so no stored transaction lacks one.',
+  },
+  {
+    endpoint: 'PATCH /api/transactions/{transaction_id} on an uncategorized transaction',
+    reason:
+      'Unreachable with the fake LLM, which classifies every key and never fails, so no transaction ' +
+      'stays uncategorized (and `?uncategorized=true` lists nothing). Backlog 20; unit-tested.',
+  },
+  {
+    endpoint: 'GET /api/settings/simplefin, 400 after a secret key change',
+    reason: 'Needs an app restarted with another key (backlog 13); unit-tested in both apps.',
+  },
+  {
+    endpoint: 'POST /api/sync, stale run recovery',
+    reason: 'Needs a run left running for 30 minutes; unit-tested in both apps.',
+  },
+  {
+    endpoint: 'Scheduled syncs',
+    reason: 'The scheduler is off in both apps for a deterministic run; its timing is unit-tested.',
   },
 ]
 

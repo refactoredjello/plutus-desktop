@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { Envelope } from './diff.ts'
 import { ENDPOINTS, NOT_COMPARED, templateFor } from './endpoints.ts'
 import type { Json } from './normalize.ts'
+import { bridgeSteps } from './sync_steps.ts'
 import { type Api, PrepareError, type State, type StepRequest, WRITE_STEPS, runPrepare } from './writes.ts'
 
 const TODAY = '2026-09-30'
@@ -170,7 +171,12 @@ describe('WRITE_STEPS', () => {
 
   it('covers every write in the contract that is not explicitly skipped', async () => {
     const { requests } = await runAll(fakeApi())
-    const exercised = new Set(requests.map((r) => templateFor(r.method, r.path)))
+    // The bridge steps resolve to their endpoint (sync_steps.test.ts checks that).
+    const bridge = { token: () => 't', setMode: () => {}, setDelay: () => {} }
+    const exercised = new Set([
+      ...requests.map((r) => templateFor(r.method, r.path)),
+      ...bridgeSteps(bridge).map((s) => s.endpoint),
+    ])
     const skipped = new Set(NOT_COMPARED.map((n) => n.endpoint))
     const openapi = JSON.parse(
       readFileSync(new URL('../../web/src/api/openapi.json', import.meta.url), 'utf8'),

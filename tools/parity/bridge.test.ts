@@ -12,7 +12,7 @@ import type { Json } from './normalize.ts'
 
 const TODAY = '2026-09-30'
 
-const FIXTURE = {
+const FIXTURE: Json = {
   errors: [],
   accounts: [
     {
@@ -26,7 +26,7 @@ const FIXTURE = {
     },
     { id: 'ACT-cc-002', name: 'Rewards Visa', balance: '-20.00', transactions: [] },
   ],
-} satisfies Json
+}
 
 type Payload = { errors: string[]; accounts: { id: string; transactions: { id: string; [k: string]: Json }[] }[] }
 
