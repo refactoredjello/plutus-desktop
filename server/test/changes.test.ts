@@ -307,6 +307,18 @@ describe('S5 new large merchant', () => {
     expect(items('S5')).toEqual([])
   })
 
+  // Backlog 28: only posted, non-transfer rows count as seen before.
+  it.each([
+    ['earlier row pending, still flagged', { pending: true }, 1],
+    ['earlier row a transfer, still flagged', { is_transfer: true }, 1],
+    ['earlier row posted, not flagged', {}, 0],
+  ])('seen before counts posted, non-transfer rows: %s', (_label, earlier, flagged) => {
+    const acct = account()
+    makeTx(db, acct, '-50.00', 'THE HOME DEPOT', '2026-09-02', { merchant_key: 'THE HOME DEPOT', ...earlier })
+    makeTx(db, acct, '-486.00', 'THE HOME DEPOT', '2026-10-02', { merchant_key: 'THE HOME DEPOT' })
+    expect(items('S5')).toHaveLength(flagged)
+  })
+
   it('an empty payee falls back to the capitalised key, and q to the raw text', () => {
     const acct = account()
     makeTx(db, acct, '-486.00', 'the  HOME depot #12', '2026-10-02', { merchant_key: 'THE HOME DEPOT', payee: '' })
@@ -351,6 +363,21 @@ describe('S6 large single expense', () => {
       makeTx(db, acct, '-3000.00', 'LOAN', `2026-${month}-01`, { merchant_key: 'CREDIT UNION LOAN' })
     }
     expect(items('S6')).toEqual([])
+  })
+
+  // Backlog 28: only posted, non-transfer rows count as similar before. The August row keeps it out of S5.
+  it.each([
+    ['earlier row pending, still flagged', { pending: true }, 1],
+    ['earlier row a transfer, still flagged', { is_transfer: true }, 1],
+    ['earlier row posted, not flagged', {}, 0],
+  ])('similar before counts posted, non-transfer rows: %s', (_label, earlier, flagged) => {
+    const acct = account()
+    smallExpenses(acct)
+    makeTx(db, acct, '-300.00', 'DELTA', '2026-08-01', { merchant_key: 'DELTA AIR LINES' })
+    makeTx(db, acct, '-1150.00', 'DELTA', '2026-09-25', { merchant_key: 'DELTA AIR LINES', ...earlier })
+    makeTx(db, acct, '-1200.00', 'DELTA', '2026-10-02', { merchant_key: 'DELTA AIR LINES' })
+    expect(items('S5')).toEqual([])
+    expect(items('S6')).toHaveLength(flagged)
   })
 
   it.each([
