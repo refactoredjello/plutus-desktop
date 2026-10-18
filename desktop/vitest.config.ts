@@ -1,13 +1,9 @@
-import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
-const serverSrc = fileURLToPath(new URL('../server/src/', import.meta.url))
-
 export default defineConfig({
-  resolve: {
-    // Same mapping as the tsconfig paths: tests run the server's sources, no build needed.
-    alias: [{ find: /^plutus-server\/dist\/(.*)$/, replacement: `${serverSrc}$1` }],
-  },
+  // Same as the tsconfig: plutus-server resolves to its sources through the "plutus-source"
+  // export condition, so tests need no server build. The rest are Vite's server defaults.
+  ssr: { resolve: { conditions: ['plutus-source', 'module', 'node', 'development|production'] } },
   test: {
     environment: 'node',
     include: ['test/**/*.test.ts'],

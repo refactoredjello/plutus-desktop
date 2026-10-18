@@ -19,10 +19,9 @@
     "noFallthroughCasesInSwitch": true,
 
     // The shell runs the server's compiled output (plutus-server/dist, from `npm run build
-    // -w server`) but typechecks against its sources, so `npm run check` needs no server build.
-    "paths": {
-      "plutus-server/dist/*": ["../server/src/*"]
-    }
+    // -w server`) but typechecks against its sources through the package's "plutus-source"
+    // export condition, so `npm run check` needs no server build.
+    "customConditions": ["plutus-source"]
   },
   "include": ["src", "test", "vitest.config.ts"]
 }

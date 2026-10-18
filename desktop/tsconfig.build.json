@@ -5,7 +5,7 @@
   "compilerOptions": {
     "noEmit": false,
     "noCheck": true,
-    "paths": {},
+    "customConditions": [],
     "rootDir": "src",
     "outDir": "dist"
   },
