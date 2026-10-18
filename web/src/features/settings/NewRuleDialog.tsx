@@ -103,7 +103,7 @@ export function NewRuleDialog() {
             <Label>
               Essentiality <span className="font-normal text-muted-foreground">(optional)</span>
             </Label>
-            <EssentialitySelect value={essentiality} onChange={setEssentiality} label="Essentiality" />
+            <EssentialitySelect value={essentiality} onChange={setEssentiality} label="Essentiality" allowUnset />
           </div>
         </form>
         {create.isError && (

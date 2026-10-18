@@ -181,6 +181,8 @@ function EssentialityOptions({
 
 export function EssentialitySelect({
   onChange,
+  value,
+  allowUnset = false,
   ...props
 }: {
   value: Essentiality | '' | null | undefined
@@ -188,8 +190,17 @@ export function EssentialitySelect({
   label: string
   allLabel?: string
   inline?: boolean
+  /** Offer "Not set", shown while the value is null, and chosen as null. */
+  allowUnset?: boolean
 }): ReactNode {
-  return <EssentialityOptions {...props} includeUnset={false} onChange={(v) => onChange(v === 'unset' ? null : v)} />
+  return (
+    <EssentialityOptions
+      {...props}
+      value={allowUnset && !value ? 'unset' : value}
+      includeUnset={allowUnset}
+      onChange={(v) => onChange(v === 'unset' ? null : v)}
+    />
+  )
 }
 
 /** Filter variant: adds "Not set" for spending with no essentiality. */

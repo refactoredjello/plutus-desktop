@@ -22,7 +22,7 @@ import type { TransactionRead, TransactionUpdate } from '../schemas/transactions
 import type { SecretStore } from '../secrets.js'
 import { essentialityCondition } from './aggregates.js'
 import { pyStrip, saveRule } from './categories.js'
-import { ensurePgLower, icontains } from './categorize.js'
+import { containsPattern, ensurePgLower, icontains } from './categorize.js'
 import { runtimeConfig } from './config.js'
 import { merchantKey as scrubMerchantKey } from './scrub.js'
 
@@ -203,9 +203,16 @@ function overrideCategory(
       scrubMerchantKey(tx.raw_description, runtimeConfig(db, settings.secrets, settings.defaults).ownerNameTokens)
     if (tx.merchant_key !== key) db.update(transactions).set({ merchant_key: key }).where(eq(transactions.id, tx.id)).run()
     const matchType = body.rule_match_type
-    // Contains rules match the raw description, so they default to the payee or the description.
-    const pattern =
-      body.rule_pattern ?? (matchType === 'contains' ? pyStrip(tx.payee ?? '') || tx.raw_description : key)
+    const pattern = body.rule_pattern ?? (matchType === 'contains' ? defaultContainsPattern(tx) : key)
     saveRule(db, { match_type: matchType, pattern, category_id: categoryId, essentiality })
   }
+}
+
+/**
+ * A contains rule matches the raw description, so it defaults to the payee only when the
+ * description contains it, else to the description. Either way it matches its own transaction.
+ */
+function defaultContainsPattern(tx: Tx): string {
+  const payee = pyStrip(tx.payee ?? '')
+  return payee && containsPattern(tx.raw_description, payee) ? payee : tx.raw_description
 }
