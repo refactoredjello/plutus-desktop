@@ -157,6 +157,15 @@ describe('SPA static handler (web/nginx.conf)', () => {
     expect(await res.json()).toEqual({ detail: 'Not Found' })
   })
 
+  it('sends a Content-Security-Policy with the HTML', async () => {
+    for (const path of ['/', '/goals/3']) {
+      const csp = (await app().request(path)).headers.get('content-security-policy')
+      expect(csp).toContain("default-src 'self'")
+      expect(csp).toContain("script-src 'self'")
+      expect(csp).not.toContain('unsafe-eval')
+    }
+  })
+
   it('answers 404 when there is no build', async () => {
     const res = await makeApp().app.request('/')
     expect(res.status).toBe(404)
@@ -231,5 +240,32 @@ describe('OpenAPI document', () => {
     const res = await makeApp().app.request('/api/openapi.json')
     expect(res.status).toBe(200)
     expect(((await res.json()) as { info: unknown }).info).toEqual({ title: 'Plutus API', version: '0.1.0' })
+  })
+})
+
+describe('a required JSON body that is missing (FastAPI: 422 at body)', () => {
+  const send = (method: string, path: string) => makeApp().app.request(path, { method })
+
+  it.each([
+    ['PATCH', '/api/categories/1'],
+    ['PATCH', '/api/goals/1'],
+    ['PATCH', '/api/transactions/1'],
+    ['POST', '/api/categories'],
+    ['POST', '/api/manual-entries'],
+  ])('%s %s with no body and no Content-Type answers 422 "body: Field required"', async (method, path) => {
+    const res = await send(method, path)
+    expect(res.status).toBe(422)
+    expect(res.headers.get('content-type')).toBe('application/problem+json')
+    expect(((await res.json()) as { detail: string }).detail).toBe('body: Field required')
+  })
+
+  it('leaves routes without a body alone', async () => {
+    expect((await send('POST', '/api/goals/999/suggestions')).status).toBe(404)
+  })
+
+  it('still answers 422 for a body without a Content-Type (the media type gate)', async () => {
+    const res = await makeApp().app.request('/api/categories/1', { method: 'PATCH', body: '{}' })
+    expect(res.status).toBe(422)
+    expect(((await res.json()) as { detail: string }).detail).toBe('body: Unsupported Media Type')
   })
 })
