@@ -14,6 +14,7 @@ const paths: ShellPaths = {
   webDist: '/app/Resources/web',
   dataDir: '/data/Plutus',
   databasePath: '/data/Plutus/plutus.sqlite',
+  backupDir: '/data/Plutus/backups',
   logFile: '/data/Plutus/logs/plutus.log',
 }
 

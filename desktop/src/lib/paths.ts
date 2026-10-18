@@ -17,6 +17,8 @@ export interface ShellPaths {
   webDist: string
   dataDir: string
   databasePath: string
+  /** Pre-migration backups (openDb keeps the newest 5). */
+  backupDir: string
   logFile: string
 }
 
@@ -39,6 +41,7 @@ export function resolvePaths(inputs: PathInputs): ShellPaths {
     webDist,
     dataDir: inputs.userDataPath,
     databasePath: join(inputs.userDataPath, 'plutus.sqlite'),
+    backupDir: join(inputs.userDataPath, 'backups'),
     logFile: join(inputs.userDataPath, 'logs', 'plutus.log'),
   }
 }
