@@ -4,8 +4,8 @@
  * without the LLM.
  *
  * The owner tokens and the LLM knobs come from the config service, so the call takes the
- * secret store and the config defaults that seed it. The last block pins the two case
- * foldings: full case folding for rule matching, simple lowercase for applyRule.
+ * secret store and the config defaults that seed it. The last block pins case folding:
+ * contains rules use full case folding everywhere; transaction search uses simple lowercase.
  */
 
 import { count, eq } from 'drizzle-orm'
@@ -441,13 +441,15 @@ describe('case folding', () => {
     expect(simpleLower('\u24b6')).toBe('\u24b6') // circled letters are left alone
   })
 
-  it('rule matching casefolds; applyRule lowers with the simple mapping', async () => {
+  it('contains rules casefold the same way in categorization and in applyRule (backlog 18)', async () => {
     const acct = makeAccount(db)
-    const tx = makeTx(db, acct, '-5.00', 'Gro\u00dfmarkt Stra\u00dfe')
+    const existing = makeTx(db, acct, '-5.00', 'Gro\u00dfmarkt Stra\u00dfe')
     const r = rule('contains', 'STRASSE', 'FOOD_AND_DRINK_GROCERIES')
-    expect(applyRule(db, r)).toBe(0) // lower('STRASSE') is not in lower('...Stra\u00dfe')
+    expect(applyRule(db, r)).toBe(1) // casefold('...Stra\u00dfe') contains 'strasse'
+    expect(detailed(cat(existing))).toBe('FOOD_AND_DRINK_GROCERIES')
+    const fresh = makeTx(db, acct, '-6.00', 'Markt Stra\u00dfe 9')
     await categorize(new FakeLLMProvider())
-    expect(detailed(cat(tx))).toBe('FOOD_AND_DRINK_GROCERIES') // casefold matches
+    expect(detailed(cat(fresh))).toBe('FOOD_AND_DRINK_GROCERIES')
 
     const cafe = makeTx(db, acct, '-4.00', 'CAF\u00c9 NOIR')
     const accented = rule('contains', 'caf\u00e9', 'FOOD_AND_DRINK_COFFEE')

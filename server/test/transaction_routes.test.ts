@@ -1,6 +1,6 @@
 /**
- * The transaction routes. The last block pins which fields count as sent (a default sent
- * explicitly counts) and how `q` lowers non-ASCII text.
+ * The transaction routes. The last block pins which fields count as sent (rule options count
+ * only with save_as_rule) and how `q` lowers non-ASCII text.
  */
 
 import { eq } from 'drizzle-orm'
@@ -280,6 +280,48 @@ describe('PATCH /api/transactions/{id}', () => {
     expect(categorizationOf(db, peer)?.category_id).toBe(categoryId(db, 'OTHER_OTHER'))
   })
 
+  it('only an exact rule writes a cache entry (backlog 16)', async () => {
+    const { app, db } = makeApp()
+    const acct = makeAccount(db)
+    const tx = makeTx(db, acct, '-4.00', 'UBER TRIP 1234', '2026-01-10', { merchant_key: 'UBER TRIP' })
+    const cat = categoryId(db, 'TRANSPORTATION_TAXIS_AND_RIDE_SHARES')
+    await patched(app, tx.id, { category_id: cat, save_as_rule: true, rule_match_type: 'prefix', rule_pattern: 'uber' })
+    await patched(app, tx.id, { category_id: cat, save_as_rule: true, rule_match_type: 'contains' })
+    expect(db.select().from(merchantClassifications).all()).toEqual([])
+    await patched(app, tx.id, { category_id: cat, save_as_rule: true, rule_match_type: 'exact' })
+    expect(db.select().from(merchantClassifications).all().map((c) => c.merchant_key)).toEqual(['UBER TRIP'])
+  })
+
+  it('rule_pattern sets the pattern; exact and prefix are upper-cased (backlog 17)', async () => {
+    const { app, db } = makeApp()
+    const acct = makeAccount(db)
+    const tx = makeTx(db, acct, '-4.00', 'UBER TRIP', '2026-01-10', { merchant_key: 'UBER TRIP' })
+    const peer = makeTx(db, acct, '-4.00', 'UBER EATS', '2026-01-10', { merchant_key: 'UBER EATS' })
+    categorize(db, peer, 'OTHER_OTHER', 'low')
+    const cat = categoryId(db, 'TRANSPORTATION_TAXIS_AND_RIDE_SHARES')
+    await patched(app, tx.id, { category_id: cat, save_as_rule: true, rule_match_type: 'prefix', rule_pattern: '  uber  ' })
+    await patched(app, tx.id, { category_id: cat, save_as_rule: true, rule_match_type: 'exact', rule_pattern: 'uber   trip' })
+    await patched(app, tx.id, { category_id: cat, save_as_rule: true, rule_match_type: 'contains', rule_pattern: ' Trip ' })
+    expect(db.select().from(rules).all().map((r) => [r.match_type, r.pattern])).toEqual([
+      ['prefix', 'UBER'],
+      ['exact', 'UBER TRIP'],
+      ['contains', 'Trip'],
+    ])
+    expect(categorizationOf(db, peer)?.category_id).toBe(cat) // the "UBER" prefix reached it
+    expect((await patch(app, tx.id, { category_id: cat, save_as_rule: true, rule_pattern: '   ' })).status).toBe(400)
+  })
+
+  it('a contains rule defaults to the payee, else the raw description (backlog 17)', async () => {
+    const { app, db } = makeApp()
+    const acct = makeAccount(db)
+    const cat = categoryId(db, 'FOOD_AND_DRINK_COFFEE')
+    const withPayee = makeTx(db, acct, '-4.00', 'SQ *BLUE BOTTLE COFFEE 1234', '2026-01-10', { payee: 'Blue Bottle' })
+    const without = makeTx(db, acct, '-4.00', 'PAYPAL *RITUAL ROASTERS 5555', '2026-01-10')
+    await patched(app, withPayee.id, { category_id: cat, save_as_rule: true, rule_match_type: 'contains' })
+    await patched(app, without.id, { category_id: cat, save_as_rule: true, rule_match_type: 'contains' })
+    expect(db.select().from(rules).all().map((r) => r.pattern)).toEqual(['Blue Bottle', 'PAYPAL *RITUAL ROASTERS 5555'])
+  })
+
   it('save_as_rule computes a missing merchant key', async () => {
     const { app, db } = makeApp()
     const tx = makeTx(db, makeAccount(db), '-4.00', 'SQ *BLUE BOTTLE COFFEE 1234')
@@ -334,17 +376,28 @@ describe('PATCH /api/transactions/{id}', () => {
 })
 
 describe('sent fields and search lowering', () => {
-  it('a default sent explicitly counts as set', async () => {
+  it('rule options without save_as_rule do not count as a category change (backlog 20)', async () => {
     const { app, db } = makeApp()
     const tx = makeTx(db, makeAccount(db), '-4.00', 'MYSTERY')
-    // Sent fields {"note", "save_as_rule"} are not a subset of {"note", "one_time"}.
-    expect((await patch(app, tx.id, { note: 'x', save_as_rule: false })).status).toBe(400)
-    expect((await patch(app, tx.id, { rule_match_type: 'exact' })).status).toBe(400)
+    const body = await patched(app, tx.id, { note: 'x', save_as_rule: false })
+    expect(body.note).toBe('x')
+    expect(body.categorization).toBeNull()
+    expect((await patched(app, tx.id, { rule_match_type: 'exact', rule_pattern: 'MYST' })).categorization).toBeNull()
+    expect(db.select().from(rules).all()).toEqual([])
     expect((await patch(app, tx.id, { category_id: null })).status).toBe(400)
     // A failed patch writes nothing, the note included.
+    expect((await patch(app, tx.id, { note: 'z', category_id: null })).status).toBe(400)
     const row = (await list(app)).items[0] as Body
-    expect(row.note).toBeNull()
+    expect(row.note).toBe('x')
     expect((await patched(app, tx.id, { note: 'y', one_time: true })).note).toBe('y')
+  })
+
+  it('a categorized transaction sent only save_as_rule false keeps its categorization', async () => {
+    const { app, db } = makeApp()
+    const tx = makeTx(db, makeAccount(db), '-4.00', 'MYSTERY')
+    categorize(db, tx, 'OTHER_OTHER', 'low')
+    const c = (await patched(app, tx.id, { save_as_rule: false })).categorization as Body
+    expect([c.source, c.confidence]).toEqual(['llm', 'low'])
   })
 
   it('q lowers non-ASCII text with the simple lowercase mapping', async () => {
