@@ -23,9 +23,6 @@ Smoke options, with either smoke command:
 - `-- --data-dir <folder>` checks that folder instead of a throwaway one (for example after
   loading demo data). The JSON reports the first page, its account count, and whether
   SimpleFIN is connected.
-- `PLUTUS_SMOKE_IMPORT=<export.json>` then runs the File menu's import on that file and checks
-  that the window reloads on the Overview and the SimpleFIN URL and API key decrypt. Use the
-  fake `../server/test/fixtures/demo-export.json`.
 
 Electron 44 downloads its binary the first time `electron` runs (not at `npm ci`); the first
 `dist` downloads the packaging copy of Electron into the electron-builder cache.
@@ -66,22 +63,14 @@ Load demo data into a profile with the app closed:
 - Settings come from the `app_settings` table. Environment variables only seed defaults on
   first run.
 
-## Importing from the Docker app
-
-**File > Import from Docker export...** picks an export file and imports it into this
-profile's database with the Keychain-backed secret store, so the SimpleFIN connection and the
-API key carry over. It refuses a database that already holds data (anything beyond what a
-first launch writes) and then writes nothing; on success the window reloads. The steps are in
-`docs/MIGRATING_DATA.md`. Like the importer itself, this menu item is temporary.
-
 ## How it is put together
 
-- `src/main.ts`: Electron lifecycle (single-instance lock, menu, window, import, shutdown,
+- `src/main.ts`: Electron lifecycle (single-instance lock, menu, window, shutdown,
   smoke mode). Verified by launching.
 - `src/preload.cts`: the sandboxed window's preload; exposes only `window.plutusDesktop.platform`.
 - `src/lib/`: the parts with logic, unit-tested: command-line flags, paths for development and
   packaged builds, the log file, the desktop server config and listener, the first page, the
-  per-launch guard token, `SafeStorageSecretStore`, the import wrapper, navigation rules,
+  per-launch guard token, `SafeStorageSecretStore`, navigation rules,
   DevTools, signing, and the smoke poller.
 - The shell imports the server through its package exports (`plutus-server/app`,
   `plutus-server/db`, ...). At run time they resolve to `server/dist`; the tsconfig

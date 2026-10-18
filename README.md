@@ -61,10 +61,6 @@ Open http://127.0.0.1:8000. The database is `~/.plutus/plutus.sqlite` unless `PL
 
 Syncs then run every 6 hours while the app runs. SimpleFIN allows 24 requests a day; Settings shows how many are used, and Plutus refuses a sync that would exceed the budget.
 
-## Moving from the Docker app
-
-The earlier version ran with Docker Compose and Postgres. [docs/MIGRATING_DATA.md](docs/MIGRATING_DATA.md) moves everything over: stop the Docker API, export from a checkout of tag `wave-4` with the Docker app's `.env`, import the file into a new SQLite database with `server/scripts/import-json.ts`, delete the export file, and check the new app.
-
 ## Try it without a bank
 
 ```bash
