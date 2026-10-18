@@ -153,15 +153,18 @@ describe.skipIf(process.platform !== 'darwin')('scripts/update.sh', () => {
   })
 
   it('refuses while Plutus is running, before changing anything', () => {
-    const name = `PlutusUpdateTest${process.pid}`
+    // pgrep matches the process name, which macOS cuts to 16 characters.
+    const name = `PlutusT${process.pid % 100000}`
     const fake = join(bin, name)
     copyFileSync('/bin/sleep', fake)
+    sh('codesign', ['--sign', '-', '--force', fake]) // a copied system binary is killed unsigned
     running = spawn(fake, ['30'], { stdio: 'ignore' })
     const zip = makeZip('0.2.0')
 
     for (let i = 0; i < 50 && spawnSync('pgrep', ['-x', name]).status !== 0; i++) {
       spawnSync('sleep', ['0.1'])
     }
+    expect(spawnSync('pgrep', ['-x', name]).status).toBe(0)
 
     const r = run([], { env: { PLUTUS_UPDATE_ZIP: zip, PLUTUS_PROCESS_NAME: name } })
 
@@ -271,6 +274,19 @@ cp "${zip}" "$dir/"
     const replacedDir = join(data, 'backups', replaced!)
     expect(readdirSync(replacedDir).sort()).toEqual(['plutus.sqlite', 'plutus.sqlite-wal'])
     expect(readFileSync(join(replacedDir, 'plutus.sqlite'), 'utf8')).toBe('v2 db')
+  })
+
+  it('restores a copy taken after a clean quit, which has no -wal or -shm file', () => {
+    rmSync(join(data, 'plutus.sqlite-wal'))
+    rmSync(join(data, 'plutus.sqlite-shm'))
+    expect(run([], { env: { PLUTUS_UPDATE_ZIP: makeZip('0.2.0') } }).status).toBe(0)
+    writeData('v2')
+
+    const r = run(['--rollback', '--restore-data'], { input: 'restore\n' })
+
+    expect(r.status, r.out).toBe(0)
+    expect(readdirSync(data).filter((n) => n.startsWith('plutus.sqlite'))).toEqual(['plutus.sqlite'])
+    expect(readFileSync(join(data, 'plutus.sqlite'), 'utf8')).toBe('v1 db')
   })
 
   it('rejects unknown flags and --restore-data without --rollback', () => {
