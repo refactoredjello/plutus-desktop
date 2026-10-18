@@ -3,6 +3,7 @@
  * Unit-tested in ../audit.test.ts.
  */
 
+import { CONFIG_PATH } from '../config_check.ts'
 import { getCases, templateFor } from '../endpoints.ts'
 import { bridgeSteps } from '../sync_steps.ts'
 import { type State, WRITE_STEPS } from '../writes.ts'
@@ -61,6 +62,7 @@ export function harnessKeys(today: string): Set<string> {
     if (k !== null) keys.add(keyText(k))
   }
   for (const c of getCases(today, { categoryId: 1 })) add('GET', c.path)
+  add('GET', CONFIG_PATH) // TypeScript only: a setup check, not a diff
   // Any captured id will do: only the template and the query keys matter.
   const state = new Proxy({} as State, { get: () => 1 })
   const bridge = { token: () => 'token', setMode: () => {}, setDelay: () => {} }
@@ -101,6 +103,18 @@ const pathOf = (url: string) => {
   } catch {
     return url
   }
+}
+
+/**
+ * Accepted class: Chromium asks the HTTP cache alone for a web font first and fails with
+ * ERR_CACHE_MISS when it is not there, then fetches it. Only when a later request for the
+ * same URL in the same route succeeds.
+ */
+function isFontProbe(q: AuditRequest, later: readonly AuditRequest[]): boolean {
+  return (
+    q.failed === 'net::ERR_CACHE_MISS' &&
+    later.some((l) => l.url === q.url && l.method === q.method && l.status !== null && l.status < 400)
+  )
 }
 
 /** Collects what the page did, route by route, from DevTools protocol events. */
@@ -161,8 +175,8 @@ export class AuditLog {
     return this.#routes.map((r) => ({
       ...r,
       problems: [
-        ...r.requests.flatMap((q) =>
-          q.failed !== undefined
+        ...r.requests.flatMap((q, i) =>
+          q.failed !== undefined && !isFontProbe(q, r.requests.slice(i + 1))
             ? [`${q.method} ${q.url}: ${q.failed}`]
             : q.status !== null && q.status >= 400
               ? [`${q.method} ${q.url}: ${q.status}`]

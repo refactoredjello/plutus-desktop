@@ -34,6 +34,7 @@ import {
 import { type Bridge, compareBridgeRequests, startBridge } from './bridge.ts'
 import { makeApi } from './client.ts'
 import { NOT_COMPARED, getCases, monthOffset, ruleNotes } from './endpoints.ts'
+import { CONFIG_PATH, configCheck, expectedConfig } from './config_check.ts'
 import { compareGet, runStep } from './harness.ts'
 import { collectTsPrompts, comparePrompts, dumpPythonPrompts, loadTsPrompts, type TsPrompt } from './prompts.ts'
 import type { Json } from './normalize.ts'
@@ -160,6 +161,14 @@ async function main(): Promise<number> {
       first !== null && typeof first === 'object' && !Array.isArray(first) && typeof first.category_id === 'number'
         ? first.category_id
         : null
+
+    if (selfCheck) {
+      setup.push(check('runtime config (TypeScript only)', true, 'not run in a self-check: Python has no such endpoint'))
+    } else {
+      const llm = await py.send('GET', '/api/settings/llm')
+      const schedule = await py.send('GET', '/api/sync/schedule')
+      setup.push(configCheck(expectedConfig(otherEnv, llm.body, schedule.body), await ot.send('GET', CONFIG_PATH)))
+    }
 
     const gets = getCases(today, { categoryId })
     log(`${gets.length} GET cases`)

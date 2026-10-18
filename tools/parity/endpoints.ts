@@ -64,7 +64,9 @@ export const NOT_COMPARED: readonly { endpoint: string; reason: string }[] = [
   { endpoint: 'POST /api/auth/logout', reason: 'Python only stub; the desktop contract drops auth.' },
   {
     endpoint: 'GET /api/settings/config',
-    reason: 'TypeScript only: the runtime config endpoint is new in the desktop contract (0B).',
+    reason:
+      'TypeScript only: new in the desktop contract (0B). Not diffed; checked instead against the env ' +
+      'both apps got and Python\'s own LLM and schedule answers (config_check.ts, a setup check).',
   },
   {
     endpoint: 'PUT /api/settings/config',
@@ -156,6 +158,9 @@ export function getCases(today: string, lookup: Lookup): GetCase[] {
       '?essentiality=unset&limit=500',
       '?uncategorized=true&limit=500',
       '?needs_review=true&limit=500',
+      // The review badge and the Review page (found by the Electron audit).
+      '?needs_review=true&limit=1&offset=0',
+      '?needs_review=true&limit=50&offset=0',
       '?include_transfers=true&limit=500',
       `?include_transfers=true&start=${monthStart}&q=transfer`,
       '?limit=0',
