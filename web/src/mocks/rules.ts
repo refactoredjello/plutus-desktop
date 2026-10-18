@@ -32,6 +32,25 @@ export const ruleHandlers = [
     rules = existing ? rules.map((r) => (r.id === rule.id ? rule : r)) : [...rules, rule]
     return HttpResponse.json<Rule>(rule)
   }),
+  http.patch('/api/rules/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<Schemas['RuleCreate']>
+    const current = rules.find((r) => r.id === Number(params.id))
+    if (!current) return HttpResponse.json({ title: 'Not Found', status: 404, detail: 'Rule not found' }, { status: 404 })
+    const match_type = body.match_type ?? current.match_type
+    const pattern = normalize(match_type, body.pattern ?? current.pattern)
+    if (rules.some((r) => r.id !== current.id && r.match_type === match_type && r.pattern === pattern)) {
+      return HttpResponse.json({ title: 'Conflict', status: 409, detail: 'A rule with this match already exists' }, { status: 409 })
+    }
+    const rule: Rule = {
+      ...current,
+      match_type,
+      pattern,
+      category_id: body.category_id ?? current.category_id,
+      essentiality: body.essentiality === undefined ? current.essentiality : body.essentiality,
+    }
+    rules = rules.map((r) => (r.id === rule.id ? rule : r))
+    return HttpResponse.json<Rule>(rule)
+  }),
   http.delete('/api/rules/:id', ({ params }) => {
     rules = rules.filter((r) => r.id !== Number(params.id))
     return new HttpResponse(null, { status: 204 })

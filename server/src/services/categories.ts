@@ -7,9 +7,11 @@
  * Rules and the merchant cache: saving an exact rule writes a manual cache entry for its key;
  * prefix and contains rules write none. Deleting a rule removes the manual cache rows it may
  * have created, including those written for prefix and contains rules before that changed.
+ * Editing a rule removes the old version's rows the same way, then saves the new version as
+ * creating it would.
  */
 
-import { and, asc, eq, isNotNull } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, ne } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import {
   type Essentiality,
@@ -20,7 +22,7 @@ import {
   transactions,
 } from '../db/schema.js'
 import { ConflictError, DomainError, NotFoundError } from '../lib/errors.js'
-import type { CategoryCreate, CategoryUpdate, RuleCreate } from '../schemas/categories.js'
+import type { CategoryCreate, CategoryUpdate, RuleCreate, RuleUpdate } from '../schemas/categories.js'
 import { applyRule, containsPattern } from './categorize.js'
 
 export type Category = typeof categories.$inferSelect
@@ -144,11 +146,15 @@ function writeCacheEntry(db: Db, key: string, categoryId: number, essentiality: 
   if (changed) db.update(merchantClassifications).set(values).where(eq(merchantClassifications.merchant_key, key)).run()
 }
 
+function requireCategory(db: Db, categoryId: number): void {
+  if (db.select({ id: categories.id }).from(categories).where(eq(categories.id, categoryId)).get() === undefined) {
+    throw new DomainError(`Unknown category ${categoryId}`)
+  }
+}
+
 /** POST /api/rules: a rule from the rule builder. */
 export function createRule(db: Db, body: RuleCreate): Rule {
-  if (db.select({ id: categories.id }).from(categories).where(eq(categories.id, body.category_id)).get() === undefined) {
-    throw new DomainError(`Unknown category ${body.category_id}`)
-  }
+  requireCategory(db, body.category_id)
   return saveRule(db, {
     match_type: body.match_type,
     pattern: body.pattern,
@@ -157,23 +163,77 @@ export function createRule(db: Db, body: RuleCreate): Rule {
   })
 }
 
+/**
+ * PATCH /api/rules/{id}: change any of match type, pattern, category, and essentiality (null
+ * clears it). The pattern, given or kept, is normalized for the resulting match type. An edit
+ * that changes something undoes the old version's cache rows as deleting it would, then writes
+ * the new version's cache entry (exact rules only) and applies it to existing transactions,
+ * skipping manual categorizations, as creating it would.
+ *
+ * Transactions the old version categorized that the new one no longer matches keep their
+ * category and source: an edit never uncategorizes anything.
+ */
+export function updateRule(db: Db, ruleId: number, body: RuleUpdate): Rule {
+  const old = db.select().from(rules).where(eq(rules.id, ruleId)).get()
+  if (old === undefined) throw new NotFoundError(`Rule ${ruleId} not found`)
+  if (body.category_id !== undefined) requireCategory(db, body.category_id)
+  const match_type = body.match_type ?? old.match_type
+  const pattern = normalizePattern(match_type, body.pattern ?? old.pattern)
+  const category_id = body.category_id ?? old.category_id
+  const essentiality = body.essentiality === undefined ? old.essentiality : body.essentiality
+  if (
+    match_type === old.match_type &&
+    pattern === old.pattern &&
+    category_id === old.category_id &&
+    essentiality === old.essentiality
+  ) {
+    return old
+  }
+  const taken = db
+    .select({ id: rules.id })
+    .from(rules)
+    .where(and(eq(rules.match_type, match_type), eq(rules.pattern, pattern), ne(rules.id, ruleId)))
+    .get()
+  if (taken !== undefined) throw new ConflictError(`A ${match_type} rule for ${pattern} already exists`)
+
+  return db.transaction(() => {
+    const rule = db
+      .update(rules)
+      .set({ match_type, pattern, category_id, essentiality })
+      .where(eq(rules.id, ruleId))
+      .returning()
+      .get()
+    // After the update: keys an exact rule holds, the new version included, are spared; the
+    // new version's own entry is rewritten next anyway.
+    removeCacheRows(db, old)
+    if (match_type === 'exact') writeCacheEntry(db, pattern, category_id, essentiality)
+    applyRule(db, rule)
+    return rule
+  })
+}
+
 export function deleteRule(db: Db, ruleId: number): void {
   const rule = db.select().from(rules).where(eq(rules.id, ruleId)).get()
   if (rule === undefined) throw new NotFoundError(`Rule ${ruleId} not found`)
   db.transaction(() => {
     db.delete(rules).where(eq(rules.id, ruleId)).run()
-    for (const key of cacheKeysOf(db, rule)) {
-      db.delete(merchantClassifications)
-        .where(and(eq(merchantClassifications.merchant_key, key), eq(merchantClassifications.source, 'manual')))
-        .run()
-    }
+    removeCacheRows(db, rule)
   })
+}
+
+/** Delete the manual cache rows a rule may have written (cacheKeysOf). */
+function removeCacheRows(db: Db, rule: Rule): void {
+  for (const key of cacheKeysOf(db, rule)) {
+    db.delete(merchantClassifications)
+      .where(and(eq(merchantClassifications.merchant_key, key), eq(merchantClassifications.source, 'manual')))
+      .run()
+  }
 }
 
 /**
  * The manual cache keys a rule may have written: its pattern; for a prefix rule, keys starting
  * with it; for a contains rule, the keys of transactions it matches. Keys another exact rule
- * still holds are kept. Call after the rule itself is deleted.
+ * still holds are kept. Call after the rule itself is deleted or changed.
  */
 function cacheKeysOf(db: Db, rule: Rule): string[] {
   const held = new Set(

@@ -151,6 +151,90 @@ describe('Settings: new rule', () => {
   })
 })
 
+describe('Settings: edit rule', () => {
+  function recordRulePatches() {
+    const calls: { id: string; body: unknown }[] = []
+    server.use(
+      http.patch('/api/rules/:id', async ({ params, request }) => {
+        calls.push({ id: String(params.id), body: await request.clone().json() }) // the mock reads the original
+        return undefined
+      }),
+    )
+    return calls
+  }
+
+  async function openEdit(pattern: string) {
+    const user = userEvent.setup()
+    renderAt('/settings')
+    await screen.findByText(pattern)
+    await user.click(screen.getByRole('button', { name: `Edit rule for ${pattern}` }))
+    return { user, dialog: await screen.findByRole('dialog', { name: 'Edit rule' }) }
+  }
+
+  it('opens the dialog prefilled with the rule', async () => {
+    const { dialog } = await openEdit('NETFLIX.COM CA')
+    expect(within(dialog).getByRole('combobox', { name: 'Match type' })).toHaveTextContent('Merchant is')
+    expect(within(dialog).getByRole('textbox', { name: 'Pattern' })).toHaveValue('NETFLIX.COM CA')
+    expect(within(dialog).getByRole('combobox', { name: 'Category' })).toHaveTextContent('TV and movies')
+    expect(within(dialog).getByRole('combobox', { name: 'Essentiality' })).toHaveTextContent('Discretionary')
+    expect(within(dialog).getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
+  it('sends the edited rule with PATCH, updates the row, and refreshes transactions', async () => {
+    const calls = recordRulePatches()
+    const fetches = countTransactionFetches()
+    const { user, dialog } = await openEdit('SHELL OIL')
+    expect(within(dialog).getByRole('combobox', { name: 'Essentiality' })).toHaveTextContent('Not set')
+    await user.click(within(dialog).getByRole('combobox', { name: 'Match type' }))
+    await user.click(await screen.findByRole('option', { name: 'Merchant is' }))
+    const pattern = within(dialog).getByRole('textbox', { name: 'Pattern' })
+    await user.clear(pattern)
+    await user.type(pattern, 'shell oil 57442')
+    await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+    await user.click(await screen.findByRole('option', { name: 'Public transit' }))
+    await user.click(within(dialog).getByRole('combobox', { name: 'Essentiality' }))
+    await user.click(await screen.findByRole('option', { name: 'Essential' }))
+    const before = fetches.count
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(calls).toHaveLength(1))
+    expect(calls[0]).toEqual({
+      id: '2',
+      body: { match_type: 'exact', pattern: 'shell oil 57442', category_id: 13, essentiality: 'essential' },
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const row = (await screen.findByText('SHELL OIL 57442')).closest('tr')!
+    expect(row.textContent).toMatch(/^isSHELL OIL 57442/)
+    expect(within(row).getByText('Public transit')).toBeInTheDocument()
+    expect(within(row).getByText('Essential')).toBeInTheDocument()
+    expect(screen.queryByText('SHELL OIL')).not.toBeInTheDocument()
+    expect(rules).toHaveLength(3)
+    await waitFor(() => expect(fetches.count).toBeGreaterThan(before))
+  })
+
+  it('clears essentiality with an explicit null after choosing "Not set"', async () => {
+    const calls = recordRulePatches()
+    const { user, dialog } = await openEdit('NETFLIX.COM CA')
+    await user.click(within(dialog).getByRole('combobox', { name: 'Essentiality' }))
+    await user.click(await screen.findByRole('option', { name: 'Not set' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    expect(calls[0]?.body).toEqual({ match_type: 'exact', pattern: 'NETFLIX.COM CA', category_id: 10, essentiality: null })
+  })
+
+  it('shows a server error inline and keeps the dialog open', async () => {
+    const { user, dialog } = await openEdit('SHELL OIL')
+    await user.click(within(dialog).getByRole('combobox', { name: 'Match type' }))
+    await user.click(await screen.findByRole('option', { name: 'Merchant is' }))
+    const pattern = within(dialog).getByRole('textbox', { name: 'Pattern' })
+    await user.clear(pattern)
+    await user.type(pattern, 'netflix.com ca')
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('A rule with this match already exists')
+    expect(screen.getByRole('dialog', { name: 'Edit rule' })).toBeInTheDocument()
+  })
+})
+
 describe('Settings: SimpleFIN requests', () => {
   it('sums requests from runs started in the last 24 hours', () => {
     const now = Date.parse('2026-10-03T12:00:00Z')

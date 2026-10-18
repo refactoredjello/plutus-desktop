@@ -43,6 +43,7 @@ export function makeApp(overrides: Partial<AppDeps> = {}) {
     secrets: overrides.secrets ?? new KeySecretStore(config.secretKey),
     log: overrides.log ?? silentLogger(),
     ...(overrides.guardToken === undefined ? {} : { guardToken: overrides.guardToken }),
+    ...(overrides.appVersion === undefined ? {} : { appVersion: overrides.appVersion }),
   })
   return { app, db, config }
 }

@@ -218,6 +218,7 @@ const SAMPLES: Record<string, { query?: string; body?: unknown }> = {
   update_category: { body: { label: 'Snacks', is_hidden: false } },
   list_rules: {},
   create_rule: { body: { match_type: 'prefix', pattern: 'UBER', category_id: 1, essentiality: null } },
+  update_rule: { body: { category_id: 1 } },
   delete_rule: {},
   get_changes: { query: 'all=true' },
   dismiss_change: { body: { key: 'S1:fake' } },

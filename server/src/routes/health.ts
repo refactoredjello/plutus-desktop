@@ -1,21 +1,9 @@
-/** Routes for the health check. */
+/** Routes for the health check. The version is the app's (AppDeps.appVersion). */
 
-import { readFileSync } from 'node:fs'
 import { createRoute } from '@hono/zod-openapi'
 import { sql } from 'drizzle-orm'
 import type { App } from '../app.js'
 import { HealthRead } from '../schemas/health.js'
-
-function version(): string {
-  try {
-    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
-      version?: string
-    }
-    return pkg.version ?? '0.1.0'
-  } catch {
-    return '0.1.0'
-  }
-}
 
 const getHealth = createRoute({
   method: 'get',
@@ -36,8 +24,8 @@ export function registerHealth(app: App): void {
     try {
       c.var.db.run(sql`SELECT 1`)
     } catch {
-      return c.json({ status: 'degraded' as const, database: 'unreachable' as const, version: version() }, 200)
+      return c.json({ status: 'degraded' as const, database: 'unreachable' as const, version: c.var.appVersion }, 200)
     }
-    return c.json({ status: 'ok' as const, database: 'ok' as const, version: version() }, 200)
+    return c.json({ status: 'ok' as const, database: 'ok' as const, version: c.var.appVersion }, 200)
   })
 }

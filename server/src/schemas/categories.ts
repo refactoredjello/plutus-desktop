@@ -50,3 +50,15 @@ export const RuleCreate = requestModel(
   'A rule, upserted by match type and pattern and applied to existing transactions.',
 )
 export type RuleCreate = z.infer<typeof RuleCreate>
+
+export const RuleUpdate = requestModel(
+  'RuleUpdate',
+  {
+    match_type: RuleMatchType.optional(),
+    pattern: z.string().min(1).max(200).optional(), // normalized as on create
+    category_id: z.int().optional(),
+    essentiality: orNull(Essentiality).optional(), // null clears it; left out keeps it
+  },
+  'Changes to a rule; fields left out keep their value. The rule is re-applied to existing transactions.',
+)
+export type RuleUpdate = z.infer<typeof RuleUpdate>

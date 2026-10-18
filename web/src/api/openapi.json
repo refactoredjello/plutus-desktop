@@ -1621,6 +1621,37 @@
         "title": "RuleRead",
         "type": "object"
       },
+      "RuleUpdate": {
+        "additionalProperties": false,
+        "description": "Changes to a rule; fields left out keep their value. The rule is re-applied to existing transactions.",
+        "properties": {
+          "category_id": {
+            "title": "Category Id",
+            "type": "integer"
+          },
+          "essentiality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Essentiality"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_type": {
+            "$ref": "#/components/schemas/RuleMatchType"
+          },
+          "pattern": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Pattern",
+            "type": "string"
+          }
+        },
+        "title": "RuleUpdate",
+        "type": "object"
+      },
       "SimpleFINConnect": {
         "additionalProperties": false,
         "properties": {
@@ -2946,6 +2977,47 @@
           }
         },
         "summary": "Delete Rule",
+        "tags": [
+          "categories"
+        ]
+      },
+      "patch": {
+        "description": "Changes a rule, then re-applies it to existing transactions. Transactions the old rule matched and the new one does not keep their category.",
+        "operationId": "update_rule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Update Rule",
         "tags": [
           "categories"
         ]
