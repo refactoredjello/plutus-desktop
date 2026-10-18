@@ -381,7 +381,11 @@ export interface paths {
         delete: operations["delete_rule"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Rule
+         * @description Changes a rule, then re-applies it to existing transactions. Transactions the old rule matched and the new one does not keep their category.
+         */
+        patch: operations["update_rule"];
         trace?: never;
     };
     "/api/settings/config": {
@@ -1142,6 +1146,18 @@ export interface components {
             match_type: components["schemas"]["RuleMatchType"];
             /** Pattern */
             pattern: string;
+        };
+        /**
+         * RuleUpdate
+         * @description Changes to a rule; fields left out keep their value. The rule is re-applied to existing transactions.
+         */
+        RuleUpdate: {
+            /** Category Id */
+            category_id?: number;
+            essentiality?: components["schemas"]["Essentiality"] | null;
+            match_type?: components["schemas"]["RuleMatchType"];
+            /** Pattern */
+            pattern?: string;
         };
         /** SimpleFINConnect */
         SimpleFINConnect: {
@@ -1931,6 +1947,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    update_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleRead"];
+                };
             };
         };
     };

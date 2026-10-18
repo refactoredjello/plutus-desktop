@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useCategories } from '@/features/transactions/queries'
 import { humanizeEnum } from '@/lib/format'
-import { NewRuleDialog } from './NewRuleDialog'
+import { RuleDialog } from './RuleDialog'
 
 type Rule = Schemas['RuleRead']
 
@@ -46,7 +46,7 @@ export function RulesCard() {
         <CardTitle>Rules</CardTitle>
         <CardDescription>Merchants that are categorized automatically.</CardDescription>
         <CardAction>
-          <NewRuleDialog />
+          <RuleDialog />
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -78,7 +78,8 @@ export function RulesCard() {
                   </TableCell>
                   <TableCell>{label.get(r.category_id) ?? '—'}</TableCell>
                   <TableCell className="text-muted-foreground">{r.essentiality ? humanizeEnum(r.essentiality) : '—'}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right whitespace-nowrap">
+                    <RuleDialog rule={r} />
                     <Button
                       size="xs"
                       variant="ghost"

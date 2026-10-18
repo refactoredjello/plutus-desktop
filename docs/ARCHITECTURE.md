@@ -140,7 +140,7 @@ raw description
   → write categorization row on transaction (source, confidence, category_id, essentiality)
 ```
 
-The LLM prompt includes the fixed taxonomy and the three essentiality labels and asks for structured output. The response is validated against the taxonomy; unknown labels fall back to `UNCATEGORIZED` with low confidence. A manual override on a transaction writes `source=manual`; "save as rule" also inserts a rules row and refreshes the cache.
+The LLM prompt includes the fixed taxonomy and the three essentiality labels and asks for structured output. The response is validated against the taxonomy; unknown labels fall back to `UNCATEGORIZED` with low confidence. A manual override on a transaction writes `source=manual`; "save as rule" also inserts a rules row and refreshes the cache. Editing a rule (`PATCH /api/rules/{id}`) removes the old version's manual cache rows as deleting it would, then saves and applies the new version as creating it would; transactions it no longer matches keep their category.
 
 Privacy invariant, enforced in `services/scrub.ts` with tests: the string sent to the LLM contains no digit run longer than 3 characters and none of the configured owner-name tokens.
 
@@ -200,7 +200,7 @@ GET  /api/settings/simplefin   POST /api/settings/simplefin   DELETE /api/settin
 GET  /api/settings/llm      GET  /api/settings/config    PUT /api/settings/config
 GET  /api/transactions      PATCH /api/transactions/{id}   POST /api/transactions/{id}/unpair
 GET  /api/categories        POST /api/categories         PATCH /api/categories/{id}
-GET  /api/rules             POST /api/rules              DELETE /api/rules/{id}
+GET  /api/rules             POST /api/rules              PATCH /api/rules/{id}       DELETE /api/rules/{id}
 GET  /api/reports/monthly   GET /api/reports/month/{month}   GET /api/reports/by-category?month=
 GET  /api/reports/balances  GET /api/reports/changes     POST /api/reports/changes/dismiss
 DELETE /api/reports/changes/dismissals
@@ -224,7 +224,7 @@ Pages, in navigation order:
 5. **Recurring** — detected and confirmed recurrences with annual cost.
 6. **Goals** — goal card with on-track indicator, suggestions list, Suggest button.
 7. **Planned** — manual expected income and expenses: simple form and list.
-8. **Settings** — SimpleFIN token, sync now, sync history, runtime config (LLM provider, model, key, owner name tokens, sync settings), category management, rules.
+8. **Settings** — SimpleFIN token, sync now, sync history, runtime config (LLM provider, model, key, owner name tokens, sync settings), category management, rules (create, edit, delete), and the app version at the foot (`GET /api/health` reports the desktop release, or the server package version headless).
 
 **Spending** (`/spending`) is a single-bucket essentiality breakdown reached from Overview and Month, not from the navigation.
 
