@@ -15,7 +15,9 @@ From the repository root, once: `npm ci`. Then in `desktop/`:
 | `npm run dist` | Builds everything and packages the app into `release/`: `Plutus-<version>-arm64.dmg` and `.zip`, `Plutus-<version>-x64.dmg` and `.zip`, and the unpacked apps in `release/mac-arm64/` and `release/mac/`. |
 | `npm run smoke:dist` | Runs the smoke check against the packaged app for this Mac's architecture. |
 | `npm run icons` | Regenerates `build/icon.icns` from `build/icon.svg` (macOS `sips` and `iconutil`). |
-| `npm run check` | Lint, typecheck, and unit tests (`src/lib`). Needs no build. |
+| `npm run check` | Lint, typecheck, and unit tests (`src/lib`, and `scripts/update.sh` on macOS against temp dirs). Needs no build. |
+| `npm run update:app` | Installs the latest GitHub Release into `/Applications`, safely (see [Updating](#updating)). |
+| `npm run version:bump -- patch\|minor\|major` | Bumps the app version and commits it (see [Releases](#releases)). |
 
 Smoke options, with either smoke command:
 
@@ -40,6 +42,8 @@ Overview. The shell asks `GET /api/settings/simplefin` before it opens the windo
 | Log file | `~/Library/Application Support/Plutus/logs/plutus.log` (JSON lines; over 5 MB it moves to `plutus.log.1` at the next launch) |
 | Development runs | `~/Library/Application Support/Plutus Dev`, same layout, so a branch's migrations never touch the installed app's database |
 | Smoke runs | a temp dir, printed as `dataDir` |
+| Data copies made by `update:app` | `~/Library/Application Support/Plutus/backups/manual-<time>/` (also `before-rollback-` and `before-restore-`) |
+| Apps replaced by `update:app` | `~/Library/Application Support/Plutus/previous-app/Plutus-<version>.zip` (the last two) |
 
 Logs also go to stdout when the app is started from a terminal. They never contain the
 SimpleFIN access URL or API keys.
@@ -63,6 +67,64 @@ Load demo data into a profile with the app closed:
 - Settings come from the `app_settings` table. Environment variables only seed defaults on
   first run.
 
+## Updating
+
+The builds are signed ad hoc (no Apple Developer ID yet), so there is no auto-update: each
+release is installed by hand or with the update script. Quit Plutus first in either case.
+
+**With the script** (needs the GitHub CLI, logged in: `gh auth login`), in `desktop/`:
+
+```bash
+npm run update:app                    # the latest release
+npm run update:app -- 0.2.0           # a given release
+npm run update:app -- --rollback      # reinstall the app the last update replaced
+npm run update:app -- --rollback --restore-data   # and put back the data from before it
+```
+
+It refuses to run while Plutus is open. It downloads the zip for this Mac's architecture and
+checks its signature. Before replacing anything, it copies `plutus.sqlite` and its `-wal` and
+`-shm` files to `backups/manual-<time>/` and zips the installed app to
+`previous-app/Plutus-<version>.zip` (keeping the last two), both in
+`~/Library/Application Support/Plutus`. Then it installs the app with `ditto`, verifies it, and
+prints the old and new versions. A failed signature check changes nothing. `GH_REPO=owner/repo`
+picks the repository if gh can't tell from the checkout. `bash scripts/update.sh --help` lists
+the testing options (`--target`, `--data-dir`, `PLUTUS_UPDATE_ZIP`).
+
+**By hand:** quit Plutus; copy `plutus.sqlite` (and `plutus.sqlite-wal`, `plutus.sqlite-shm` if
+present; they can hold recent changes) out of `~/Library/Application Support/Plutus`; download
+`Plutus-<version>-arm64.zip` (or `-x64`) from the Releases page, unzip it, and replace
+`/Applications/Plutus.app`; open it. Apps downloaded with a browser are quarantined: right-click,
+then Open, once. Files fetched with `gh` are not.
+
+**The Keychain prompt:** each new ad hoc build is a different app to the Keychain, so its first
+launch asks to use "Plutus Safe Storage". Choose **Always Allow**. Deny leaves the saved
+SimpleFIN connection and API keys unreadable until they are entered again in Settings; the
+financial data is not encrypted and is unaffected.
+
+**Rollback:** `--rollback` reinstalls the newest saved app older than the installed one, after
+copying the data to `backups/before-rollback-<time>/`. If the newer version changed the
+database, the older app may not open it; then add `--restore-data`. It asks you to type
+`restore`, moves the current data files to `backups/before-restore-<time>/`, and puts back the
+copy from the last update (the newest `backups/manual-*`). Changes made since that update are
+lost; synced transactions return with the next sync. For a release older than the saved apps,
+run `npm run update:app -- <version>`.
+
+## Releases
+
+The app version is `version` in `desktop/package.json` (x.y.z). To release:
+
+1. On a clean main, in `desktop/`: `npm run version:bump -- patch` (or `minor`, `major`). It
+   updates `desktop/package.json` and the root `package-lock.json` and commits; it never tags.
+2. Tag that commit `v<version>` and push both: `git tag v0.1.1 && git push origin main v0.1.1`.
+3. `.github/workflows/release.yml` checks that the tag matches the package version
+   (`npm run version:check-tag -- v0.1.1`) and is on main, runs `npm run check`, builds the ad
+   hoc signed dmg and zip for arm64 and x64, verifies both signatures, runs `smoke:dist`, and
+   publishes a GitHub Release with the four files and generated notes. Release files are kept
+   until deleted (CI artifacts expire after 14 days).
+
+A failed release run leaves the tag without a release: fix it on main, then move the tag
+(delete it locally and on GitHub, tag again, push) or bump again.
+
 ## How it is put together
 
 - `src/main.ts`: Electron lifecycle (single-instance lock, menu, window, shutdown,
@@ -71,7 +133,8 @@ Load demo data into a profile with the app closed:
 - `src/lib/`: the parts with logic, unit-tested: command-line flags, paths for development and
   packaged builds, the log file, the desktop server config and listener, the first page, the
   per-launch guard token, `SafeStorageSecretStore`, navigation rules,
-  DevTools, signing, and the smoke poller.
+  DevTools, signing, the smoke poller, and release version checks (`version.ts`, used only by
+  `scripts/version.mjs`).
 - The shell imports the server through its package exports (`plutus-server/app`,
   `plutus-server/db`, ...). At run time they resolve to `server/dist`; the tsconfig
   (`customConditions`) and Vitest (`ssr.resolve.conditions`) add the `plutus-source`

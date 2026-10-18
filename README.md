@@ -44,6 +44,17 @@ This builds the web app, the server, and the Electron shell and packages the app
 
 `make dev` opens a development build instead, with its data in `Plutus Dev`, so it never touches the installed app's database.
 
+### Updating
+
+Releases are on the repository's GitHub Releases page (tag `v<version>`, a dmg and a zip for each architecture). With the GitHub CLI logged in (`gh auth login`), quit Plutus and run, in `desktop/`:
+
+```bash
+npm run update:app                  # the latest release; or: npm run update:app -- 0.2.0
+npm run update:app -- --rollback    # back to the app the last update replaced
+```
+
+The script copies your data to `~/Library/Application Support/Plutus/backups/manual-<time>/` and keeps the replaced app in `previous-app/` next to it before installing. By hand: quit Plutus, copy `plutus.sqlite` (and `-wal`, `-shm` if present) somewhere safe, replace `/Applications/Plutus.app` with the one from the release zip, and open it. Each new build asks once to use "Plutus Safe Storage" in the Keychain: choose Always Allow. Details, rollback with data, and releasing: [desktop/README.md](desktop/README.md#updating).
+
 ## The headless server
 
 ```bash
