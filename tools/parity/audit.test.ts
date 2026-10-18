@@ -75,6 +75,13 @@ describe('harnessKeys', () => {
     expect(keys.has('GET /api/transactions?limit,q')).toBe(true)
   })
 
+  it('holds the request shapes the Electron audit found uncovered', () => {
+    // The Review page and the review badge: needs_review with limit and offset.
+    expect(keys.has('GET /api/transactions?limit,needs_review,offset')).toBe(true)
+    // TypeScript only, compared with the env both apps got (config_check.ts).
+    expect(keys.has('GET /api/settings/config?')).toBe(true)
+  })
+
   it('holds the write endpoints the steps send', () => {
     expect(keys.has('PATCH /api/transactions/{transaction_id}?')).toBe(true)
     expect(keys.has('POST /api/sync?')).toBe(true)
@@ -130,6 +137,22 @@ describe('AuditLog', () => {
       'page error: TypeError: x is undefined',
     ])
     expect(month?.problems).toEqual(['GET /api/reports/monthly?months=12: 401'])
+  })
+
+  it('does not count Chromium\'s cache-only web font probe as a failure when the font then loads', () => {
+    // Accepted class: Chromium first asks the HTTP cache alone for a web font
+    // (ERR_CACHE_MISS when absent), then fetches it. The request stays listed.
+    const log = new AuditLog()
+    log.route('/')
+    log.request('1', 'GET', 'http://h/assets/geist.woff2')
+    log.failed('1', 'net::ERR_CACHE_MISS')
+    log.request('2', 'GET', 'http://h/assets/geist.woff2')
+    log.response('2', 200, 'font/woff2')
+    log.request('3', 'GET', 'http://h/assets/other.woff2')
+    log.failed('3', 'net::ERR_CACHE_MISS')
+    const [r] = log.results()
+    expect(r?.requests).toHaveLength(3)
+    expect(r?.problems).toEqual(['GET /assets/other.woff2: net::ERR_CACHE_MISS'])
   })
 
   it('tracks requests still in flight', () => {
