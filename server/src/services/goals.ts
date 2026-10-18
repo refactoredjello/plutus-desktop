@@ -1,11 +1,8 @@
 /**
- * Savings goals and their progress (R8). Ports app/services/goals.py.
+ * Savings goals and their progress (R8).
  *
- * Python divides Decimals in the default context (28 significant digits) and then quantizes;
- * here one half-even division gives the same cents. That double rounding could only differ if
- * the 28-digit quotient landed exactly on a half cent the exact quotient does not (or the
- * reverse), which needs a run of a dozen zeros or nines in the decimal expansion past the cent:
- * for a quotient n / m that takes m above 10^11. The divisors are 3 and a month count.
+ * Divisions to cents round half to even once, on the exact quotient. The divisors are 3 and a
+ * month count.
  */
 
 import { asc, desc, eq } from 'drizzle-orm'

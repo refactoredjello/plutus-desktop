@@ -58,7 +58,7 @@ Role definitions live in `.claude/agents/`. Review uses the built-in `/code-revi
 - **Shared registration points are pre-written**, such as route registration in `server/src/app.ts` and routes in the React router.
 - **No real secrets in any agent's environment.** Fixtures and fake providers only. The owner adds real keys in the app's Settings.
 - **Merges happen one at a time**, each followed by a green `make check`.
-- **Bugs on docs/PORT_BUG_BACKLOG.md are fixed only with the owner's go-ahead.**
+- **Items on docs/BACKLOG.md are fixed only with the owner's go-ahead.**
 
 ## History: the original build (2026-10-03)
 

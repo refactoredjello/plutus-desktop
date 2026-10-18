@@ -1,9 +1,7 @@
 /**
  * What changed (R12): one positive and one negative case per signal, plus dismissal.
- * Ports api/tests/test_changes.py.
  *
- * Added beyond the Python file, each value printed by the Python app (noted at each case):
- * money() and shortDate() formatting, threshold equality for S1, S4, S8, the half-even
+ * Pinned values besides: money() and shortDate() formatting, threshold equality for S1, S4, S8, the half-even
  * percentage at a tie, S6's half-cent median threshold, label fallbacks, and the href encoding.
  */
 
@@ -59,7 +57,7 @@ function confident(): void {
   db.update(categorizations).set({ confidence: 'very_high' }).run()
 }
 
-/** tests.test_aggregates.categorize. */
+/** Categorize a transaction directly, as the aggregates tests do. */
 function categorize(txId: number, detailed: string, ess: Essentiality | null = null): void {
   db.insert(categorizations)
     .values({ transaction_id: txId, category_id: categoryId(db, detailed), essentiality: ess, source: 'manual', updated_at: utcNow() })
@@ -104,7 +102,7 @@ const account = (type: AccountType = 'checking') => makeAccount(db, type)
 // --- S1 recurring amount changed ----------------------------------------------------------
 
 describe('S1 recurring amount changed', () => {
-  it('test_s1_recurring_amount_changed', () => {
+  it('S1 recurring amount changed', () => {
     const acct = account('credit')
     const charge = recurrence(acct, 'NETFLIX.COM CA', '-15.49')
     makeTx(db, acct, '-22.99', 'NETFLIX.COM', '2026-10-03', { merchant_key: 'NETFLIX.COM CA', payee: 'Netflix' })
@@ -116,14 +114,14 @@ describe('S1 recurring amount changed', () => {
     expect(item.href).toBe('/recurring')
   })
 
-  it('test_s1_small_change_ignored', () => {
+  it('S1 small change ignored', () => {
     const acct = account('credit')
     recurrence(acct, 'NETFLIX.COM CA', '-15.49')
     makeTx(db, acct, '-15.99', 'NETFLIX.COM', '2026-10-03', { merchant_key: 'NETFLIX.COM CA' })
     expect(items('S1')).toEqual([])
   })
 
-  it('a change of exactly 10% or exactly $5 is ignored (Python oracle)', () => {
+  it('a change of exactly 10% or exactly $5 is ignored', () => {
     const acct = account('credit')
     for (const [key, base, latest] of [
       ['TEN PCT', '-100.00', '-110.00'],
@@ -144,7 +142,7 @@ describe('S1 recurring amount changed', () => {
 // --- S2 recurring charge missing ----------------------------------------------------------
 
 describe('S2 recurring charge missing', () => {
-  it('test_s2_missing_recurring_charge', () => {
+  it('S2 missing recurring charge', () => {
     const acct = account()
     recurrence(acct, 'PLANET FITNESS', '-24.99', { next_expected_date: '2026-10-05', last_seen_on: '2026-09-05' })
     const found = items('S2')
@@ -153,7 +151,7 @@ describe('S2 recurring charge missing', () => {
     expect(found[0]?.href).toBe('/recurring')
   })
 
-  it('test_s2_not_yet_overdue_or_lapsed', () => {
+  it('S2 not yet overdue or lapsed', () => {
     const acct = account()
     recurrence(acct, 'WITHIN GRACE', '-10.00', { next_expected_date: '2026-10-15', last_seen_on: '2026-09-15' })
     recurrence(acct, 'LONG GONE', '-10.00', { next_expected_date: '2026-07-01', last_seen_on: '2026-06-01' })
@@ -178,7 +176,7 @@ function entry(amount: string, due: string, kw: { description?: string; fulfille
 }
 
 describe('S3 planned item overdue', () => {
-  it('test_s3_planned_item_overdue', () => {
+  it('S3 planned item overdue', () => {
     entry('-412.00', '2026-10-01')
     const found = items('S3')
     expect(found).toHaveLength(1)
@@ -186,7 +184,7 @@ describe('S3 planned item overdue', () => {
     expect(found[0]?.href).toBe('/planned')
   })
 
-  it('test_s3_future_fulfilled_or_recurring_ignored', () => {
+  it('S3 future fulfilled or recurring ignored', () => {
     const acct = account()
     const paid = makeTx(db, acct, '-412.00', 'INSURER', '2026-10-01')
     entry('-412.00', '2026-10-01', { fulfilled_transaction_id: paid.id })
@@ -208,7 +206,7 @@ function history(acct: Account, monthly: string): void {
 }
 
 describe('S4 category well above usual', () => {
-  it('test_s4_category_above_usual_pace', () => {
+  it('S4 category above usual pace', () => {
     const acct = account()
     history(acct, '-100.00')
     coffee(acct, '-200.00', '2026-10-05')
@@ -223,14 +221,14 @@ describe('S4 category well above usual', () => {
     expect(item.href).toContain('category=')
   })
 
-  it('test_s4_no_history_or_below_thresholds_ignored', () => {
+  it('S4 no history or below thresholds ignored', () => {
     const acct = account()
     coffee(acct, '-200.00', '2026-10-05')
     confident()
     expect(items('S4')).toEqual([]) // no prior months: S4 is skipped (R12.7)
   })
 
-  it('test_s4_under_dollar_floor_ignored', () => {
+  it('S4 under dollar floor ignored', () => {
     const acct = account()
     history(acct, '-150.00')
     coffee(acct, '-210.00', '2026-10-05') // usual 150: 40% above but only $60
@@ -238,7 +236,7 @@ describe('S4 category well above usual', () => {
     expect(items('S4')).toEqual([])
   })
 
-  it('test_s4_under_percentage_ignored', () => {
+  it('S4 under percentage ignored', () => {
     const acct = account()
     history(acct, '-1000.00')
     coffee(acct, '-1200.00', '2026-10-05') // usual 1000: $200 over but only 20%
@@ -251,7 +249,7 @@ describe('S4 category well above usual', () => {
     ['-300.00', '-390.01', ['Coffee is $390 so far, 30% above your usual pace.']],
     ['-200.00', '-275.00', []], // exactly $75 above
     ['-200.00', '-275.01', ['Coffee is $275 so far, 38% above your usual pace.']],
-  ])('usual %s, now %s: thresholds are strict (Python oracle)', (hist, now, expected) => {
+  ])('usual %s, now %s: thresholds are strict', (hist, now, expected) => {
     const acct = account()
     history(acct, hist)
     coffee(acct, now, '2026-10-05')
@@ -262,7 +260,7 @@ describe('S4 category well above usual', () => {
   it.each([
     ['-401.00', 'Coffee is $401 so far, 100% above your usual pace.'], // 100.5% rounds to even
     ['-403.00', 'Coffee is $403 so far, 102% above your usual pace.'], // 101.5% rounds to even
-  ])('the percentage rounds half to even at a tie: %s (Python oracle)', (now, text) => {
+  ])('the percentage rounds half to even at a tie: %s', (now, text) => {
     const acct = account()
     history(acct, '-200.00')
     coffee(acct, now, '2026-10-05')
@@ -270,7 +268,7 @@ describe('S4 category well above usual', () => {
     expect(items('S4').map((i) => i.text)).toEqual([text])
   })
 
-  it('test_s4_bill_paid_early_each_month_is_not_above_pace', () => {
+  it('S4 bill paid early each month is not above pace', () => {
     // Regression from real data: a loan paid on the 1st looked 675% above a prorated pace.
     vi.stubEnv('PLUTUS_TODAY', '2026-10-04')
     const acct = account()
@@ -287,7 +285,7 @@ describe('S4 category well above usual', () => {
 // --- S5 new large merchant ----------------------------------------------------------------
 
 describe('S5 new large merchant', () => {
-  it('test_s5_new_large_merchant', () => {
+  it('S5 new large merchant', () => {
     const acct = account()
     const tx = makeTx(db, acct, '-486.00', 'THE HOME DEPOT #123', '2026-10-02', {
       merchant_key: 'THE HOME DEPOT',
@@ -301,7 +299,7 @@ describe('S5 new large merchant', () => {
     expect(found[0]?.href).toContain('q=Home+Depot')
   })
 
-  it('test_s5_known_merchant_or_small_purchase_ignored', () => {
+  it('S5 known merchant or small purchase ignored', () => {
     const acct = account()
     makeTx(db, acct, '-50.00', 'THE HOME DEPOT', '2026-09-02', { merchant_key: 'THE HOME DEPOT' })
     makeTx(db, acct, '-486.00', 'THE HOME DEPOT', '2026-10-02', { merchant_key: 'THE HOME DEPOT' })
@@ -309,7 +307,7 @@ describe('S5 new large merchant', () => {
     expect(items('S5')).toEqual([])
   })
 
-  it('an empty payee falls back to the capitalised key, and q to the raw text (Python oracle)', () => {
+  it('an empty payee falls back to the capitalised key, and q to the raw text', () => {
     const acct = account()
     makeTx(db, acct, '-486.00', 'the  HOME depot #12', '2026-10-02', { merchant_key: 'THE HOME DEPOT', payee: '' })
     makeTx(db, acct, '-500.00', 'raw only desc', '2026-10-03')
@@ -326,7 +324,7 @@ function smallExpenses(acct: Account): void {
 }
 
 describe('S6 large single expense', () => {
-  it('test_s6_large_single_expense', () => {
+  it('S6 large single expense', () => {
     const acct = account()
     smallExpenses(acct)
     makeTx(db, acct, '-300.00', 'DELTA', '2026-08-01', { merchant_key: 'DELTA AIR LINES', payee: 'Delta Air Lines' })
@@ -337,7 +335,7 @@ describe('S6 large single expense', () => {
     expect(items('S5')).toEqual([]) // Delta was seen before, so it's S6 not S5
   })
 
-  it('test_s6_recurring_or_below_floor_ignored', () => {
+  it('S6 recurring or below floor ignored', () => {
     const acct = account()
     smallExpenses(acct)
     recurrence(acct, 'CONDO FEE', '-1500.00')
@@ -346,7 +344,7 @@ describe('S6 large single expense', () => {
     expect(items('S6')).toEqual([])
   })
 
-  it('test_s6_regular_large_charge_is_not_unusual', () => {
+  it('S6 regular large charge is not unusual', () => {
     const acct = account()
     smallExpenses(acct)
     for (const month of ['08', '09', '10']) {
@@ -358,7 +356,7 @@ describe('S6 large single expense', () => {
   it.each([
     ['-300.01', []],
     ['-300.02', ['$300 to Big Store on Oct 2.']],
-  ])('the median keeps its half cent: threshold 3 x 100.005, expense %s (Python oracle)', (big, expected) => {
+  ])('the median keeps its half cent: threshold 3 x 100.005, expense %s', (big, expected) => {
     const acct = account()
     makeTx(db, acct, '-50.00', 'A', '2026-09-01')
     makeTx(db, acct, '-100.00', 'B', '2026-09-02')
@@ -371,7 +369,7 @@ describe('S6 large single expense', () => {
 // --- S7 review backlog --------------------------------------------------------------------
 
 describe('S7 review backlog', () => {
-  it('test_s7_review_backlog_by_count_and_by_size', () => {
+  it('S7 review backlog by count and by size', () => {
     const acct = account()
     for (let i = 0; i < 10; i++) makeTx(db, acct, '-5.00', `MYSTERY ${i}`, '2026-10-01')
     const found = items('S7')
@@ -380,7 +378,7 @@ describe('S7 review backlog', () => {
     expect(found[0]?.href).toBe('/review')
   })
 
-  it('test_s7_single_large_or_quiet_queue', () => {
+  it('S7 single large or quiet queue', () => {
     const acct = account()
     makeTx(db, acct, '-8.00', 'MYSTERY', '2026-10-01')
     expect(items('S7')).toEqual([])
@@ -390,7 +388,7 @@ describe('S7 review backlog', () => {
     expect(found[0]?.text).toBe('2 transactions need review, including one for $340.')
   })
 
-  it('a single large item (Python oracle)', () => {
+  it('a single large item', () => {
     makeTx(db, account(), '-150.00', 'BIG', '2026-10-01')
     expect(items('S7').map((i) => [i.text, i.key, i.amount])).toEqual([['A $150 transaction needs review.', 'S7:review:1:15000', null]])
   })
@@ -399,7 +397,7 @@ describe('S7 review backlog', () => {
 // --- S8 discretionary pace ----------------------------------------------------------------
 
 describe('S8 discretionary pace', () => {
-  it('test_s8_discretionary_running_above_usual', () => {
+  it('S8 discretionary running above usual', () => {
     const acct = account()
     history(acct, '-300.00')
     coffee(acct, '-400.00', '2026-10-05')
@@ -410,7 +408,7 @@ describe('S8 discretionary pace', () => {
     expect(found[0]?.href).toBe('/spending?essentiality=discretionary&month=2026-10')
   })
 
-  it('test_s8_on_pace_ignored', () => {
+  it('S8 on pace ignored', () => {
     const acct = account()
     history(acct, '-300.00')
     coffee(acct, '-350.00', '2026-10-05') // 17% above: under the 25% threshold
@@ -423,7 +421,7 @@ describe('S8 discretionary pace', () => {
     ['-200.00', '-255.00', ['Discretionary spending is running 28% above usual.']], // 27.5: to even
     ['-300.00', '-375.00', []], // exactly 25%
     ['-300.00', '-375.01', ['Discretionary spending is running 25% above usual.']],
-  ])('usual %s, now %s (Python oracle)', (hist, now, expected) => {
+  ])('usual %s, now %s', (hist, now, expected) => {
     const acct = account()
     history(acct, hist)
     coffee(acct, now, '2026-10-05')
@@ -439,7 +437,7 @@ function balance(acct: Account, amount: string): void {
 }
 
 describe('S9 projection negative', () => {
-  it('test_s9_projection_negative', () => {
+  it('S9 projection negative', () => {
     const acct = account()
     balance(acct, '-410.00')
     const found = items('S9')
@@ -449,7 +447,7 @@ describe('S9 projection negative', () => {
     expect(found[0]?.amount).toBe('-410.00')
   })
 
-  it('test_s9_positive_projection_ignored', () => {
+  it('S9 positive projection ignored', () => {
     const acct = account()
     balance(acct, '5000.00')
     expect(items('S9')).toEqual([])
@@ -461,7 +459,7 @@ describe('S9 projection negative', () => {
 type Body = ChangesRead
 
 describe('dismissal, ordering, cap, determinism', () => {
-  it('test_dismiss_hides_until_fact_changes_and_clear_restores', async () => {
+  it('dismiss hides until fact changes and clear restores', async () => {
     const acct = account('credit')
     recurrence(acct, 'NETFLIX.COM CA', '-15.49')
     makeTx(db, acct, '-22.99', 'NETFLIX.COM', '2026-10-03', { merchant_key: 'NETFLIX.COM CA' })
@@ -488,7 +486,7 @@ describe('dismissal, ordering, cap, determinism', () => {
     ])
   })
 
-  it('test_prune_drops_old_dismissals', () => {
+  it('prune drops old dismissals', () => {
     const now = '2026-10-20T00:00:00.000Z'
     db.insert(changeDismissals)
       .values([
@@ -506,7 +504,7 @@ describe('dismissal, ordering, cap, determinism', () => {
     expect(changes.pruneDismissals(db, '2026-10-20T00:00:00.001Z')).toBe(1)
   })
 
-  it('test_order_by_priority_then_impact_and_cap', async () => {
+  it('order by priority then impact and cap', async () => {
     const amounts = ['-100.00', '-900.00', '-500.00', '-50.00', '-60.00', '-70.00', '-80.00', '-90.00', '-95.00']
     amounts.forEach((amount, i) => entry(amount, '2026-10-01', { description: `Bill ${i}` }))
     const body = (await call('GET', '/api/reports/changes')).json as Body
@@ -533,7 +531,7 @@ describe('dismissal, ordering, cap, determinism', () => {
     ])
   })
 
-  it('test_fixture_list_is_deterministic', () => {
+  it('fixture list is deterministic', () => {
     loadSimplefinFixture(db)
     const first = changes.compute(db, TODAY, { includeAll: true })
     const second = changes.compute(db, TODAY, { includeAll: true })
@@ -542,7 +540,7 @@ describe('dismissal, ordering, cap, determinism', () => {
     expect(first.items.every((i) => i.href.startsWith('/'))).toBe(true)
   })
 
-  it('test_never_calls_an_llm', () => {
+  it('never calls an llm', () => {
     const refuse = () => {
       throw new Error('What changed must not call an LLM provider')
     }
@@ -561,7 +559,7 @@ describe('dismissal, ordering, cap, determinism', () => {
 
 // --- formatting -----------------------------------------------------------------------------
 
-describe('formatting (values printed by Python)', () => {
+describe('formatting (pinned values)', () => {
   it.each([
     [0, '$0.00'],
     [50, '$0.50'],
@@ -597,8 +595,8 @@ describe('formatting (values printed by Python)', () => {
     expect(changes.capwords("  hello   wORLD\tfoo-bar o'neil ".toLowerCase())).toBe("Hello World Foo-bar O'neil")
   })
 
-  // [input, string.capwords(input.lower()), string.capwords(input)], printed by Python 3.14
-  // (Unicode 16): str.capitalize title-cases the first character and lowers the rest.
+  // [input, capwords(lowered), capwords(input)] with Unicode 16 casing: capitalize title-cases
+  // the first character and lowers the rest.
   it.each([
     ['\u00dftra\u00dfe x', 'Sstra\u00dfe X', 'Sstra\u00dfe X'],
     ['\u01c6emal \u01c4EMAL', '\u01c5emal \u01c5emal', '\u01c5emal \u01c5emal'],
@@ -611,12 +609,12 @@ describe('formatting (values printed by Python)', () => {
     ['\ua7cf\ua7ce \u{16ebb}\u{16ea0}', '\ua7cf\ua7ce \u{16ebb}\u{16ea0}', '\ua7cf\ua7ce \u{16ebb}\u{16ea0}'],
     ['\u0130stanbul', 'I\u0307stanbul', '\u0130stanbul'],
     ['\u0130I', 'I\u0307i', '\u0130i'],
-  ])('capwords matches Python on %j', (input, ofLowered, direct) => {
+  ])('capwords uses Unicode 16 title case on %j', (input, ofLowered, direct) => {
     expect(changes.capwords(changes.pyLower(input))).toBe(ofLowered)
     expect(changes.capwords(input)).toBe(direct)
   })
 
-  // [input, input.lower()], printed by Python 3.14: final sigma and Unicode 16 casing.
+  // [input, lowered]: final sigma and Unicode 16 casing.
   it.each([
     ['\u0391\u03a3', '\u03b1\u03c2'],
     ['\u03a3', '\u03c3'],
@@ -627,7 +625,7 @@ describe('formatting (values printed by Python)', () => {
     ['\u02b0\u03a3', '\u02b0\u03c3'],
     ['\ua7ce\u{16ea0}X', '\ua7ce\u{16ea0}x'],
     ['A\u03a3 \u03a3', 'a\u03c2 \u03c3'],
-  ])('pyLower matches str.lower on %j', (input, lowered) => {
+  ])('pyLower lowers with final sigma and Unicode 16 casing on %j', (input, lowered) => {
     expect(changes.pyLower(input)).toBe(lowered)
   })
 })

@@ -1,8 +1,8 @@
 /**
- * Manual sync trigger and run history. Ports app/routers/sync.py.
+ * Manual sync trigger and run history.
  *
- * POST /api/sync answers 202 and starts the run without awaiting it, like FastAPI's
- * BackgroundTasks (plan 5.8). The detached run records its own failure and never rejects;
+ * POST /api/sync answers 202 and starts the run without awaiting it. The detached run records
+ * its own failure and never rejects;
  * `backgroundSyncsSettled()` lets tests and shutdown wait for it.
  */
 

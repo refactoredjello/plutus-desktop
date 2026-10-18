@@ -1,4 +1,4 @@
-/** Ports api/tests/test_recurring.py. */
+/** Recurring charge detection and management. */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from '../src/db/index.js'
@@ -35,7 +35,7 @@ function only(db: Db): typeof recurrences.$inferSelect {
   return rows[0] as typeof recurrences.$inferSelect
 }
 
-/** test_aggregates.categorize: a manual categorization of one transaction. */
+/** A manual categorization of one transaction. */
 function categorize(db: Db, txId: number, detailed: string, ess: Essentiality | null = null): void {
   db.insert(categorizations)
     .values({
@@ -51,8 +51,7 @@ function categorize(db: Db, txId: number, detailed: string, ess: Essentiality | 
 let db: Db
 
 beforeEach(() => {
-  // Python's tests read the real date where they don't patch schedule.today; pin one so these
-  // stay deterministic. It is the date these tests were ported on.
+  // Pin today so these stay deterministic.
   vi.stubEnv('PLUTUS_TODAY', '2026-10-17')
   db = makeDb()
 })
@@ -303,7 +302,7 @@ describe('semimonthly detection', () => {
   })
 })
 
-// Routes: ports the client tests of test_recurring.py.
+// Routes.
 
 type Row = Record<string, unknown>
 

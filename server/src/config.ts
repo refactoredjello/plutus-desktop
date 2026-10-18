@@ -1,10 +1,9 @@
 /**
- * Runtime configuration from the environment. Ports app/config.py.
+ * Runtime configuration from the environment.
  *
- * The knobs under `defaults` seed app_settings on first run (plan section 5.7); the config
- * service in brief 1E owns reading them back. Dropped from the Python settings: DATABASE_URL
- * (replaced by the data directory), APP_PASSWORD_HASH (auth removed), CORS_ORIGINS (the SPA is
- * served from the same origin).
+ * The knobs under `defaults` seed app_settings on first run; services/config.ts owns reading
+ * them back. There is no database URL (the data directory decides), no password (single user,
+ * loopback), and no CORS setting (the SPA is served from the same origin).
  */
 
 import { homedir } from 'node:os'
@@ -38,7 +37,7 @@ export interface Config {
   /** PLUTUS_TODAY, validated. lib/dates.today() reads the variable itself. */
   today: PlainDate | null
   webDist: string
-  /** The per-launch cookie guard on /api (plan 5.9); off by default for the headless server. */
+  /** The per-launch cookie guard on /api; off by default for the headless server. */
   apiGuard: boolean
   host: string
   port: number
@@ -57,7 +56,7 @@ class ConfigError extends Error {
   }
 }
 
-/** pydantic-settings matches variable names case-insensitively. */
+/** Variable names match case-insensitively. */
 function reader(env: Env): (name: string) => string | undefined {
   const lower = new Map<string, string | undefined>()
   for (const [key, value] of Object.entries(env)) lower.set(key.toLowerCase(), value)
@@ -87,7 +86,7 @@ function parseChoice<T extends string>(name: string, value: string, choices: rea
   throw new ConfigError(name, value, `one of ${choices.join(', ')}`)
 }
 
-/** pydantic-settings parses list fields as JSON. */
+/** List variables are JSON arrays. */
 function parseStringList(name: string, value: string): string[] {
   let parsed: unknown
   try {

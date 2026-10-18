@@ -1,20 +1,17 @@
 /**
- * Background scheduler: one periodic sync job. Ports app/scheduler.py.
+ * Background scheduler: one periodic sync job on a setTimeout chain.
  *
- * APScheduler is replaced by a setTimeout chain (plan 5.8) that keeps what the Python job
- * asked for and what APScheduler did with it:
  * - The first run is `firstRunAt(...)`, without jitter. Each later run is the previous
  *   (jittered) run time plus the interval plus up to JITTER_SECONDS, so jitter accumulates.
- * - coalesce=True: when several run times have passed, only the last one is considered.
- * - max_instances=1: a run that comes due while the previous one is still going is skipped.
- * - misfire_grace_time (APScheduler's default, one second): a run that fires later than that
- *   (a sleeping machine, a blocked event loop) is skipped, and the next one is scheduled.
- * - next_run_time moves on when a run is submitted, before it finishes.
- * - shutdown(wait=False): `stop()` does not wait for a running sync.
+ * - Coalesce: when several run times have passed, only the last one is considered.
+ * - One at a time: a run that comes due while the previous one is still going is skipped.
+ * - Misfire grace (one second): a run that fires later than that (a sleeping machine, a
+ *   blocked event loop) is skipped, and the next one is scheduled.
+ * - The next run time moves on when a run is submitted, before it finishes.
+ * - `stop()` does not wait for a running sync.
  *
- * New: app/main.py's lifespan checked `scheduler_enabled` before starting, and Python read the
- * interval once, from the environment. Here the knobs live in the config service and Settings
- * can change them at run time (backlog 31, fixed with the owner's approval), so:
+ * The knobs live in the config service and Settings can change them at run time (backlog 31,
+ * fixed with the owner's approval), so:
  * - `start()` arms the first run after launch with `firstRunAt`, and returns false when the
  *   scheduler is off. It still marks the scheduler started, so a later enable is picked up.
  * - The timer reads the stored config each time it fires and arms the next run: the next run
@@ -29,8 +26,8 @@
  *   provisional next run; the real one is computed the same way when the run ends.
  * - The jitter, the misfire grace (backlog 29), the accumulating jitter (backlog 30), and the
  *   one-second interval clamp (backlog 33) are unchanged.
- * Python held the scheduler in a module global; here the caller owns the handle and passes it
- * to the app for GET /api/sync/schedule and the config route.
+ * The caller owns the handle and passes it to the app for GET /api/sync/schedule and the
+ * config route.
  */
 
 import { max } from 'drizzle-orm'
@@ -46,7 +43,7 @@ import { buildProvider, isConnected, runSync } from './services/sync.js'
 export const JOB_ID = 'simplefin_sync'
 export const JITTER_SECONDS = 120
 export const OVERDUE_DELAY_MS = 2 * 60_000
-/** APScheduler's default misfire_grace_time, which the Python job did not override. */
+/** A run that fires later than this after its time is skipped (backlog 29). */
 export const MISFIRE_GRACE_SECONDS = 1
 
 const HOUR_MS = 3_600_000
@@ -145,8 +142,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
     }
   }
 
-  /** The interval in ms. APScheduler runs a zero interval every second; a negative one, which
-   * would loop forever there, is held to a second too (backlog 33). */
+  /** The interval in ms, held to at least a second, so a zero or negative interval runs
+   * every second (backlog 33). */
   const clampedInterval = (config: RuntimeConfig): number => Math.max(config.syncIntervalHours * HOUR_MS, 1000)
 
   /** The first run after launch, and after a config change: firstRunAt from the last sync. */
@@ -182,7 +179,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
       return
     }
     if (config !== null) intervalMs = clampedInterval(config)
-    // Job._get_run_times, coalesced to the last run time not after now.
+    // The run times that have passed, coalesced to the last one not after now.
     let runTime = nextRun
     for (let t = nextFireTime(runTime); t <= current; t = nextFireTime(runTime)) runTime = t
     nextRun = nextFireTime(runTime)

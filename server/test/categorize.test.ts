@@ -1,12 +1,11 @@
 /**
- * Ports api/tests/test_categorize.py, including the privacy tests
- * (test_privacy_nothing_sensitive_reaches_the_provider, test_notes_never_reach_the_llm, and
- * test_transfers_get_transfer_categories_without_llm).
+ * The categorization pipeline and rules, including the privacy tests: nothing sensitive
+ * reaches the provider, notes never reach the LLM, and transfers get transfer categories
+ * without the LLM.
  *
- * Python passed `settings_with_owner()` to categorize_pending; here the owner tokens and the LLM
- * knobs come from the config service, so the call takes the secret store and the config
- * defaults that seed it. The last block is not in Python: it pins the two case foldings the
- * port had to rewrite (str.casefold for rule matching, Postgres lower() for apply_rule).
+ * The owner tokens and the LLM knobs come from the config service, so the call takes the
+ * secret store and the config defaults that seed it. The last block pins the two case
+ * foldings: full case folding for rule matching, simple lowercase for applyRule.
  */
 
 import { count, eq } from 'drizzle-orm'
@@ -121,10 +120,10 @@ class OddProvider implements LLMProvider {
   }
 }
 
-/** Python's `re.search(r"\d{4,}", s)`: \d is any Unicode decimal digit. */
+/** Four or more digits in a row, in any script. */
 const LONG_DIGITS = /\p{Nd}{4,}/u
 
-describe('categorize_pending (test_categorize.py)', () => {
+describe('categorizePending', () => {
   it('privacy: nothing sensitive reaches the provider', async () => {
     const loaded = loadSimplefinFixture(db)
     const llm = new FakeLLMProvider()
@@ -345,7 +344,7 @@ function rule(matchType: RuleMatchType, pattern: string, detailedName: string, e
     .get()
 }
 
-describe('rules (test_categorize.py)', () => {
+describe('rules', () => {
   it('precedence is exact, then contains, then prefix', async () => {
     const acct = makeAccount(db)
     const tx = makeTx(db, acct, '-5.00', 'ACME COFFEE SHOP 123')
@@ -421,8 +420,8 @@ describe('rules (test_categorize.py)', () => {
   })
 })
 
-describe('case folding rewritten from Python and Postgres (not in Python)', () => {
-  it('casefold is str.casefold', () => {
+describe('case folding', () => {
+  it('casefold is full Unicode case folding', () => {
     expect(casefold('Stra\u00dfe')).toBe('strasse')
     expect(casefold('STRA\u1e9eE')).toBe('strasse') // capital sharp s
     expect(casefold('\u03a3\u039f\u03a3')).toBe('\u03c3\u03bf\u03c3') // no final-sigma context
@@ -433,7 +432,7 @@ describe('case folding rewritten from Python and Postgres (not in Python)', () =
     expect(casefold('\ufb03')).toBe('ffi')
   })
 
-  it('pgLower is Postgres lower() on the oracle (musl towlower, one code point at a time)', () => {
+  it('pgLower is the simple lowercase mapping, one code point at a time', () => {
     expect(pgLower('CAF\u00c9')).toBe('caf\u00e9')
     expect(pgLower('\u0130STANBUL')).toBe('istanbul')
     expect(pgLower('\u039f\u0394\u039f\u03a3')).toBe('\u03bf\u03b4\u03bf\u03c3')
@@ -442,7 +441,7 @@ describe('case folding rewritten from Python and Postgres (not in Python)', () =
     expect(pgLower('\u24b6')).toBe('\u24b6') // circled letters are left alone
   })
 
-  it('rule matching casefolds; apply_rule lowers like Postgres', async () => {
+  it('rule matching casefolds; applyRule lowers with the simple mapping', async () => {
     const acct = makeAccount(db)
     const tx = makeTx(db, acct, '-5.00', 'Gro\u00dfmarkt Stra\u00dfe')
     const r = rule('contains', 'STRASSE', 'FOOD_AND_DRINK_GROCERIES')

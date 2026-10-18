@@ -1,9 +1,6 @@
 /**
- * Structured logging with pino. Ports app/logging.py (structlog).
- *
- * structlog rendered a console format in development and JSON in production; pino writes
- * JSON lines everywhere (no pretty printer dependency). Level names follow Python's, so an
- * existing LOG_LEVEL keeps working.
+ * Structured logging with pino: JSON lines everywhere (no pretty printer dependency).
+ * LOG_LEVEL takes debug, info, warning (or warn), error, or critical (or fatal), in any case.
  */
 
 import { type DestinationStream, type Logger, pino } from 'pino'

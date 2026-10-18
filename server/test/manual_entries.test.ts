@@ -1,4 +1,4 @@
-/** Ports api/tests/test_manual_entries.py. */
+/** Manual entries (planned income and expenses). */
 
 import { beforeEach, describe, expect, it } from 'vitest'
 import { categoryId, makeAccount, makeTx } from './factories.js'

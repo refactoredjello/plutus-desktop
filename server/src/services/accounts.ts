@@ -1,12 +1,10 @@
 /**
- * Accounts with their latest balance snapshot. Ports list_accounts from
- * api/app/routers/accounts.py, where the query lived in the router.
+ * Accounts with their latest balance snapshot.
  *
- * Rewritten for SQLite:
- * - `DISTINCT ON (account_id) ... ORDER BY account_id, as_of DESC, id DESC` is
+ * - The latest snapshot per account is
  *   `row_number() over (partition by account_id order by as_of desc, id desc) = 1`.
- * - `ORDER BY institution_name` puts NULLs last in Postgres and first in SQLite, so it says
- *   `nulls last`.
+ * - Accounts without an institution sort last: SQLite puts NULLs first by default, so the
+ *   ORDER BY says `nulls last`.
  */
 
 import { asc, sql } from 'drizzle-orm'

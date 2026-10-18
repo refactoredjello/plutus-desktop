@@ -1,4 +1,4 @@
-/** Ports app/schemas/changes.py. */
+/** Request and response schemas for what changed. */
 
 import { z } from '@hono/zod-openapi'
 import { Money, PlainDate } from './common.js'

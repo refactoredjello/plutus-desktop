@@ -1,6 +1,5 @@
 /**
- * SimpleFIN connection, LLM status, and the runtime config (new, plan 5.7).
- * Ports app/routers/settings.py.
+ * SimpleFIN connection, LLM status, and the runtime config.
  */
 
 import { createRoute } from '@hono/zod-openapi'

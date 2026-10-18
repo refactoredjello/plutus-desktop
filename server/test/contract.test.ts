@@ -158,10 +158,10 @@ describe('the new config contract (schemas/settings.ts)', () => {
   })
 })
 
-describe('route guards (test_contract.py)', () => {
+describe('route guards', () => {
   it('every route declares a response schema or is 204, and has a tag', () => {
     // Walk the app's own routes, not just the document, so a route registered outside
-    // @hono/zod-openapi cannot slip past the check (the lesson of test_contract.py).
+    // @hono/zod-openapi cannot slip past the check.
     const { app } = makeApp()
     const registered = new Set(
       app.routes
@@ -278,10 +278,10 @@ describe('every operation accepts its sample request and is implemented', () => 
 })
 
 /**
- * Request parsing mirrors FastAPI and Pydantic's lax mode. A request that parses reaches the
- * handler (`parsed`: the route's own answer); one that does not is a 422 problem.
+ * Request parsing is lenient about strings for numbers and booleans. A request that parses
+ * reaches the handler (`parsed`: the route's own answer); one that does not is a 422 problem.
  */
-describe('request parsing (FastAPI and Pydantic lax mode)', () => {
+describe('request parsing', () => {
   async function status(method: string, url: string, body?: unknown) {
     const res = await call(method, url, body)
     if (res.status === 422) expect(res.headers.get('content-type')).toBe('application/problem+json')
@@ -363,7 +363,7 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
     ).toSatisfy(parsed)
   })
 
-  it('takes request money as Pydantic took a Decimal: a number or a decimal string', async () => {
+  it('takes request money as a number or a decimal string', async () => {
     const entry = { description: 'Rent', due_date: '2026-11-01' }
     for (const amount of ['-15.49', '1000', '15.5', 15.5, -1200]) {
       expect(await status('POST', '/api/manual-entries', { ...entry, amount })).toSatisfy(parsed)
@@ -377,7 +377,7 @@ describe('request parsing (FastAPI and Pydantic lax mode)', () => {
   })
 })
 
-describe('MoneyInput (Pydantic Decimal, stored as NUMERIC(14,2))', () => {
+describe('MoneyInput', () => {
   it.each([
     ['1000', 100000],
     ['15.5', 1550],
@@ -385,7 +385,7 @@ describe('MoneyInput (Pydantic Decimal, stored as NUMERIC(14,2))', () => {
     [15.5, 1550],
     [1000, 100000],
     [-15.49, -1549],
-    ['0.005', 1], // Postgres NUMERIC coercion rounds half away from zero
+    ['0.005', 1], // extra places round half away from zero (stored amounts' rule)
     ['-0.005', -1],
     ['0.004', 0],
     ['+7', 700],
@@ -406,7 +406,7 @@ describe('MoneyInput (Pydantic Decimal, stored as NUMERIC(14,2))', () => {
     },
   )
 
-  it('is nullable where Pydantic allowed None', () => {
+  it('is nullable where the schema allows null', () => {
     expect(MoneyInput.nullable().safeParse(null)).toEqual({ success: true, data: null })
   })
 
@@ -419,7 +419,7 @@ describe('MoneyInput (Pydantic Decimal, stored as NUMERIC(14,2))', () => {
   })
 })
 
-/** Hono's json validator answers 415 or 400 text/plain; FastAPI answered 422 (plan 5.5). */
+/** Hono's json validator answers 415 or 400 text/plain; the app turns both into 422. */
 describe('JSON body errors are 422 problem+json', () => {
   const goal = JSON.stringify({ name: 'Trip', target_amount: '1000.00', target_date: '2027-06-01' })
 

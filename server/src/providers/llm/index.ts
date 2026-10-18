@@ -1,8 +1,8 @@
 /**
- * Provider factory for the LLM boundary. Ports app/providers/llm/__init__.py.
+ * Provider factory for the LLM boundary.
  *
- * Python read pydantic Settings; here the caller passes the four LLM knobs explicitly (the
- * config service supplies them from app_settings). Nothing here reads the environment.
+ * The caller passes the four LLM knobs explicitly (the config service supplies them from
+ * app_settings). Nothing here reads the environment.
  */
 
 import type { LLMProviderName } from '../../config.js'
@@ -20,11 +20,11 @@ export interface LlmSettings {
   ollama_base_url: string
 }
 
-/** Strings that Python's str.strip() reduces to nothing. */
-// oxlint-disable-next-line no-control-regex -- Python counts \x1c-\x1f as whitespace.
+/** Blank strings: empty or only whitespace (ASCII, \x1c-\x1f, and the Unicode spaces). */
+// oxlint-disable-next-line no-control-regex -- \x1c-\x1f count as whitespace.
 const PY_BLANK = /^[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$/
 
-/** `log` reaches the Claude provider's debug line; Python used the global structlog logger. */
+/** `log` reaches the Claude provider's debug line. */
 export function getLlmProvider(settings: LlmSettings, log?: Logger): LLMProvider {
   switch (settings.llm_provider) {
     case 'fake':

@@ -32,7 +32,6 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 | `make dev` / `make smoke` / `make dist` | The desktop app from source / its smoke check on a throwaway data dir / an unsigned package in `desktop/release/`. |
 | `make dev-server` | Headless server from source on :8000 with reload, serving `web/dist`. |
 | `npm run demo -- load` / `-- clear` (in `server/`) | Fake demo data (295 transactions) through the real sync pipeline into `PLUTUS_DB_PATH` or `PLUTUS_DATA_DIR/plutus.sqlite`; `make demo-data` / `make demo-clear` do the same. |
-| `node_modules/.bin/tsx server/scripts/import-json.ts <file> --db <sqlite>` | Import an export of the old Docker app (docs/MIGRATING_DATA.md); needs `PLUTUS_SECRET_KEY`. |
 | `make help` | The rest. |
 
 ## Layout
@@ -88,6 +87,6 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 
 An orchestrator session owns `server/src/db/schema.ts`, migrations, Zod schemas, `server/src/app.ts`, root config, and merges; subagents implement briefs in their own worktree and branch, touching only files they own. Role definitions live in `.claude/agents/`. See `docs/AGENT_PLAN.md`.
 
-Suspected bugs found during the port are listed in `docs/PORT_BUG_BACKLOG.md`; never fix one without the owner's go-ahead.
+Open bugs and wanted changes are listed in `docs/BACKLOG.md`; never fix one without the owner's go-ahead.
 
 The remaining desktop-port briefs (packaging, frontend cleanup, removing the old-app importer and references, the documentation pass) are in `docs/DESKTOP_PLAN.md`.

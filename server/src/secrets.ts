@@ -1,9 +1,8 @@
 /**
  * Encryption of secret app settings (the SimpleFIN access URL, the Anthropic API key).
  *
- * Ports the encryption half of app/services/app_settings.py. Python used Fernet with a key
- * derived as SHA-256(SECRET_KEY); the port uses AES-256-GCM with the same derivation
- * (plan section 5.7). The desktop app supplies its own store over Electron's safeStorage.
+ * KeySecretStore uses AES-256-GCM with a key derived as SHA-256(PLUTUS_SECRET_KEY), for the
+ * headless server. The desktop app supplies its own store over Electron's safeStorage.
  */
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'

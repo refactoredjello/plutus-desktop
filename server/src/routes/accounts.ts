@@ -1,4 +1,4 @@
-/** Accounts with their latest balance snapshot. Ports app/routers/accounts.py. */
+/** Accounts with their latest balance snapshot. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'

@@ -1,6 +1,6 @@
 /**
- * Ports api/tests/test_transaction_routes.py. The last block is not in Python: it pins what
- * the port had to rewrite (Pydantic's model_fields_set, and Postgres lower() in `q`).
+ * The transaction routes. The last block pins which fields count as sent (a default sent
+ * explicitly counts) and how `q` lowers non-ASCII text.
  */
 
 import { eq } from 'drizzle-orm'
@@ -48,7 +48,7 @@ function categorizationOf(db: Db, tx: Transaction) {
   return db.select().from(categorizations).where(eq(categorizations.transaction_id, tx.id)).get()
 }
 
-/** httpx's params: lists repeat the key, booleans render as "true"/"false". */
+/** Query params: lists repeat the key, booleans render as "true"/"false". */
 function url(params: Record<string, string | number | boolean | (string | number)[]> = {}): string {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
@@ -80,7 +80,7 @@ async function patched(app: App, id: number, body: unknown): Promise<Body> {
   return (await r.json()) as Body
 }
 
-describe('GET /api/transactions (test_transaction_routes.py)', () => {
+describe('GET /api/transactions', () => {
   it('lists newest first, with pagination', async () => {
     const { app, db } = makeApp()
     const acct = makeAccount(db)
@@ -178,7 +178,7 @@ describe('GET /api/transactions (test_transaction_routes.py)', () => {
   })
 })
 
-describe('PATCH /api/transactions/{id} (test_transaction_routes.py)', () => {
+describe('PATCH /api/transactions/{id}', () => {
   it('overrides manually', async () => {
     const { app, db } = makeApp()
     const tx = makeTx(db, makeAccount(db), '-4.00', 'MYSTERY SHOP')
@@ -333,11 +333,11 @@ describe('PATCH /api/transactions/{id} (test_transaction_routes.py)', () => {
   })
 })
 
-describe('rewritten from Python (not in Python)', () => {
-  it('a default sent explicitly counts as set, as in model_fields_set', async () => {
+describe('sent fields and search lowering', () => {
+  it('a default sent explicitly counts as set', async () => {
     const { app, db } = makeApp()
     const tx = makeTx(db, makeAccount(db), '-4.00', 'MYSTERY')
-    // Python: fields {"note", "save_as_rule"} is not a subset of {"note", "one_time"}.
+    // Sent fields {"note", "save_as_rule"} are not a subset of {"note", "one_time"}.
     expect((await patch(app, tx.id, { note: 'x', save_as_rule: false })).status).toBe(400)
     expect((await patch(app, tx.id, { rule_match_type: 'exact' })).status).toBe(400)
     expect((await patch(app, tx.id, { category_id: null })).status).toBe(400)
@@ -347,7 +347,7 @@ describe('rewritten from Python (not in Python)', () => {
     expect((await patched(app, tx.id, { note: 'y', one_time: true })).note).toBe('y')
   })
 
-  it('q lowers non-ASCII text the way Postgres did', async () => {
+  it('q lowers non-ASCII text with the simple lowercase mapping', async () => {
     const { app, db } = makeApp()
     const acct = makeAccount(db)
     const cafe = makeTx(db, acct, '-4.00', 'CAF\u00c9 NOIR')

@@ -1,4 +1,4 @@
-/** Ports app/schemas/health.py. */
+/** Request and response schemas for the health check. */
 
 import { z } from '@hono/zod-openapi'
 

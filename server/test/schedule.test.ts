@@ -1,6 +1,5 @@
 /**
- * services/schedule.ts. schedule.py has no test file of its own; these tests pin its docstrings
- * and edge cases: month-end clamping without drift, the semimonthly pairing, leap years, and
+ * services/schedule.ts: its documented behaviour and edge cases: month-end clamping without drift, the semimonthly pairing, leap years, and
  * the half-open window of `occurrences`.
  */
 
@@ -93,7 +92,7 @@ describe('semimonthly', () => {
     expect(series('2026-04-30', 'semimonthly', 3)).toEqual(['2026-04-30', '2026-05-15', '2026-05-31'])
   })
 
-  it('moves a 28th-30th anchor to the actual month end, even for n=0 (as Python does)', () => {
+  it('moves a 28th-30th anchor to the actual month end, even for n=0', () => {
     expect(series('2026-01-28', 'semimonthly', 3)).toEqual(['2026-01-31', '2026-02-15', '2026-02-28'])
     expect(nthOccurrence(d('2026-03-30'), 'semimonthly', 0)).toBe('2026-03-31')
     expect(nthOccurrence(d('2026-02-28'), 'semimonthly', 0)).toBe('2026-02-28')

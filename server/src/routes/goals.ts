@@ -1,4 +1,4 @@
-/** Goals and savings suggestions (R8). Ports app/routers/goals.py. */
+/** Goals and savings suggestions (R8). */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App, AppEnv } from '../app.js'

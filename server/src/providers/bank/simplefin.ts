@@ -1,15 +1,14 @@
 /**
  * SimpleFIN Bridge adapter. Protocol: https://www.simplefin.org/protocol.html
- * Ports app/providers/bank/simplefin.py.
  *
  * Budget: 24 requests/day. The docs allow 90 days per request, but the live bridge warns above
  * 45 days and says it may cap there, so `fetch` issues one request per 45-day chunk and never
  * retries. The access URL embeds credentials and must never be logged.
  *
- * Python's httpx client is replaced by an injected `fetch` (tests pass a stub). httpx does not
- * follow redirects, so every request sets `redirect: 'manual'`. Values Python read with
- * str(), int(), Decimal() and truthiness are read with the helpers below, which follow the
- * Python semantics for the JSON values a bridge can send.
+ * HTTP goes through an injected `fetch` (tests pass a stub). Redirects are never followed
+ * (`redirect: 'manual'`), so credentials never travel to another host. The JSON a bridge sends
+ * is loosely typed, so the helpers below coerce any JSON value to text, an integer, an amount,
+ * or a truth value by one fixed set of rules, and describe a bad value the same way in errors.
  */
 
 import type { AccountType } from '../../db/schema.js'
@@ -24,18 +23,18 @@ export const TIMEOUT_SECONDS = 30
 
 export type FetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
-// --- Python semantics for JSON values --------------------------------------------------------
+// --- Coercing JSON values -------------------------------------------------------------------
 
-/** Characters Python's str.strip() and str.split() treat as whitespace. */
+/** Whitespace for stripping: ASCII whitespace, \x1c-\x1f, and the Unicode spaces. */
 const PY_SPACE = '\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'
 const PY_STRIP = new RegExp(`^[${PY_SPACE}]+|[${PY_SPACE}]+$`, 'g')
 
-/** Python `str.strip()` with no arguments. */
+/** Strip PY_SPACE from both ends. */
 function pyStrip(text: string): string {
   return text.replace(PY_STRIP, '')
 }
 
-/** Python truthiness of a JSON value. */
+/** False for null, false, 0, "", [], and {}; true otherwise. */
 function pyTruthy(value: unknown): boolean {
   if (value === null || value === undefined || value === false || value === 0 || value === '') return false
   if (Array.isArray(value)) return value.length > 0
@@ -45,7 +44,7 @@ function pyTruthy(value: unknown): boolean {
 
 const NONPRINTABLE = /[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{Zs}]/u
 
-/** Python `repr(str)`. */
+/** A string quoted and escaped for an error message: single quotes unless it holds one. */
 function pyReprString(text: string): string {
   const quote = text.includes("'") && !text.includes('"') ? '"' : "'"
   let out = ''
@@ -65,8 +64,8 @@ function pyReprString(text: string): string {
 }
 
 /**
- * Python `repr(float)`. JSON.parse cannot tell 1.0 from 1, so integral values print as ints,
- * which is what Python prints for JSON integers.
+ * A number for an error message: shortest round-trip digits, ".0" on integral floats and
+ * exponents past 1e16. JSON.parse cannot tell 1.0 from 1, so integral values print as ints.
  */
 function pyReprNumber(value: number): string {
   if (Number.isInteger(value) && Math.abs(value) < 1e16) return String(value)
@@ -77,7 +76,7 @@ function pyReprNumber(value: number): string {
   return fixed.includes('.') ? fixed : `${fixed}.0`
 }
 
-/** Python `repr()` of a JSON value. */
+/** Any JSON value for an error message: None/True/False, quoted strings, lists, and dicts. */
 function pyRepr(value: unknown): string {
   if (value === null || value === undefined) return 'None'
   if (value === true) return 'True'
@@ -89,12 +88,12 @@ function pyRepr(value: unknown): string {
   return `{${entries.map(([k, v]) => `${pyReprString(k)}: ${pyRepr(v)}`).join(', ')}}`
 }
 
-/** Python `str()` of a JSON value. */
+/** A JSON value as text: strings as they are, anything else as pyRepr shows it. */
 function pyStr(value: unknown): string {
   return typeof value === 'string' ? value : pyRepr(value)
 }
 
-/** Iterating a JSON value in Python: list items, string characters, or dict keys. */
+/** The items of a JSON value: list items, string characters, or object keys. */
 function pyIter(value: unknown): unknown[] {
   if (Array.isArray(value)) return value
   if (typeof value === 'string') return Array.from(value)
@@ -108,24 +107,24 @@ function isObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** `value.get(...)` in Python needs a dict; anything else raised AttributeError. */
+/** The value as an object; anything else is an error. */
 function asDict(value: unknown): JsonObject {
   if (!isObject(value)) throw new TypeError(`${pyRepr(value)} has no attribute 'get'`)
   return value
 }
 
-/** `raw[key]`: KeyError when missing. */
+/** `raw[key]`; an error when the key is missing. */
 function requireKey(raw: JsonObject, key: string): unknown {
   if (!Object.hasOwn(raw, key)) throw new Error(`KeyError: ${pyReprString(key)}`)
   return raw[key]
 }
 
-/** `raw.get(key, default)`: the default only when the key is absent, not when it is null. */
+/** `raw[key]`, or the fallback only when the key is absent, not when it is null. */
 function get(raw: JsonObject, key: string, fallback: unknown = null): unknown {
   return Object.hasOwn(raw, key) ? raw[key] : fallback
 }
 
-/** Map Unicode decimal digits (which Python's int() and Decimal() accept) to ASCII. */
+/** Map Unicode decimal digits to ASCII, so any script's digits parse as numbers. */
 function asciiDigits(text: string): string {
   return text.replace(/\p{Nd}/gu, (ch) => {
     // Unicode encodes every decimal digit set as a contiguous run 0-9, so a digit's value is
@@ -136,7 +135,7 @@ function asciiDigits(text: string): string {
   })
 }
 
-/** Python `int(value)` for what a bridge may send as a timestamp. */
+/** An integer from what a bridge may send as a timestamp: a number, a boolean, or digit text. */
 function pyInt(value: unknown): number {
   if (typeof value === 'number') return Math.trunc(value)
   if (typeof value === 'boolean') return value ? 1 : 0
@@ -151,9 +150,9 @@ function pyInt(value: unknown): number {
 const DECIMAL = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([+-]?\d+))?$/
 
 /**
- * `Decimal(text)` in Python, then the NUMERIC(14,2) column the sync stores it in. Returns null
- * for text Decimal rejects. Infinity and NaN, which Decimal accepts, cannot be cents and are
- * rejected too.
+ * Decimal text (an optional exponent, "_" separators, any script's digits) to cents, rounding
+ * extra places half away from zero (stored amounts' rule). Returns null for anything else,
+ * including Infinity and NaN.
  */
 function decimalToCents(text: string): Cents | null {
   const match = DECIMAL.exec(asciiDigits(pyStrip(text.replaceAll('_', ''))))
@@ -168,13 +167,13 @@ function decimalToCents(text: string): Cents | null {
   return parseMoney(`${sign}${padded.slice(0, at) || '0'}.${padded.slice(at)}`)
 }
 
-// --- Base64 and URL schemes, as Python decodes them ------------------------------------------
+// --- Base64 and URL schemes -----------------------------------------------------------------
 
 class Base64Error extends Error {}
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
-/** binascii.a2b_base64(data, strict_mode=False): non-alphabet characters are discarded. */
+/** Lenient base64: characters outside the alphabet are discarded; padding ends the data. */
 function a2bBase64(data: string): Uint8Array {
   const out: number[] = []
   let quad = 0
@@ -210,16 +209,15 @@ function a2bBase64(data: string): Uint8Array {
   return Uint8Array.from(out)
 }
 
-/** base64.b64decode(text, altchars=b"-_"): accepts both alphabets. */
+/** Base64 in either the standard or the URL-safe alphabet; ASCII only. */
 function b64decodeUrlsafe(text: string): Uint8Array {
-  // b64decode of a str encodes it as ASCII first and raises ValueError otherwise.
   if (Array.from(text).some((ch) => ch.charCodeAt(0) > 0x7f)) throw new Base64Error('string argument should contain only ASCII characters')
   return a2bBase64(text.replaceAll('-', '+').replaceAll('_', '/'))
 }
 
 const SCHEME_CHARS = /^[A-Za-z0-9+\-.]*$/
 
-/** urllib.parse.urlsplit(url).scheme. */
+/** The URL's scheme, lower-cased, after leading control characters and tabs or newlines are removed; "" when none. */
 function urlScheme(url: string): string {
   let start = 0
   while (start < url.length && url.charCodeAt(start) <= 0x20) start += 1
@@ -236,7 +234,7 @@ function isHttpUrl(url: string): boolean {
   return scheme === 'http' || scheme === 'https'
 }
 
-/** type(exc).__name__ of the httpx exception Python would have reported for a fetch failure. */
+/** The name a fetch failure is reported by: ReadTimeout, ConnectError, or ReadError. */
 function httpxErrorName(error: unknown, phase: 'connect' | 'read'): string {
   if (error instanceof Error && error.name === 'TimeoutError') return 'ReadTimeout'
   return phase === 'connect' ? 'ConnectError' : 'ReadError'
@@ -322,7 +320,7 @@ function midnightUnix(day: PlainDate): number {
   return daysBetween(plainDate('1970-01-01'), day) * 86400
 }
 
-/** A string field Python passed through unchanged when truthy (`raw.get(key) or None`). */
+/** A text field: the value as text when truthy, else null. */
 function optionalText(value: unknown): string | null {
   return pyTruthy(value) ? pyStr(value) : null
 }
@@ -347,7 +345,7 @@ export class SimpleFINProvider implements BankProvider {
       this.baseUrl = `${parts.protocol}//${netloc}${parts.pathname.replace(/\/+$/, '')}`
       this.authorization = `Basic ${Buffer.from(`${parts.username}:${parts.password}`, 'utf8').toString('base64')}`
     } else {
-      // httpx raised UnsupportedProtocol at request time; the constructor never failed.
+      // A URL that is not http(s) fails at request time; the constructor never fails.
       this.baseUrl = null
       this.authorization = ''
     }

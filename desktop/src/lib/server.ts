@@ -1,6 +1,6 @@
 /**
  * Runs the Plutus server in the Electron main process: the desktop config and the listener.
- * Plan 5.9: loopback only, a free port each launch, the cookie guard always on.
+ * Loopback only, a free port each launch, the cookie guard always on.
  */
 
 import type { Server } from 'node:http'

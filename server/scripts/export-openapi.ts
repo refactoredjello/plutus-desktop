@@ -1,6 +1,6 @@
 /**
  * Write the OpenAPI spec to a file: `tsx scripts/export-openapi.ts <path>`.
- * Ports app/export_openapi.py, keeping its byte format so diffs stay readable.
+ * Keys are sorted and the output is ASCII, so diffs stay readable and stable.
  */
 
 import { writeFileSync } from 'node:fs'
@@ -24,13 +24,13 @@ function sortKeys(value: unknown): unknown {
   return value
 }
 
-/** `json.dumps(value, indent=2, sort_keys=True) + "\n"`, ensure_ascii included. */
+/** JSON with sorted keys, a two-space indent, a final newline, and non-ASCII escaped. */
 export function stableJson(value: unknown): string {
   const text = JSON.stringify(sortKeys(value), null, 2)
   let ascii = ''
   for (let i = 0; i < text.length; i++) {
     const code = text.charCodeAt(i)
-    // Python escapes every UTF-16 unit outside printable ASCII: DEL and above, surrogates too.
+    // Escape every UTF-16 unit outside printable ASCII: DEL and above, surrogates too.
     ascii += code > 0x7e ? `\\u${code.toString(16).padStart(4, '0')}` : text.charAt(i)
   }
   return `${ascii}\n`

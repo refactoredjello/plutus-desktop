@@ -1,4 +1,4 @@
-/** scripts/export-openapi.ts writes the spec the way app/export_openapi.py did. */
+/** scripts/export-openapi.ts writes stable, sorted, ASCII JSON. */
 
 import { describe, expect, it } from 'vitest'
 import { renderOpenApi, stableJson } from '../scripts/export-openapi.js'
@@ -10,16 +10,16 @@ describe('stableJson (json.dumps(indent=2, sort_keys=True) + "\\n")', () => {
     )
   })
 
-  it('writes empty containers like Python', () => {
+  it('writes empty containers inline', () => {
     expect(stableJson({ a: {}, b: [] })).toBe('{\n  "a": {},\n  "b": []\n}\n')
   })
 
-  it('escapes non-ASCII like ensure_ascii', () => {
+  it('escapes non-ASCII', () => {
     expect(stableJson({ d: '\u007f' })).toBe('{\n  "d": "\\u007f"\n}\n')
     expect(stableJson({ s: 'child’s café 😀' })).toBe('{\n  "s": "child\\u2019s caf\\u00e9 \\ud83d\\ude00"\n}\n')
   })
 
-  it('sorts keys by code point like Python', () => {
+  it('sorts keys by code point', () => {
     expect(stableJson({ b: 1, B: 2, _: 3, a: 4 })).toBe('{\n  "B": 2,\n  "_": 3,\n  "a": 4,\n  "b": 1\n}\n')
   })
 })

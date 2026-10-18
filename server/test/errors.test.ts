@@ -11,7 +11,7 @@ import {
   validationError,
 } from '../src/lib/errors.js'
 
-describe('DomainError family (app/errors.py)', () => {
+describe('DomainError family', () => {
   it.each([
     [new DomainError('x'), 400, 'Bad request'],
     [new NotFoundError('x'), 404, 'Not found'],

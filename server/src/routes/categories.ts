@@ -1,4 +1,4 @@
-/** Categories and rules. Ports app/routers/categories.py. */
+/** Categories and rules. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'

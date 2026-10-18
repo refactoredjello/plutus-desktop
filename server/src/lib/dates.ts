@@ -1,7 +1,7 @@
 /**
- * Plain calendar dates as branded "YYYY-MM-DD" strings (plan section 5.3).
+ * Plain calendar dates as branded "YYYY-MM-DD" strings.
  *
- * Python uses `datetime.date`; here a date is a string, so comparisons are string comparisons
+ * A date is a string, so comparisons are string comparisons
  * and the database stores TEXT. Day arithmetic goes through a day number (days since
  * 1970-01-01, proleptic Gregorian), never through a JavaScript Date, so time zones and DST
  * cannot shift a date.
@@ -75,8 +75,8 @@ function fromDayNumber(n: number): PlainDate {
 }
 
 /**
- * The one place "today" comes from: PLUTUS_TODAY when set, else the UTC date. Mirrors
- * services/schedule.today() in Python, which tests and the parity harness pin.
+ * The one place "today" comes from: PLUTUS_TODAY when set, else the UTC date. Tests pin it
+ * with PLUTUS_TODAY.
  */
 export function today(): PlainDate {
   const pinned = process.env.PLUTUS_TODAY
@@ -94,17 +94,17 @@ function epochMillis(seconds: number): number {
   return seconds * 1000
 }
 
-/** `datetime.fromtimestamp(seconds, UTC).date()`. */
+/** The UTC date of a Unix timestamp in seconds. */
 export function epochToUtcDate(seconds: number): PlainDate {
   return plainDate(new Date(epochMillis(seconds)).toISOString().slice(0, 10))
 }
 
-/** `datetime.fromtimestamp(seconds, UTC)` as an ISO 8601 UTC timestamp. */
+/** A Unix timestamp in seconds as an ISO 8601 UTC timestamp. */
 export function epochToTimestamp(seconds: number): string {
   return new Date(epochMillis(seconds)).toISOString()
 }
 
-/** `day + timedelta(days=n)`. */
+/** The date n days after `day` (before, for negative n). */
 export function addDays(day: PlainDate, n: number): PlainDate {
   return fromDayNumber(toDayNumber(day) + n)
 }

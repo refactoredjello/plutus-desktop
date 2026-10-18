@@ -1,4 +1,4 @@
-/** Ports app/schemas/goals.py. */
+/** Request and response schemas for goals and savings suggestions. */
 
 import { z } from '@hono/zod-openapi'
 import { DateTime, Money, PlainDate, PositiveMoneyInput } from './common.js'

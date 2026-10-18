@@ -1,23 +1,24 @@
 /**
- * Privacy boundary for categorization (R3.4). Ports app/services/scrub.py.
+ * Privacy boundary for categorization (R3.4).
  *
  * Everything that may reach an LLM about a transaction is produced here: a normalized,
  * scrubbed merchant key, a coarse amount bucket, a direction, and an account kind.
  * Invariant: a key never contains a run of more than 3 digits nor any owner name token.
  *
- * Python `re` on str patterns is Unicode-aware where JavaScript `RegExp` is not, so the
- * patterns below spell out Python's classes (all with the `u` flag):
- * - `\d` is any Unicode decimal digit: `\p{Nd}` (JavaScript `\d` is ASCII only).
- * - `\w` is any Unicode letter or number or `_`: `[\p{L}\p{N}_]`, and `\b` is rebuilt from
- *   lookarounds over that class (JavaScript `\b` is ASCII only, even with `u`).
- * - `\s` and str.split()/strip() whitespace is str.isspace(): it includes U+001C..U+001F and
- *   U+0085 and excludes U+FEFF, unlike JavaScript `\s` and trim().
- * - `.` excludes only `\n`: `[^\n]` (JavaScript `.` also excludes `\r`, U+2028, U+2029).
- * - len() and slicing count code points, not UTF-16 units.
- * `$` is left as is: Python's also matches before a final `\n`, but the key is
- * whitespace-collapsed before any pattern runs, so it never contains one.
- * The classes were checked against Python 3.14 (Unicode 16) over every code point; they differ
- * only on characters a newer Unicode version adds.
+ * Bank text is not ASCII-only, and JavaScript `RegExp` classes are, so the patterns below
+ * spell out Unicode-aware classes (all with the `u` flag):
+ * - A digit is any Unicode decimal digit: `\p{Nd}` (JavaScript `\d` is ASCII only).
+ * - A word character is any Unicode letter or number or `_`: `[\p{L}\p{N}_]`, and a word
+ *   boundary is rebuilt from lookarounds over that class (JavaScript `\b` is ASCII only, even
+ *   with `u`).
+ * - Whitespace (for patterns, splitting, and stripping) includes U+001C..U+001F and U+0085 and
+ *   excludes U+FEFF, unlike JavaScript `\s` and trim().
+ * - "Any character" excludes only `\n`: `[^\n]` (JavaScript `.` also excludes `\r`, U+2028,
+ *   U+2029).
+ * - Lengths and slices count code points, not UTF-16 units.
+ * `$` is left as is: the key is whitespace-collapsed before any pattern runs, so it never
+ * contains a newline.
+ * The classes follow Unicode 16; they may differ on characters a newer Unicode version adds.
  */
 
 import type { AccountType } from '../db/schema.js'
@@ -89,22 +90,22 @@ const DIGIT = re(D)
 const SPACE_RUN = new RegExp(`${S}+`, 'u')
 const EDGE_SPACE = re(`^${S}+|${S}+$`)
 
-/** Python str.split() with no argument. */
+/** Split on whitespace runs, dropping empty parts. */
 function pySplit(text: string): string[] {
   return text.split(SPACE_RUN).filter((part) => part !== '')
 }
 
-/** Python str.strip() with no argument. */
+/** Strip whitespace from both ends. */
 function pyStrip(text: string): string {
   return text.replace(EDGE_SPACE, '')
 }
 
-/** Python len(): code points. */
+/** Length in code points. */
 function pyLen(text: string): number {
   return Array.from(text).length
 }
 
-/** Python re.escape, limited to what a `u`-flag pattern accepts outside a class. */
+/** Escape regex syntax, limited to what a `u`-flag pattern accepts outside a class. */
 function escapeRegExp(text: string): string {
   return text.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&')
 }

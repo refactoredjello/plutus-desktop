@@ -1,7 +1,6 @@
 /**
- * Port of api/tests/test_llm_providers.py (the prompt tests live in prompts.test.ts), plus tests
- * for the fake provider, which Python exercised only through other tests; those are read off
- * api/app/providers/llm/fake.py.
+ * The LLM providers and the factory (the prompt tests live in prompts.test.ts), including the
+ * fake provider.
  */
 
 import Anthropic, {
@@ -43,8 +42,7 @@ import { mockFetch } from './factories.js'
 import { FIXTURES, testConfig } from './setup.js'
 
 /**
- * What the Python SDK's messages.parse(output_format=Model) sends as output_config.format.schema
- * (anthropic's transform_schema over pydantic's schema), snapshotted in llm_prompts.json.
+ * The JSON schemas sent as output_config.format.schema, snapshotted in llm_prompts.json.
  */
 const PY_SCHEMAS = (
   JSON.parse(readFileSync(join(FIXTURES, 'llm_prompts.json'), 'utf8')) as {
@@ -202,7 +200,7 @@ async function providerError(promise: Promise<unknown>): Promise<ProviderError> 
 }
 
 describe('ClaudeProvider', () => {
-  it('sends the request shape Python sends', async () => {
+  it('sends the expected request shape', async () => {
     const { provider, parse } = claude()
     const out = await provider.classifyMerchants(ITEMS)
 
@@ -473,7 +471,7 @@ describe('OllamaProvider', () => {
 
 // --- factory ----------------------------------------------------------------------------------
 
-/** Python's Settings() defaults for the LLM knobs, with overrides. */
+/** The default LLM knobs, with overrides. */
 function llmSettings(overrides: Partial<LlmSettings> = {}): LlmSettings {
   return {
     llm_provider: 'fake',

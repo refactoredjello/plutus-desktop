@@ -1,22 +1,17 @@
 /**
- * Drizzle tables, one per SQLAlchemy model in api/app/models (plan section 5.4).
+ * Drizzle tables. Column keys are the snake_case column names, so rows read like the wire
+ * format.
  *
- * Table names, column names and order, nullability, unique constraints, indexes and their
- * names, and ON DELETE behaviour match the final state of Alembic migrations 0001 to 0006, so
- * a Postgres export imports without renaming. Column keys are the snake_case column names, so
- * rows read like the Python model attributes and the wire format.
- *
- * Where SQLite forces a different representation:
- * - NUMERIC(14,2) money is INTEGER cents through the `money` column type.
+ * Representations:
+ * - Money is INTEGER cents through the `money` column type.
  * - DATE is TEXT "YYYY-MM-DD"; TIMESTAMPTZ is TEXT ISO 8601 UTC with milliseconds.
  * - BOOLEAN is INTEGER 0/1 (Drizzle boolean mode).
- * - VARCHAR(n) and CHAR(3) are TEXT; SQLite does not enforce the lengths.
- * - Enums stay text validated in code, as the Python app stores them as VARCHAR(20).
- * - Integer keys use AUTOINCREMENT so ids are never reused, like a Postgres sequence.
- * - Primary key constraint names (pk_<table>) are not kept; SQLite cannot name a rowid key.
+ * - Strings are TEXT; SQLite does not enforce lengths.
+ * - Enums are text validated in code.
+ * - Integer keys use AUTOINCREMENT so ids are never reused.
  *
- * Defaults: SQLAlchemy `default=` values are client-side, so they are `$defaultFn` here and not
- * in the DDL; `server_default` values (now(), 0, false) are SQL defaults, as in Postgres.
+ * Defaults: values the application supplies are `$defaultFn` and not in the DDL; timestamps,
+ * zero counters, and false flags (now(), 0, false) are SQL defaults.
  */
 
 import { sql } from 'drizzle-orm'
@@ -32,7 +27,7 @@ import {
 import { type PlainDate, utcNow } from '../lib/dates.js'
 import { type Cents, cents } from '../lib/money.js'
 
-// Enums from api/app/models/base.py.
+// Enums, stored as text.
 export const ACCOUNT_TYPES = ['checking', 'savings', 'credit', 'loan', 'other'] as const
 export type AccountType = (typeof ACCOUNT_TYPES)[number]
 
@@ -76,7 +71,7 @@ export type SyncTrigger = (typeof SYNC_TRIGGERS)[number]
 export const SYNC_STATUSES = ['running', 'success', 'error'] as const
 export type SyncStatus = (typeof SYNC_STATUSES)[number]
 
-/** NUMERIC(14,2) as INTEGER cents. Refuses anything that is not an integer. */
+/** Money as INTEGER cents. Refuses anything that is not an integer. */
 export const money = customType<{ data: Cents; driverData: number }>({
   dataType: () => 'integer',
   toDriver: (value) => {
@@ -329,7 +324,7 @@ export const categorizations = sqliteTable(
     confidence: text('confidence', { enum: CONFIDENCES })
       .notNull()
       .$defaultFn(() => 'unknown'),
-    // No server default in Python: the service sets it.
+    // No SQL default: the service sets it.
     updated_at: timestamp('updated_at').notNull(),
   },
   (t) => [

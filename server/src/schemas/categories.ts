@@ -1,4 +1,4 @@
-/** Ports app/schemas/categories.py. */
+/** Request and response schemas for categories and rules. */
 
 import { z } from '@hono/zod-openapi'
 import { DateTime } from './common.js'

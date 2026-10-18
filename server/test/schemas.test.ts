@@ -53,7 +53,7 @@ describe('OpenAPI components', () => {
   const doc = app.getOpenAPI31Document({ openapi: '3.1.0', info: { title: 'Plutus API', version: '0.1.0' } })
   const schemas = doc.components?.schemas ?? {}
 
-  it('names Page<T> like FastAPI: Page_<Name>_', () => {
+  it('names Page<T> as Page_<Name>_', () => {
     expect(Object.keys(schemas)).toContain('Page_TransactionRead_')
     expect(schemas.Page_TransactionRead_).toMatchObject({
       type: 'object',
@@ -76,7 +76,7 @@ describe('OpenAPI components', () => {
     })
   })
 
-  it('registers HealthRead with the Pydantic shape', () => {
+  it('registers HealthRead with its documented shape', () => {
     expect(schemas.HealthRead).toMatchObject({
       type: 'object',
       required: ['status', 'database', 'version'],

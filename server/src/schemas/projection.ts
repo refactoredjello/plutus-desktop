@@ -1,4 +1,4 @@
-/** Ports app/schemas/projection.py. */
+/** Request and response schemas for the balance projection. */
 
 import { z } from '@hono/zod-openapi'
 import { Money, PlainDate } from './common.js'

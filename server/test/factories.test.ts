@@ -1,6 +1,5 @@
 /**
- * The factories have no Python tests of their own; these pin the behaviour every ported test
- * relies on, read off api/tests/factories.py and api/tests/simplefin_helpers.py.
+ * The test factories: these pin the behaviour every other test relies on.
  */
 
 import { readFileSync } from 'node:fs'
@@ -35,7 +34,7 @@ describe('makeAccount', () => {
 })
 
 describe('makeTx', () => {
-  it('inserts a transaction with the Python defaults', () => {
+  it('inserts a transaction with the factory defaults', () => {
     const db = makeDb()
     const account = makeAccount(db)
     const tx = makeTx(db, account, '-15.49')

@@ -1,5 +1,5 @@
 /**
- * Domain errors raised by services, mapped to RFC 9457 problem details. Ports app/errors.py.
+ * Domain errors raised by services, mapped to RFC 9457 problem details.
  * Framework-free: app.ts's error handler turns these into responses.
  */
 
@@ -40,7 +40,7 @@ export class NotImplementedYetError extends DomainError {
   }
 }
 
-/** Request validation failure. FastAPI answered 422; the port keeps the status (plan 5.5). */
+/** Request validation failure: 422 problem+json. */
 export class ValidationError extends DomainError {
   override readonly status = 422
   override readonly title = 'Validation error'

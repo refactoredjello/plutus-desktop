@@ -1,11 +1,7 @@
 /**
- * Prompts and structured-output schemas. Ports the prompt tests in api/tests/test_llm_providers.py
- * and checks byte equality with the Python builders (plan 5.10).
- *
- * `fixtures/llm_prompts.json` was generated from api/app/providers/llm/prompts.py at port time
- * (brief 1D); the parity harness compares the live text. Money in the savings contexts is cents;
- * the generator turned each into the two-place Decimal suggestions.build_context passes, so
- * str(Decimal) there is the spelling Python sends.
+ * Prompts and structured-output schemas, checked byte for byte against the snapshot in
+ * `fixtures/llm_prompts.json`, so a prompt change is always deliberate. Money in the savings
+ * contexts is cents, written in the prompt as a two-place decimal.
  */
 
 import { readFileSync } from 'node:fs'
@@ -90,7 +86,7 @@ function seedRows(): { primary: string; detailed: string }[] {
   })
 }
 
-describe('byte equality with the Python prompts', () => {
+describe('byte equality with the prompt snapshot', () => {
   it('classify system prompt', () => {
     expect(classifySystemPrompt()).toBe(PY.classify_system_prompt)
   })
@@ -107,16 +103,15 @@ describe('byte equality with the Python prompts', () => {
     expect(savingsUserMessage(context(m.context))).toBe(m.text)
   })
 
-  it('Ollama format schemas match pydantic model_json_schema, key order included', () => {
+  it('Ollama format schemas match the snapshot, key order included', () => {
     expect(JSON.stringify(CLASSIFICATION_BATCH_JSON_SCHEMA)).toBe(JSON.stringify(PY.classification_batch_schema))
     expect(JSON.stringify(SUGGESTION_BATCH_JSON_SCHEMA)).toBe(JSON.stringify(PY.suggestion_batch_schema))
   })
 })
 
 describe('prompt numbers', () => {
-  // Python interpolates str(Decimal). Every Decimal suggestions.build_context passes is already
-  // two places (NUMERIC(14,2) columns, or values quantized to 0.00), so formatMoney's spelling
-  // is Python's. Spellings such as "12.5" or "-0.00" cannot reach the prompt there.
+  // Every amount in a savings context is whole cents, written with exactly two places.
+  // Spellings such as "12.5" or "-0.00" never reach the prompt.
   it.each([
     [1250, '12.50'],
     [0, '0.00'],
@@ -143,7 +138,7 @@ describe('prompt numbers', () => {
   })
 
   it.each(PY.to_suggestions.map((s) => [s.value, s.decimal, s.cents] as const))(
-    'a suggested saving of %d is stored as Python stores Decimal(%s): %i cents',
+    'a suggested saving of %d rounds to %s: %i cents',
     (value, _decimal, expected) => {
       const [suggestion] = toSuggestions({
         suggestions: [{ text: 't', category_label: null, estimated_monthly_saving: value }],
@@ -153,7 +148,7 @@ describe('prompt numbers', () => {
   )
 })
 
-describe('system prompt (test_llm_providers.py)', () => {
+describe('system prompt', () => {
   it('lists the full taxonomy and is large enough to cache', () => {
     const prompt = classifySystemPrompt()
     const rows = seedRows()
@@ -199,7 +194,7 @@ describe('structured output', () => {
     expect(toClassifications(ClassificationBatch.parse(parsedItems))).toEqual(parsedItems.items)
   })
 
-  it('validates like the pydantic models', () => {
+  it('validates batches: unknown keys ignored, every field required', () => {
     expect(ClassificationBatch.safeParse({ items: [], extra: 1 })).toMatchObject({ success: true, data: { items: [] } })
     expect(ClassificationBatch.safeParse({}).success).toBe(false)
     expect(ClassificationBatch.safeParse({ items: [{ merchant_key: 'X' }] }).success).toBe(false)

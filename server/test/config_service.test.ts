@@ -1,7 +1,5 @@
 /**
- * The runtime config service (plan 5.7, brief 1E). New: no Python counterpart, because the
- * Python app read these knobs from the environment on every call. Tests written from the plan,
- * plus the service half of test_category_routes.py::test_llm_status.
+ * The runtime config service, plus the service half of the LLM status.
  *
  * The rule under test:
  * - Seeding: the first time the config is read or updated, every knob without a row is
@@ -237,10 +235,10 @@ describe('llmSettings', () => {
   })
 })
 
-describe('llmStatus (test_category_routes.py::test_llm_status)', () => {
+describe('llmStatus', () => {
   const status = (d: RuntimeDefaults) => llmStatus(makeDb(), secrets, d)
 
-  it('matches the Python semantics of configured', () => {
+  it('is configured for fake and ollama, and for claude only with a non-blank key', () => {
     const fake = status({ ...defaults, llmProvider: 'fake', anthropicApiKey: null })
     expect(fake).toEqual({ provider: 'fake', model: 'claude-haiku-4-5', configured: true })
     const ollama = status({ ...defaults, llmProvider: 'ollama', llmModel: 'llama3.1', anthropicApiKey: null })

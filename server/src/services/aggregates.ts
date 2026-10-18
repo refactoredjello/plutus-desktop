@@ -15,12 +15,12 @@
  *   (money in, non-income category) reduces expenses instead of counting as income.
  * - Months are calendar months of posted_on, formatted YYYY-MM.
  *
- * Ports api/app/services/aggregates.py. SQL rewritten for SQLite:
- * - `to_char(posted_on, 'YYYY-MM')` is `substr(posted_on, 1, 7)` (dates are TEXT YYYY-MM-DD).
- * - `extract('day', posted_on)` is `cast(substr(posted_on, 9, 2) as integer)`.
- * - `DISTINCT ON (account_id) ... ORDER BY account_id, as_of DESC, id DESC` is
+ * SQL notes (dates are TEXT YYYY-MM-DD):
+ * - The month of posted_on is `substr(posted_on, 1, 7)`.
+ * - The day of the month is `cast(substr(posted_on, 9, 2) as integer)`.
+ * - The latest snapshot per account is
  *   `row_number() over (partition by account_id order by as_of desc, id desc) = 1`.
- * - Money is integer cents, so sums are exact and `Decimal.quantize(ZERO)` is a no-op.
+ * - Money is integer cents, so sums are exact.
  */
 
 import { type SQL, and, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
@@ -58,7 +58,7 @@ export interface MonthTotals {
   readonly flexible: Cents
   readonly discretionary: Cents
   readonly uncategorized: Cents
-  /** income - expenses (the Python property). */
+  /** income - expenses. */
   readonly net: Cents
 }
 
@@ -84,7 +84,7 @@ export interface CategoryMonthTotal {
   /** Expenses, positive. */
   readonly total: Cents
   readonly count: number
-  /** Per-month totals, in the order months were first seen (a Python dict). */
+  /** Per-month totals, in the order months were first seen. */
   readonly monthly: Record<MonthKey, Cents>
 }
 
@@ -251,7 +251,7 @@ export function categoryTotals(
     count: e.count,
     monthly: e.monthly,
   }))
-  // sorted(..., reverse=True) is stable: equal totals keep their first-seen order.
+  // Largest first; the sort is stable, so equal totals keep their first-seen order.
   return out.sort((a, b) => b.total - a.total)
 }
 
@@ -354,7 +354,7 @@ export function recentActiveMonths(db: Db, month: MonthKey, n: number = AVERAGE_
   const [start] = monthBounds(month)
   const prior = monthlyTotals(db, monthRange(addDays(start, -1), LOOKBACK_FOR_AVERAGE))
   const active = prior.filter((m) => m.income !== 0 || m.expenses !== 0)
-  // Python's [-n:]: the last n, or all of them when n exceeds the length; [-0:] is everything.
+  // The last n, or all of them when n exceeds the length; n = 0 means all of them.
   return n === 0 ? active : active.slice(-n)
 }
 

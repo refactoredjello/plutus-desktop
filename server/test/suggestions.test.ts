@@ -1,9 +1,7 @@
 /**
- * Ports api/tests/test_suggestions.py, plus a pin on the user message Python's
- * savings_user_message(build_context(...)) printed for a known database state.
+ * Savings suggestions, plus a pin on the savings user message for a known database state.
  *
- * Python overrode the router's get_llm dependency; here the route looks its provider up through
- * `suggestionsLlm.get`, which the tests replace.
+ * The route looks its provider up through `suggestionsLlm.get`, which the tests replace.
  */
 
 import { eq } from 'drizzle-orm'
@@ -100,7 +98,7 @@ async function makeGoal(): Promise<number> {
   return Number(((await call('POST', '/api/goals', body)).json as Row).id)
 }
 
-/** Flatten a context to text; money is replaced so digit runs can be checked (Python's _walk). */
+/** Flatten a context to text; money is replaced so digit runs can be checked. */
 function walk(context: SavingsContext): string {
   const parts: string[] = ['AMOUNT', String(context.months_left), 'AMOUNT']
   for (const c of context.categories) parts.push(c.label, ...c.monthly_totals.map(() => 'AMOUNT'))
@@ -264,7 +262,7 @@ describe('suggestions', () => {
 })
 
 describe('the savings user message', () => {
-  it('is byte-identical to what Python built for the same data', async () => {
+  it('is byte-identical to the pinned message for the same data', async () => {
     const acct = makeAccount(db)
     const snapshot = (balance: string, asOf: string) =>
       db.insert(balanceSnapshots).values({ account_id: acct.id, balance: parseMoney(balance), as_of: asOf }).run()
@@ -319,7 +317,7 @@ describe('the savings user message', () => {
   })
 })
 
-// Printed by Python: savings_user_message(build_context(db, goal)) over the same rows.
+// savingsUserMessage(buildContext(db, goal)) over the same rows, pinned.
 const PYTHON_MESSAGE =
   'Suggest savings for this situation:\n' +
   '{\n' +

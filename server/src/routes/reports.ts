@@ -1,4 +1,4 @@
-/** Ports app/routers/reports.py. */
+/** Routes for reports. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'

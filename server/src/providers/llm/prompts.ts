@@ -1,7 +1,7 @@
 /**
- * Prompts and structured-output schemas shared by the LLM providers. Ports
- * app/providers/llm/prompts.py; every string here must stay byte-identical to the Python
- * builders (plan 5.10, checked by test/prompts.test.ts and the parity harness).
+ * Prompts and structured-output schemas shared by the LLM providers. test/prompts.test.ts pins
+ * every string byte for byte against test/fixtures/llm_prompts.json, so a prompt change is
+ * always deliberate.
  *
  * System prompts are built only from static data (the seeded taxonomy and fixed text), so they
  * are byte-identical across calls and Anthropic prompt caching can reuse them. Anything that
@@ -26,7 +26,7 @@ const ACRONYMS: Record<string, string> = { Tv: 'TV', Atm: 'ATM' }
 
 // --- Structured output -------------------------------------------------------------------------
 
-/** pydantic's default: unknown keys are ignored, every field is required. */
+/** Unknown keys are ignored; every field is required. */
 export const ClassifiedMerchant = z.object({
   merchant_key: z.string(),
   detailed_category: z.string(),
@@ -46,7 +46,7 @@ export const SuggestedSaving = z.object({
 export const SuggestionBatch = z.object({ suggestions: z.array(SuggestedSaving) })
 export type SuggestionBatch = z.infer<typeof SuggestionBatch>
 
-/** ClassificationBatch.model_json_schema(), the `format` the Ollama provider sends. */
+/** ClassificationBatch's JSON schema, the `format` the Ollama provider sends. */
 export const CLASSIFICATION_BATCH_JSON_SCHEMA = {
   $defs: {
     ClassifiedMerchant: {
@@ -80,7 +80,7 @@ export const CLASSIFICATION_BATCH_JSON_SCHEMA = {
   type: 'object',
 } as const
 
-/** SuggestionBatch.model_json_schema(), the `format` the Ollama provider sends. */
+/** SuggestionBatch's JSON schema, the `format` the Ollama provider sends. */
 export const SUGGESTION_BATCH_JSON_SCHEMA = {
   $defs: {
     SuggestedSaving: {
@@ -105,13 +105,13 @@ export const SUGGESTION_BATCH_JSON_SCHEMA = {
   type: 'object',
 } as const
 
-// --- Python text helpers -----------------------------------------------------------------------
+// --- Text helpers ------------------------------------------------------------------------------
 
-/** Characters Python's str.split() treats as whitespace. */
-// oxlint-disable-next-line no-control-regex -- Python counts \x1c-\x1f as whitespace.
+/** Whitespace runs: ASCII whitespace, \x1c-\x1f, and the Unicode spaces. */
+// oxlint-disable-next-line no-control-regex -- \x1c-\x1f count as whitespace.
 const PY_WHITESPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/
 
-/** `" ".join(text.split())`. */
+/** Runs of whitespace become one space; leading and trailing whitespace goes. */
 function collapseWhitespace(text: string): string {
   return text
     .split(PY_WHITESPACE)
@@ -119,16 +119,16 @@ function collapseWhitespace(text: string): string {
     .join(' ')
 }
 
-/** `str.capitalize()`: first character upper case, the rest lower case. */
+/** First character upper case, the rest lower case. */
 function capitalize(word: string): string {
   const [first = '', ...rest] = Array.from(word)
   return first.toUpperCase() + rest.join('').toLowerCase()
 }
 
-/** `json.dumps(value, indent=1)`: ensure_ascii escapes everything outside printable ASCII. */
+/** JSON with a one-space indent and every character outside printable ASCII escaped as \uXXXX. */
 function pyJsonDumps(value: unknown): string {
-  // JSON.stringify already escapes quotes, backslashes and control characters as Python does
-  // (lower-case hex); what remains is every UTF-16 unit above "~", which Python escapes too.
+  // JSON.stringify already escapes quotes, backslashes and control characters (lower-case
+  // hex); what remains is every UTF-16 unit above "~".
   const text = JSON.stringify(value, null, 1)
   let out = ''
   for (let i = 0; i < text.length; i += 1) {
@@ -158,8 +158,8 @@ interface SeedRow {
 let taxonomy: string | undefined
 
 /**
- * The seeded taxonomy, one line per detailed category, sorted deterministically. Python read
- * app/seed/plaid_pfc_v2.csv; the port reads the same rows from the migration seed.
+ * The seeded taxonomy, one line per detailed category, sorted deterministically, read from
+ * the migration seed.
  */
 export function taxonomyText(): string {
   if (taxonomy === undefined) {
@@ -288,8 +288,8 @@ export function classifyUserMessage(items: readonly MerchantInput[]): string {
 }
 
 /**
- * Python wrote str(Decimal) for money. Every Decimal suggestions.build_context passes has two
- * places (NUMERIC(14,2) columns or values quantized to 0.00), so formatMoney spells it the same.
+ * Money is written as a two-place decimal string ("123.40"): every amount in the context is
+ * whole cents, so formatMoney gives it.
  */
 export function savingsUserMessage(context: SavingsContext): string {
   const payload = {
@@ -323,9 +323,9 @@ export function toClassifications(batch: ClassificationBatch): MerchantClassific
 }
 
 /**
- * `Decimal(str(round(value, 2)))`, then the quantize to cents suggestions.py stores. Python's
- * round() rounds the exact binary value of the float half to even; toFixed(100) exposes that
- * exact value (every double that can round to a non-zero cent has at most 100 fraction digits).
+ * A float from the model to cents: the exact binary value of the float rounded half to even
+ * to two places. toFixed(100) exposes that exact value (every double that can round to a
+ * non-zero cent has at most 100 fraction digits).
  */
 function floatToCents(value: number): Cents {
   // oxlint-disable-next-line number-arg-out-of-range -- ES2018 raised the toFixed limit to 100.

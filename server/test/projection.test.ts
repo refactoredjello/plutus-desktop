@@ -1,6 +1,6 @@
 /**
- * Ports api/tests/test_projection.py, plus pins on Python's Decimal context arithmetic for the
- * variable spending figures (values printed by Python, noted at each case).
+ * The balance projection, plus pins on the 28-digit decimal arithmetic of the variable
+ * spending figures.
  */
 
 import { eq } from 'drizzle-orm'
@@ -252,11 +252,10 @@ describe('projection', () => {
   })
 })
 
-describe("variable amounts follow Python's Decimal context (prec 28, half even)", () => {
-  // (total, window days, days) -> [_cents(total / window * days), _cents(total / window)], as
-  // printed by Python 3 with the default decimal context. 0.01 / 6 * 3 is exactly 0.005, which
-  // a single half-even division would round to 0.00; Python's 28-digit quotient
-  // 0.001666...667 times 3 is 0.005000...001, which quantizes to 0.01.
+describe('variable amounts use 28-digit decimal arithmetic (half even)', () => {
+  // (total, window days, days) -> [cents(total / window * days), cents(total / window)].
+  // 0.01 / 6 * 3 is exactly 0.005, which a single half-even division would round to 0.00; the
+  // 28-digit quotient 0.001666...667 times 3 is 0.005000...001, which rounds to 0.01.
   const cases: Array<[string, number, number, string, string]> = [
     ['0.01', 6, 3, '0.01', '0.00'],
     ['0.05', 6, 3, '0.02', '0.01'],
@@ -273,7 +272,7 @@ describe("variable amounts follow Python's Decimal context (prec 28, half even)"
     expect(rateCents(rate)).toBe(parseMoney(daily))
   })
 
-  it('reaches the projection: a 0.005 tie rounds as Python does', async () => {
+  it('reaches the projection: a 0.005 tie rounds up through the 28-digit quotient', async () => {
     vi.stubEnv('PLUTUS_TODAY', '2026-10-28') // 3 days remain in October
     const chk = makeAccount(db)
     makeTx(db, chk, '-0.01', 'GROCER', '2026-10-22') // a 6-day window

@@ -1,18 +1,18 @@
 /**
- * Path and query parameter types that parse strings the way FastAPI and Pydantic's lax mode
- * did, documented with the types FastAPI documented. Titles come from `params()` in model.ts.
+ * Path and query parameter types that parse strings leniently and are documented with their
+ * target types (integer, boolean). Titles come from `params()` in model.ts.
  */
 
 import { z } from '@hono/zod-openapi'
 
-/** Pydantic's lax int from a string: spaces, a sign, digit groups with "_", and ".0" allowed. */
+/** An int from a string: spaces, a sign, digit groups with "_", and ".0" allowed. */
 const INT_STRING = /^\s*[+-]?\d(?:_?\d)*(?:\.0*)?\s*$/
 
 function laxInt(value: unknown): unknown {
   return typeof value === 'string' && INT_STRING.test(value) ? Number(value.trim().replaceAll('_', '')) : value
 }
 
-/** Pydantic's lax bool from a string, case-insensitive. */
+/** A bool from a string, case-insensitive. */
 const TRUTHY = ['true', '1', 'yes', 'on', 't', 'y']
 const FALSY = ['false', '0', 'no', 'off', 'f', 'n']
 
@@ -49,7 +49,7 @@ export function queryBool(defaultValue: boolean) {
     .openapi({ type: 'boolean', default: defaultValue })
 }
 
-/** `name: list[int] | None = Query(None)`: repeat the parameter for more than one value. */
+/** An optional list of ints: repeat the parameter for more than one value. */
 export function queryIntList() {
   return z
     .preprocess((value) => (value === undefined || Array.isArray(value) ? value : [value]), z.array(z.preprocess(laxInt, z.int())))

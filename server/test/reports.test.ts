@@ -1,4 +1,4 @@
-/** Ports api/tests/test_reports.py. */
+/** Dashboard reports. */
 
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Db } from '../src/db/index.js'
@@ -18,7 +18,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-/** tests.test_aggregates.categorize. */
+/** Categorize a transaction directly, as the aggregates tests do. */
 function categorize(db: Db, txId: number, detailed: string, ess: Essentiality | null = null): void {
   db.insert(categorizations)
     .values({
@@ -43,7 +43,7 @@ async function getJson(app: ReturnType<typeof makeApp>['app'], path: string): Pr
   return r.json()
 }
 
-it('test_monthly_maps_totals_and_net', async () => {
+it('monthly maps totals and net', async () => {
   const { app, db } = makeApp()
   const chk = makeAccount(db)
   const salary = makeTx(db, chk, '3000.00', 'PAYROLL', '2026-03-01')
@@ -66,7 +66,7 @@ it('test_monthly_maps_totals_and_net', async () => {
   })
 })
 
-it('test_by_category_maps_totals', async () => {
+it('by category maps totals', async () => {
   const { app, db } = makeApp()
   const chk = makeAccount(db)
   const tx = makeTx(db, chk, '-40.00', 'COFFEE', '2026-03-03')
@@ -82,13 +82,13 @@ it('test_by_category_maps_totals', async () => {
   expect(body[1].label).toBe('Uncategorized')
 })
 
-it('test_by_category_rejects_bad_month', async () => {
+it('by category rejects bad month', async () => {
   const { app } = makeApp()
   expect((await app.request('/api/reports/by-category?month=2026-13')).status).toBe(400)
   expect((await app.request('/api/reports/by-category?month=March')).status).toBe(422)
 })
 
-it('test_balances_reconstruct_from_latest_snapshot', async () => {
+it('balances reconstruct from latest snapshot', async () => {
   const { app, db } = makeApp()
   const chk = makeAccount(db, 'checking', 'Checking')
   snapshot(db, chk.id, '999.00', '2026-10-01') // older snapshot is ignored
@@ -129,7 +129,7 @@ it('test_balances_reconstruct_from_latest_snapshot', async () => {
   expect(series.Card?.['2026-10-13']).toBe('-500.00')
 })
 
-it('test_balances_default_to_180_days_ending_today', async () => {
+it('balances default to 180 days ending today', async () => {
   const { app, db } = makeApp()
   const chk = makeAccount(db)
   snapshot(db, chk.id, '100.00', TODAY)
@@ -139,7 +139,7 @@ it('test_balances_default_to_180_days_ending_today', async () => {
   expect(points.at(-1).on).toBe('2026-03-15')
 })
 
-// Beyond test_reports.py: branches of reports.py the Python tests do not reach.
+// Edge cases.
 
 it('balances: start after end is an empty list', async () => {
   const { app, db } = makeApp()

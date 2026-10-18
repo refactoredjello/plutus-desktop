@@ -1,4 +1,4 @@
-/** Ports app/schemas/sync.py. */
+/** Request and response schemas for sync runs. */
 
 import { z } from '@hono/zod-openapi'
 import { DateTime } from './common.js'

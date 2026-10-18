@@ -1,9 +1,8 @@
 /**
- * Money as integer cents. The only place cents and strings convert (plan section 5.2).
+ * Money as integer cents. The only place cents and strings convert.
  *
- * The Python app holds money as Decimal, stores NUMERIC(14,2), and sends "123.45" strings.
- * Here money is a branded integer number of cents; arithmetic is integer arithmetic, and
- * every division rounds half to even because Python's Decimal.quantize does.
+ * Money is a branded integer number of cents and goes over the wire as "123.45" strings;
+ * arithmetic is integer arithmetic, and every division rounds half to even.
  */
 
 declare const centsBrand: unique symbol
@@ -29,8 +28,7 @@ const DECIMAL = /^([+-]?)(\d*)(?:\.(\d*))?$/
 /**
  * Parse a decimal string ("123.45", "-15.49", "12", ".5") into cents.
  *
- * More than two decimal places round half away from zero, which is what Postgres does when a
- * value is coerced into NUMERIC(14,2): the result is what the Python app would have stored.
+ * More than two decimal places round half away from zero (stored amounts' rule).
  */
 export function parseMoney(text: string): Cents {
   const match = DECIMAL.exec(text.trim())
@@ -83,7 +81,7 @@ function roundedQuotient(a: number, b: number): number {
   return q === 0 ? 0 : q
 }
 
-/** `value / divisor` to the cent, ties to even (Decimal.quantize with ROUND_HALF_EVEN). */
+/** `value / divisor` to the cent, ties to even. */
 export function divHalfEven(value: Cents, divisor: number): Cents {
   assertDivisor(divisor)
   return cents(roundedQuotient(value, divisor))
@@ -103,9 +101,8 @@ export function mulRatioHalfEven(value: Cents, numerator: number, denominator: n
 }
 
 /**
- * Python `statistics.median` then quantize to cents: the middle value of an odd list, the mean
- * of the two middle values of an even list rounded half to even. Empty lists throw, as Python's
- * raises StatisticsError.
+ * The median to the cent: the middle value of an odd list, the mean of the two middle values
+ * of an even list rounded half to even. Empty lists throw.
  */
 export function median(values: readonly Cents[]): Cents {
   if (values.length === 0) throw new RangeError('no median for empty data')

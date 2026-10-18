@@ -1,7 +1,6 @@
 /**
- * Ports api/tests/test_scrub.py, plus cases proving each place where Python `re` and JavaScript
- * `RegExp` differ. Every expected key in the "Python re parity" block was produced by running
- * the Python `merchant_key` on the same input.
+ * Merchant key scrubbing, plus cases for each place where the Unicode-aware patterns differ
+ * from native JavaScript `RegExp` (the "Unicode-aware patterns" block).
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -19,7 +18,7 @@ interface GoldenCase {
 
 const GOLDEN = JSON.parse(readFileSync(join(FIXTURES, 'scrub_golden.json'), 'utf8')) as GoldenCase[]
 
-/** Python's `\d` is any Unicode decimal digit; JavaScript's `\d` is ASCII only. */
+/** A digit is any Unicode decimal digit; JavaScript's `\d` is ASCII only. */
 function assertInvariants(key: string): void {
   expect(key, key).not.toMatch(/\p{Nd}{4,}/u)
   expect(OWNER_TOKENS.some((t) => key.toUpperCase().includes(t)), key).toBe(false)
@@ -91,7 +90,7 @@ it('builds merchant input', () => {
   expect(buildMerchantInput('X', parseMoney('5'), 'savings').direction).toBe('inflow')
 })
 
-describe('Python re parity', () => {
+describe('Unicode-aware patterns', () => {
   const cp = (...points: number[]): string => String.fromCodePoint(...points)
   const E_ACUTE = cp(0xc9)
   /** Arabic-Indic digits one to five: Unicode decimal digits, not ASCII. */
@@ -99,7 +98,7 @@ describe('Python re parity', () => {
   /** MATHEMATICAL BOLD CAPITAL A: one code point, two UTF-16 units. */
   const BOLD_A = cp(0x1d400)
 
-  // Python's `\b` treats every Unicode letter and digit as a word character; a native
+  // A word boundary treats every Unicode letter and digit as a word character; a native
   // JavaScript `\b` sees only [A-Za-z0-9_], so it would find a boundary next to the E-acute
   // and fire the VENMO, masked-account, reference, ZELLE, and PayPal passes.
   it.each([
@@ -113,7 +112,7 @@ describe('Python re parity', () => {
     expect(merchantKey(raw, [])).toBe(expected)
   })
 
-  // Python's `\d` matches any Unicode decimal digit; a native JavaScript `\d` would leave
+  // A digit is any Unicode decimal digit; a native JavaScript `\d` would leave
   // these digit runs (and break the four-digit invariant).
   it.each([
     [`STORE ${AR}`, 'STORE'],
@@ -125,18 +124,18 @@ describe('Python re parity', () => {
     expect(merchantKey(raw, [])).toBe(expected)
   })
 
-  // Python's `\s` and str.split() include U+001C..U+001F and U+0085 but not U+FEFF;
+  // Whitespace includes U+001C..U+001F and U+0085 but not U+FEFF;
   // JavaScript's `\s` and trim() are the other way round.
   it.each([
     [`TRADER${cp(0x1c)}JOE${cp(0x85)}S`, 'TRADER JOE S'],
     [`${cp(0xfeff)}NETFLIX`, `${cp(0xfeff)}NETFLIX`],
     [`SQ${cp(0x1f)}*${cp(0x1f)}BLUE BOTTLE`, 'BLUE BOTTLE'],
     [`CVS${cp(0x2028)}PHARMACY${cp(0x2029)}#12${cp(0x0d)}X`, 'CVS PHARMACY X'],
-  ])('whitespace is Python whitespace: %j', (raw, expected) => {
+  ])('whitespace includes U+001C..U+001F and U+0085, not U+FEFF: %j', (raw, expected) => {
     expect(merchantKey(raw, [])).toBe(expected)
   })
 
-  // Python's len() and slicing count code points; JavaScript strings count UTF-16 units.
+  // Lengths and slices count code points; JavaScript strings count UTF-16 units.
   it('truncates at 200 code points', () => {
     const group = `${BOLD_A.repeat(4)} `
     const key = merchantKey(group.repeat(50), [])
@@ -150,7 +149,7 @@ describe('Python re parity', () => {
     expect(merchantKey(raw, tokens)).toBe(expected)
   })
 
-  // Owner tokens: Python strip() whitespace, re.escape, the length filter before upper(),
+  // Owner tokens: stripped of whitespace, regex-escaped, length-filtered before upper-casing,
   // longest first.
   it.each([
     ['AL DINER', [`${cp(0x1c)}al${cp(0x1c)}`], 'DINER'],

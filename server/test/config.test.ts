@@ -3,10 +3,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { jsonLogs, loadConfig } from '../src/config.js'
 
-describe('loadConfig defaults (app/config.py Settings)', () => {
+describe('loadConfig defaults', () => {
   const config = loadConfig({})
 
-  it('defaults like the Python settings', () => {
+  it('has the documented defaults', () => {
     expect(config.environment).toBe('development')
     expect(config.secretKey).toBe('dev-only-change-me')
     expect(config.logLevel).toBe('info')
@@ -93,7 +93,7 @@ describe('loadConfig from the environment', () => {
     expect(loadConfig({ SECRET_KEY: 'old', PLUTUS_SECRET_KEY: 'new' }).secretKey).toBe('new')
   })
 
-  it('reads variable names case-insensitively, like pydantic-settings', () => {
+  it('reads variable names case-insensitively', () => {
     expect(loadConfig({ llm_provider: 'ollama' }).defaults.llmProvider).toBe('ollama')
   })
 

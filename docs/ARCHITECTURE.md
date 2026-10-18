@@ -57,7 +57,6 @@ server/
   scripts/
     export-openapi.ts  writes web/src/api/openapi.json
     demo.ts            load | clear fake demo data through the real sync pipeline
-    import-json.ts     import an export of the old Docker app (docs/MIGRATING_DATA.md)
   test/                Vitest; setup.ts gives each test its own in-memory SQLite
 ```
 

@@ -1,7 +1,6 @@
 /**
- * Ports test_sync.py::test_encryption_round_trip_and_not_plaintext, plus tests written from
- * app/services/app_settings.py and the SimpleFIN half of app/routers/settings.py, whose logic
- * moves into the service so the route stays thin.
+ * App settings: encryption round trip (never stored in plain text), and the SimpleFIN
+ * connection logic, which lives in the service so the route stays thin.
  */
 
 import { eq } from 'drizzle-orm'
@@ -23,7 +22,7 @@ import {
 import { ACCESS_URL } from './factories.js'
 import { makeDb } from './setup.js'
 
-// test_sync.py's settings fixture: Settings(secret_key="test-secret").
+// A fixed test key.
 const secrets = new KeySecretStore('test-secret')
 
 function row(db: Db, key: string) {
@@ -128,10 +127,10 @@ describe('SimpleFIN connection', () => {
     expect(db.select().from(appSettings).all()).toEqual([])
   })
 
-  it('reports the stamp as an instant, like datetime.fromisoformat then serialization', () => {
+  it('reports a stored stamp with microseconds and an offset as a UTC instant in milliseconds', () => {
     const db = makeDb()
     setSetting(db, secrets, SIMPLEFIN_ACCESS_URL, ACCESS_URL, { encrypt: true })
-    // A Python-written stamp, as the Postgres export carries it.
+    // A stamp with microseconds and an explicit offset.
     setSetting(db, secrets, SIMPLEFIN_CONNECTED_AT, '2026-03-04T05:06:07.123456+00:00')
     expect(simplefinStatus(db, secrets)).toEqual({
       connected: true,

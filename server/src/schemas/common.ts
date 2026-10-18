@@ -1,8 +1,6 @@
 /**
- * Shared schema building blocks. Ports app/schemas/common.py.
- *
- * Pydantic's `Schema` base (extra="forbid") is `z.strictObject` for request bodies; its
- * `ReadSchema` base (from_attributes) needs no counterpart, as rows are plain objects.
+ * Shared schema building blocks. Request bodies are `z.strictObject`: unknown keys are
+ * rejected.
  */
 
 import { z } from '@hono/zod-openapi'
@@ -14,7 +12,7 @@ import { type Cents, parseMoney } from '../lib/money.js'
  */
 export const Money = z.string().regex(/^-?\d+\.\d{2}$/)
 
-/** FastAPI's documented pattern for a Pydantic Decimal given as a string. */
+/** A decimal given as a string: optional sign, digits, optional point; not only signs and points. */
 const DECIMAL_STRING = /^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/
 
 /** A JSON number as its shortest decimal string; exponent forms ("1e+21", "1e-7") fail. */
@@ -22,7 +20,7 @@ function decimalText(value: number | string): string {
   return typeof value === 'number' ? String(value) : value
 }
 
-/** Pydantic's `gt=0`, on the decimal as given, before rounding to cents. */
+/** Greater than zero, on the decimal as given, before rounding to cents. */
 function isPositive(text: string): boolean {
   return !text.startsWith('-') && /[1-9]/.test(text)
 }
@@ -42,15 +40,14 @@ function toCents(value: number | string, ctx: z.RefinementCtx): Cents {
 }
 
 /**
- * Money in a request body, as Pydantic's Decimal took it: a JSON number or a decimal string
- * ("1000", "15.5", "-15.49"). Parses to cents; more than two places round half away from
- * zero, as NUMERIC(14,2) did when the Python app stored the value. Documented as FastAPI did.
+ * Money in a request body: a JSON number or a decimal string ("1000", "15.5", "-15.49").
+ * Parses to cents; more than two places round half away from zero (stored amounts' rule).
  */
 export const MoneyInput = z
   .union([z.number(), z.string().regex(DECIMAL_STRING)])
   .transform(toCents)
 
-/** MoneyInput with `Field(gt=0)`: zero and negative amounts are rejected. */
+/** MoneyInput that rejects zero and negative amounts. */
 export const PositiveMoneyInput = z
   .union([
     z.number().gt(0),
@@ -61,14 +58,14 @@ export const PositiveMoneyInput = z
   ])
   .transform(toCents)
 
-/** A calendar date, "YYYY-MM-DD" (Pydantic `date`, OpenAPI format date). */
+/** A calendar date, "YYYY-MM-DD" (OpenAPI format date). */
 export const PlainDate = z.iso.date()
 
-/** A timestamp, ISO 8601 (Pydantic `datetime`, OpenAPI format date-time). */
+/** A timestamp, ISO 8601 (OpenAPI format date-time). */
 export const DateTime = z.iso.datetime({ offset: true })
 
 /**
- * `Page[T]`, registered under FastAPI's component name for generic models: Page_<Name>_.
+ * A page of items, registered as the component Page_<Name>_.
  * `name` is the item schema's component name.
  */
 export function Page<T extends z.ZodType>(item: T, name: string) {

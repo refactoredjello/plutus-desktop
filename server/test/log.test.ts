@@ -21,7 +21,7 @@ function capture(): { stream: Writable; lines: () => Record<string, unknown>[] }
   }
 }
 
-describe('createLogger (app/logging.py)', () => {
+describe('createLogger', () => {
   it('writes structured lines with a level name and an ISO UTC timestamp', () => {
     const out = capture()
     createLogger({ level: 'info' }, out.stream).info({ added: 3 }, 'sync finished')

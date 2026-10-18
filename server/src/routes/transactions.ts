@@ -1,4 +1,4 @@
-/** Ports app/routers/transactions.py. */
+/** Routes for transactions. */
 
 import { createRoute, z } from '@hono/zod-openapi'
 import type { App } from '../app.js'
@@ -64,7 +64,7 @@ export function registerTransactions(app: App): void {
     return c.json({ items, total, limit: query.limit, offset: query.offset }, 200)
   })
   app.openapi(updateTransaction, async (c) => {
-    // Pydantic's model_fields_set: the keys the client sent (the body is validated, so known).
+    // The keys the client sent, so absent fields stay untouched (the body is validated, so known).
     const fields = new Set(Object.keys((await c.req.json()) as object))
     const { db, secrets, config } = c.var
     const tx = service.updateTransaction(db, secrets, config.defaults, c.req.valid('param').transaction_id, c.req.valid('json'), fields)

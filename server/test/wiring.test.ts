@@ -1,6 +1,6 @@
 /**
- * Wave 1 wiring (orchestrator): the LLM provider comes from the runtime config service
- * (brief 1E done-when), and connecting SimpleFIN uses the real claim from brief 1D.
+ * Wiring: the LLM provider comes from the runtime config service, and connecting SimpleFIN
+ * uses the real claim by default.
  */
 
 import { describe, expect, it } from 'vitest'

@@ -1,5 +1,5 @@
 /**
- * LLM provider interface. Ports app/providers/llm/base.py.
+ * LLM provider interface.
  *
  * Privacy invariant: inputs to these methods are built only by services/scrub.ts and
  * services/suggestions.ts. Providers must never receive raw descriptions, balances,
@@ -57,7 +57,6 @@ export interface SavingsContext {
   readonly monthly_gap: Cents
   readonly categories: readonly CategorySpend[]
   readonly recurring: readonly RecurringSpend[]
-  /** Python default []. */
   readonly excluded_suggestions: readonly string[]
 }
 

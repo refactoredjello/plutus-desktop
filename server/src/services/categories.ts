@@ -1,9 +1,8 @@
 /**
- * Category and rule management (R3.1, R2.3). Ports app/services/categories.py.
+ * Category and rule management (R3.1, R2.3).
  *
  * Rows are returned as stored; their columns are exactly CategoryRead's and RuleRead's.
- * ORDER BY on text: the oracle's Postgres (alpine, musl) collates en_US.utf8 bytewise, which is
- * SQLite's BINARY order, so no collation is spelled out.
+ * ORDER BY on text uses SQLite's default BINARY (bytewise) collation.
  */
 
 import { asc, eq } from 'drizzle-orm'
@@ -15,22 +14,22 @@ import type { CategoryCreate, CategoryUpdate } from '../schemas/categories.js'
 export type Category = typeof categories.$inferSelect
 export type Rule = typeof rules.$inferSelect
 
-/** detailed is VARCHAR(100) and carries a "CUSTOM_" prefix. */
+/** detailed is at most 100 characters and carries a "CUSTOM_" prefix. */
 const MAX_SLUG = 90
 
-/** str.isspace() characters, which str.strip() removes (JavaScript's trim() differs). */
+/** Whitespace for stripping: ASCII whitespace, \x1c-\x1f, and the Unicode spaces (not trim()'s set). */
 const PY_SPACE = String.raw`[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]`
 const PY_STRIP = new RegExp(`^${PY_SPACE}+|${PY_SPACE}+$`, 'gu')
 
-/** Python's `str.strip()`. */
+/** Strip PY_SPACE from both ends. */
 export function pyStrip(text: string): string {
   return text.replace(PY_STRIP, '')
 }
 
-/** `text.strip("_")`. */
+/** Strip leading and trailing underscores. */
 const stripUnderscores = (text: string): string => text.replace(/^_+|_+$/g, '')
 
-/** _slug: `re.sub(r"[^A-Z0-9]+", "_", text.upper()).strip("_")[:_MAX_SLUG].strip("_")`. */
+/** Upper case, runs of anything but A-Z and 0-9 to "_", trimmed of "_", cut to MAX_SLUG, trimmed again. */
 function slug(text: string): string {
   // After the substitution the text is ASCII, so slicing UTF-16 units slices characters.
   return stripUnderscores(stripUnderscores(text.toUpperCase().replace(/[^A-Z0-9]+/g, '_')).slice(0, MAX_SLUG))

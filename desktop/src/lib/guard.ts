@@ -1,5 +1,5 @@
 /**
- * The per-launch token for the API guard (plan section 5.9). The server sets it as an HttpOnly
+ * The per-launch token for the API guard. The server sets it as an HttpOnly
  * SameSite=Strict cookie on the page and rejects /api requests without it, so other local
  * processes cannot use the loopback API.
  */

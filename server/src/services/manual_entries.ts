@@ -1,6 +1,5 @@
 /**
  * Manual entries: expected income (positive) or expenses (negative) not yet in bank data (R5).
- * Ports app/services/manual_entries.py.
  */
 
 import { asc, eq } from 'drizzle-orm'
@@ -12,7 +11,7 @@ import type { Cents } from '../lib/money.js'
 
 export type ManualEntry = typeof manualEntries.$inferSelect
 
-/** ManualEntryCreate after parsing: `body.model_dump()` fills the defaults. */
+/** ManualEntryCreate after parsing, defaults filled. */
 export interface ManualEntryCreate {
   amount: Cents
   description: string

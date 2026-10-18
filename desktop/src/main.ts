@@ -1,6 +1,6 @@
 /**
  * Electron main process: open the database, run the server in-process on a loopback port,
- * and show it in a window. Plan section 8, briefs 1F and 5B.
+ * and show it in a window.
  *
  * --data-dir <folder> runs a second profile: its own database, log, and single-instance lock.
  * PLUTUS_DEVTOOLS=1 opens the DevTools panel in dev builds (ignored when packaged).
@@ -8,11 +8,9 @@
  * PLUTUS_SMOKE=1 opens the real window against a throwaway data dir (or --data-dir), waits for
  * the SPA to render its first page and reach /api through the cookie guard, prints the result,
  * and exits. PLUTUS_SMOKE_SCREENSHOT=<file.png> also saves what the window showed.
- * PLUTUS_SMOKE_IMPORT=<export.json> then runs the File menu's import on that file and checks
- * that the window reloads on the Overview with the SimpleFIN URL and API key decrypting.
  */
 
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -20,7 +18,6 @@ import {
   BrowserWindow,
   type MenuItemConstructorOptions,
   Menu,
-  type OpenDialogOptions,
   app,
   dialog,
   safeStorage,
@@ -28,15 +25,11 @@ import {
 } from 'electron'
 import { type Config, loadConfig } from 'plutus-server/config'
 import { type Db, openDb } from 'plutus-server/db'
-import type { ImportCounts } from 'plutus-server/importer'
 import { type Logger, createLogger } from 'plutus-server/log'
-import { llmSettings } from 'plutus-server/runtime-config'
 import { type Scheduler, createScheduler } from 'plutus-server/scheduler'
-import { SIMPLEFIN_ACCESS_URL, getSetting } from 'plutus-server/settings'
 import { type ShellArgs, parseShellArgs } from './lib/args.js'
 import { shouldOpenDevTools } from './lib/devtools.js'
 import { newGuardToken } from './lib/guard.js'
-import { importExportFile, importSummary } from './lib/importer.js'
 import { initialPath } from './lib/launch.js'
 import { fileLogDestination } from './lib/logfile.js'
 import { classifyNavigation } from './lib/navigation.js'
@@ -117,45 +110,6 @@ function createWindow(path: string): BrowserWindow {
   return win
 }
 
-/**
- * The File menu's import (docs/MIGRATING_DATA.md): the importer on this database with the
- * desktop's SecretStore. It refuses a database that holds data and writes nothing then. On
- * success the scheduler picks up the imported settings and the window reloads.
- */
-function runImport(file: string, interactive: boolean): ImportCounts | null {
-  if (!db || !config || !scheduler) return null
-  try {
-    const counts = importExportFile(db, file, secrets, config.defaults)
-    log?.info({ transactions: counts.transactions, accounts: counts.accounts }, 'Import from export done')
-    scheduler.reschedule()
-    void mainWindow?.loadURL(`${origin}/`)
-    if (interactive) {
-      const options = { type: 'info' as const, message: 'Import complete', detail: importSummary(counts) }
-      void (mainWindow ? dialog.showMessageBox(mainWindow, options) : dialog.showMessageBox(options))
-    }
-    return counts
-  } catch (err) {
-    // The message can quote a value from the file: show it, never log it.
-    log?.warn({ error: err instanceof Error ? err.name : 'unknown' }, 'Import from export refused')
-    const message = err instanceof Error ? err.message : String(err)
-    if (interactive) dialog.showErrorBox('Import refused, nothing was written', message)
-    else console.log(JSON.stringify({ import: 'refused', error: message }))
-    return null
-  }
-}
-
-async function chooseAndImport(): Promise<void> {
-  const options: OpenDialogOptions = {
-    title: 'Import from Docker export',
-    buttonLabel: 'Import',
-    properties: ['openFile'],
-    filters: [{ name: 'Plutus export', extensions: ['json'] }],
-  }
-  const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options)
-  const file = result.filePaths[0]
-  if (!result.canceled && file) runImport(file, true)
-}
-
 function buildMenu(): Menu {
   const isMac = process.platform === 'darwin'
   const template: MenuItemConstructorOptions[] = [
@@ -163,8 +117,6 @@ function buildMenu(): Menu {
     {
       label: 'File',
       submenu: [
-        { label: 'Import from Docker export...', click: () => void chooseAndImport() },
-        { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' },
       ],
     },
@@ -249,32 +201,12 @@ function probe(win: BrowserWindow, path: string): Promise<Record<string, unknown
   )
 }
 
-/** PLUTUS_SMOKE_IMPORT: the menu's import, then the reloaded window and the secrets. */
-async function smokeImport(win: BrowserWindow, file: string): Promise<Record<string, unknown>> {
-  const counts = runImport(file, false)
-  if (!counts || !db || !config) return { ok: false }
-  const page = await probe(win, '/')
-  const exported = JSON.parse(readFileSync(file, 'utf8')) as {
-    runtime_config: { anthropic_api_key: string | null }
-    tables: { app_settings: { key: string; value: string }[] }
-  }
-  const url = exported.tables.app_settings.find((row) => row.key === SIMPLEFIN_ACCESS_URL)?.value
-  // Compared here, never printed.
-  const urlMatches = url !== undefined && getSetting(db, secrets, SIMPLEFIN_ACCESS_URL) === url
-  const keyMatches = llmSettings(db, secrets, config.defaults).anthropic_api_key === exported.runtime_config.anthropic_api_key
-  const encrypted = db.$client.prepare('SELECT count(*) FROM app_settings WHERE is_encrypted = 1').pluck().get()
-  const ok = page.simplefinConnected === true && urlMatches && keyMatches
-  return { ok, counts, page, simplefinUrlDecrypts: urlMatches, apiKeyDecrypts: keyMatches, encryptedSettings: encrypted }
-}
-
 async function smoke(win: BrowserWindow, path: string): Promise<void> {
   let code = 1
   try {
     const page = await probe(win, path)
     const unguarded = await fetch(`${origin}/api/health`)
-    const importFile = process.env.PLUTUS_SMOKE_IMPORT
-    const imported = importFile ? await smokeImport(win, importFile) : null
-    const ok = page.cookieReadableByPage === false && unguarded.status === 401 && (imported?.ok ?? true)
+    const ok = page.cookieReadableByPage === false && unguarded.status === 401
     const screenshot = process.env.PLUTUS_SMOKE_SCREENSHOT
     if (screenshot) writeFileSync(screenshot, (await win.webContents.capturePage()).toPNG())
     console.log(
@@ -289,7 +221,6 @@ async function smoke(win: BrowserWindow, path: string): Promise<void> {
           origin,
           page,
           withoutCookie: { status: unguarded.status },
-          ...(imported ? { imported } : {}),
         },
         null,
         2,
