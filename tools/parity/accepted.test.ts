@@ -42,7 +42,16 @@ describe('validationFields', () => {
       ),
     ).toEqual(['body.name', 'body.target_amount', 'body.target_date'])
     expect(validationFields(tsValidation('query.months: Too big: expected number to be <=12'))).toEqual(['query.months'])
-    expect(validationFields(tsValidation('body: Unrecognized key: "colour"'))).toEqual(['body'])
+  })
+
+  it('reads the keys Zod names in an unrecognized-keys message as fields, as FastAPI reports them', () => {
+    expect(validationFields(tsValidation('body: Unrecognized key: "colour"'))).toEqual(['body.colour'])
+    expect(validationFields(tsValidation('body: Unrecognized keys: "colour", "size"'))).toEqual(['body.colour', 'body.size'])
+    expect(validationFields(tsValidation('body.items.0: Unrecognized key: "x"; body.name: Too small'))).toEqual([
+      'body.items.0.x',
+      'body.name',
+    ])
+    expect(validationFields(tsValidation('body: Unsupported Media Type'))).toEqual(['body'])
   })
 
   it('returns null for anything that is not a validation body', () => {
@@ -111,10 +120,11 @@ describe('compareResponses with the accepted classes', () => {
 
   it('still reports validation failures on different fields', () => {
     const python = pythonValidation([{ loc: ['body', 'colour'], msg: 'Extra inputs are not permitted' }])
-    const ts = tsValidation('body: Unrecognized key: "colour"')
+    const ts = tsValidation('body.size: Invalid input')
     expect(compareResponses(python, ts)).toEqual([
-      { path: '/body/invalid/0', expected: 'body.colour', actual: 'body' },
+      { path: '/body/invalid/0', expected: 'body.colour', actual: 'body.size' },
     ])
+    expect(compareResponses(python, tsValidation('body: Unrecognized key: "colour"'))).toEqual([])
   })
 
   it('still reports a validation failure answered as something else', () => {
