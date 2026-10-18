@@ -631,7 +631,7 @@ Wave 5. Depends on 5A.
 
 Owns: `desktop/`.
 
-Tasks: electron-builder targets for macOS (dmg and zip, arm64 and x64), Windows (nsis), Linux (AppImage); code signing and notarization wired to environment variables and documented, with unsigned builds still working when they are absent; app icon; first-launch experience: empty database, Settings opens first when SimpleFIN is not connected; data directory and log file locations documented; a `--data-dir` flag for a second profile. A `PLUTUS_DEVTOOLS=1` environment variable opens the DevTools panel in dev builds (ignored when packaged), with a test; document it next to `--remote-debugging-port` in AGENTS.md "Working on the desktop app".
+Tasks: electron-builder targets for macOS only (dmg and zip, arm64 and x64; owner decision 2026-10-17: no Windows or Linux builds for now); code signing and notarization wired to environment variables and documented, with unsigned builds still working when they are absent; app icon; first-launch experience: empty database, Settings opens first when SimpleFIN is not connected; data directory and log file locations documented; a `--data-dir` flag for a second profile. A `PLUTUS_DEVTOOLS=1` environment variable opens the DevTools panel in dev builds (ignored when packaged), with a test; document it next to `--remote-debugging-port` in AGENTS.md "Working on the desktop app".
 
 Done when: a signed or unsigned macOS build installs, launches, imports the owner's export, syncs, and keeps its data across restarts.
 
