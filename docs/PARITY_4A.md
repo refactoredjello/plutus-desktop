@@ -12,6 +12,11 @@ Python against TypeScript: **15 of 41 endpoints differ, 0 setup or prompt checks
 cases** (111 GET cases, 101 write steps with their re-reads). The 15 differing endpoints come
 down to four port bugs and one Python bug, listed below. All four prompts are byte-identical.
 
+**Rerun after the fixes (cdc39f1):** Python against TypeScript, **4 of 41 endpoints differ, 0
+checks differ, 394 cases**: steps 46 and 47 (backlog 34), step 48 and the manual-entry and
+projection re-reads after it (exponent strings), and step 66 (405). All are on the accepted list.
+Electron audit: 11 routes, 35 requests, 0 problems (the CSP warning is gone), 0 coverage gaps.
+
 ## Coverage
 
 Every operation in `server/test/fixtures/fastapi-openapi.json` (42), plus the two
@@ -104,6 +109,9 @@ both answered 422 for `"NaN"` in step 49).
 
 Nothing here is fixed on this branch; each item goes to the owning agent.
 
+Outcome: orchestrator item 1 and the desktop CSP item are fixed in cdc39f1; the 2A item became
+unreachable with item 1; orchestrator items 2 and 3 are accepted (see the accepted list).
+
 ### Orchestrator (app.ts, schemas, routes/openapi.ts)
 
 1. **A missing JSON body is treated as `{}`.** With no body and no `Content-Type`, the Hono
@@ -173,8 +181,21 @@ Implemented as named reductions; nothing else is normalized away.
 Standing normalization rules (timestamps as instants to the second, wall-clock fields masked,
 key order ignored, the two `category_totals` tie rules) are listed in every `report.md`.
 
-Not accepted, waiting on fixes: everything in the fix list. Python-bug differences (backlog 34)
-stay visible in the report until the owner decides on the Python bug.
+Owner decisions after the run (2026-10-17), listed but not normalized, so they stay visible in
+`report.md`:
+
+4. **Exponent money strings are rejected** (`"1e2"`; step 48 and the 14 re-reads of manual
+   entries and the projection that follow it). Pydantic accepted them; the port keeps
+   `MoneyInput`'s stricter pattern on purpose (3795b47). The frontend never sends one.
+5. **A wrong method answers 404, not 405** (step 66, `PUT /api/goals`). Hono's default; nothing
+   in the app sends a wrong method.
+6. **Backlog 34** (steps 46 and 47): the port answers the stored, rounded amount where Python
+   answered the unrounded request value. The Python bug stays on the backlog under its
+   ask-first rule.
+
+Fixed after the run (cdc39f1): a missing required body is 422 at `body` (orchestrator item 1,
+which also made the 2A re-parse unreachable, so 2A needs no change), and the SPA HTML carries a
+Content-Security-Policy set by the server (desktop item).
 
 ## Electron audit by route
 
@@ -212,21 +233,16 @@ Gaps found and closed (red, then green, and in the parity run above):
 - `GET /api/settings/config` (Settings): TypeScript only, so a setup check against the env both
   apps got and Python's `/api/settings/llm` and `/api/sync/schedule`; it matches.
 
-## Open questions
+## Open questions (answered)
 
-1. Fix 2 (exponent strings) was a deliberate contract choice in 3795b47. Fix it to match
-   Pydantic's runtime, or move it to the accepted list? The frontend never sends exponents.
-2. Fix 3 (405): fix, or accept as a framework difference?
-3. Backlog 34: when the Python bug is not fixed before cutover, steps 46 and 47 stay as Python-bug
-   differences. Accept them at checkpoint B as "port answers the stored value"?
-4. Should the CSP (fix 5) live in the desktop shell only or in the server's SPA responses too
-   (orchestrator-owned `app.ts`)?
-5. The audit uses the real clock, so its pages show October 2026 with no transactions. Pinning
-   both the server (`PLUTUS_TODAY`) and the browser clock would show fuller pages but would no
-   longer be the app as a user runs it. Keep the real clock?
-6. Incident: while prototyping the audit, one probe set `appData` from a deferred preload, lost
-   the race, and let `desktop/dist/main.js` open the shared development data dir
-   `~/Library/Application Support/Plutus Dev` (its `plutus.sqlite` was modified at 20:59 on
-   2026-10-17). It is the development-run dir, not the installed app's, and the migrations are
-   main's. Nothing was read from it. The committed audit sets the paths synchronously and
-   refuses to run otherwise. The owner may want to check that dir.
+The owner answered these on 2026-10-17:
+
+1. Exponent money strings: keep rejecting them; accepted list item 4.
+2. 405 against 404: accepted; item 5.
+3. Backlog 34: accepted at checkpoint B; item 6.
+4. CSP: in the server's SPA responses (`app.ts`), so the Electron window and the headless
+   server both get it; done in cdc39f1.
+5. Audit clock: keep the real clock.
+6. Incident: the orchestrator checked `~/Library/Application Support/Plutus Dev` read-only. The
+   20:59 modification is the owner's own demo load (sync run 1 at 00:59 UTC); there are no
+   goals, planned items, or other leftovers, so the probe left nothing behind.
