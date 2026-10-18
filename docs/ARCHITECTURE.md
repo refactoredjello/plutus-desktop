@@ -133,7 +133,7 @@ Privacy invariant, enforced in `services/scrub.ts` with tests: the string sent t
 
 ### Transfer detection
 
-For each new transaction, look for a transaction in a different owned account within ±5 days with amount equal and sign opposite. Mark both `is_transfer=true` and link them. Excluded from income/expense aggregates. Independently, the money-movement categories in `aggregates.ts` (credit card payments; account, savings, and investment transfers) are excluded even when unpaired, for example when a card's history starts later than the account paying it.
+For each transaction new (or newly posted) in a sync, look for a posted transaction in a different owned account within ±5 days with amount equal and sign opposite, and pair them only with a transfer signal: a payment word in either side's description or payee (TRANSFER, XFER, PAYMENT, PYMT, AUTOPAY, ONLINE PMT, THANK YOU, ACH, ZELLE), checking or savings against credit or loan, or checking or savings on both sides. Two cards never pair without a payment word. Paired rows get `is_transfer=true` and are linked, and are excluded from income/expense aggregates. `POST /api/transactions/{id}/unpair` clears a wrong pair on both rows (and the transfer category pairing gave them); since a sync only pairs rows new to it, an unpaired pair stays unpaired. Independently, the money-movement categories in `aggregates.ts` (credit card payments; account, savings, and investment transfers) are excluded even when unpaired, for example when a card's history starts later than the account paying it.
 
 ### Recurring detection
 
@@ -185,7 +185,7 @@ GET  /api/accounts
 POST /api/sync              GET  /api/sync/runs          GET /api/sync/runs/{id}     GET /api/sync/schedule
 GET  /api/settings/simplefin   POST /api/settings/simplefin   DELETE /api/settings/simplefin
 GET  /api/settings/llm      GET  /api/settings/config    PUT /api/settings/config
-GET  /api/transactions      PATCH /api/transactions/{id}
+GET  /api/transactions      PATCH /api/transactions/{id}   POST /api/transactions/{id}/unpair
 GET  /api/categories        POST /api/categories         PATCH /api/categories/{id}
 GET  /api/rules             POST /api/rules              DELETE /api/rules/{id}
 GET  /api/reports/monthly   GET /api/reports/month/{month}   GET /api/reports/by-category?month=

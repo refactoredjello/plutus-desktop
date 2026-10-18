@@ -6,22 +6,9 @@ Plutus's own list of open bugs and wanted changes. Each entry names the file and
 
 Numbers are stable: code and tests cite them (for example "backlog 29"). New entries take the next free number.
 
-## Approved to fix (owner, 2026-10-18)
-
-Grouped by the change that carries them; the entries below keep their full descriptions.
-
-- **Transfer matching and Unpair:** 36 (stricter pairing and an Unpair action), closing 21.
-
-Everything else stays open for later.
-
 ## Rules and categorization
 
 19. `updateCategory` in `services/categories.ts` strips the label after validation, so a whitespace-only label is stored empty. (`createCategory` rejects it.)
-21. Minor: `matchTransfers` in `services/transfers.ts` documents a five-day window, while the fixture test asserts pairs at most three days apart. Both hold.
-
-## Transfers
-
-36. False-positive transfer pairs. `matchTransfers` in `services/transfers.ts` pairs any two posted transactions in different accounts with equal and opposite amounts at most five days apart, without any transfer signal. A $45.00 refund on one card and an unrelated $45.00 charge on another are paired, marked `is_transfer`, and hidden from spending for good. Wanted: require a signal before pairing (a transfer or payment word such as TRANSFER, XFER, PAYMENT, PYMT, AUTOPAY, ONLINE PMT, THANK YOU, ACH, ZELLE in the description or payee; or a checking or savings account paired with a credit or loan account; or two depository accounts), never pair two credit accounts without a payment word, and optionally let the owner unpair a transfer from the transaction (clearing `is_transfer` and `transfer_pair_id` on both rows).
 
 ## Recurring charges and schedule
 
@@ -87,3 +74,5 @@ Entries that today's code does not have, or that the owner closed, kept so their
 17. Prefix and contains rules saved from a transaction use the full merchant key as the pattern. `overrideCategory` in `services/transactions.ts` passes the merchant key for every match type, while contains rules match against `raw_description`, where the key may have dropped the text the owner meant. Wanted: an optional `rule_pattern` on the transaction update; without one, a contains rule defaults to the payee or raw description; exact and prefix patterns are upper-cased to match merchant keys. Fixed 2026-10-18, owner approved: optional rule_pattern; a contains rule defaults to the payee when the description contains it, else the description.
 18. Contains rules match with full case folding during categorization (`casefold` in `services/categorize.ts`) but with the simple lowercase mapping in `applyRule` (`icontains`/`simpleLower`), so a `STRASSE` rule categorizes a new transaction that spells it with a sharp s (U+00DF) but never re-applies to an existing one. Fixed 2026-10-18, owner approved: contains rules use one case folding when categorizing and in applyRule.
 20. Sending a default explicitly (`save_as_rule: false`) makes a note-only edit of an uncategorized transaction fail with 400: `updateTransaction` in `services/transactions.ts` treats every sent key as set. Fixed 2026-10-18, owner approved: save_as_rule: false alone no longer counts as setting rule fields.
+36. False-positive transfer pairs. `matchTransfers` in `services/transfers.ts` pairs any two posted transactions in different accounts with equal and opposite amounts at most five days apart, without any transfer signal. A $45.00 refund on one card and an unrelated $45.00 charge on another are paired, marked `is_transfer`, and hidden from spending for good. Wanted: require a signal before pairing (a transfer or payment word such as TRANSFER, XFER, PAYMENT, PYMT, AUTOPAY, ONLINE PMT, THANK YOU, ACH, ZELLE in the description or payee; or a checking or savings account paired with a credit or loan account; or two depository accounts), never pair two credit accounts without a payment word, and optionally let the owner unpair a transfer from the transaction (clearing `is_transfer` and `transfer_pair_id` on both rows). Fixed 2026-10-18, owner approved: pairing needs a transfer signal, a sync only pairs rows new to it, and Unpair (POST /api/transactions/{id}/unpair, a confirm in the transaction row) clears a wrong pair.
+21. Minor: `matchTransfers` in `services/transfers.ts` documents a five-day window, while the fixture test asserts pairs at most three days apart. Both hold. Fixed 2026-10-18, owner approved: the 5-day window is tested (4 and 5 days pair, 6 doesn't).
