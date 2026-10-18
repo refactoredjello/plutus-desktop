@@ -1,117 +1,118 @@
 # Plutus — Architecture
 
-Companion to REQUIREMENTS.md. Describes how v1 is built. Principles from the requirements apply: simplest thing that works, reuse established tools, clean interface.
+Companion to REQUIREMENTS.md. Describes how Plutus is built. Principles from the requirements apply: simplest thing that works, reuse established tools, clean interface.
 
 ## System overview
 
-Three containers, one network, orchestrated by Docker Compose:
+One process, one SQLite file. The desktop app and the headless server run the same server code:
 
 ```
-┌──────────┐     ┌──────────────────────────┐     ┌────────────┐
-│  web     │────▶│  api                     │────▶│  db        │
-│  React   │     │  FastAPI + APScheduler   │     │  Postgres  │
-│  (Vite)  │     │  one process             │     │  16        │
-└──────────┘     └───────────┬──────────────┘     └────────────┘
-                             │ outbound HTTPS only
-                   ┌─────────┴──────────┐
-                   ▼                    ▼
-            SimpleFIN Bridge      LLM provider
-            (bank data)           (Claude API or local Ollama)
+┌───────────────────────────── desktop (Electron) or headless (node) ─┐
+│  window / browser ──▶  server (Hono, in-process)  ──▶  SQLite file  │
+│  React SPA             /api routes, scheduler          better-sqlite3│
+└─────────────────────────────────┬────────────────────────────────────┘
+                                  │ outbound HTTPS only
+                        ┌─────────┴──────────┐
+                        ▼                    ▼
+                 SimpleFIN Bridge      LLM provider
+                 (bank data)           (Claude API or local Ollama)
 ```
 
-- **web**: React SPA. In development, the Vite dev server with proxy to `api`. In production, a static build served by nginx inside the same image, or served by the API itself. Choose the former; it is standard.
-- **api**: FastAPI app. Also hosts the scheduler. Stateless aside from the scheduler's in-memory job table, which is rebuilt from config on start.
-- **db**: Postgres 16 with a named volume. A second database, `plutus_test`, is created on first start for tests. Only stateful component.
+- **server** (`server/`): a Hono app built by `createApp({ db, secrets, config, ... })`. It serves `/api` and the built SPA from `web/dist` (unknown non-`/api` paths fall back to `index.html`, with a Content-Security-Policy on the HTML), and runs the periodic sync scheduler. Migrations run when the database is opened.
+- **desktop** (`desktop/`): the Electron shell. It opens the database in the OS app data folder, starts the server in-process on `127.0.0.1` with a random port, and shows the SPA in a window. Secrets are encrypted with Electron `safeStorage` (the macOS Keychain). Each launch makes a random token that the first HTML response sets as an `HttpOnly`, `SameSite=Strict` cookie; every `/api` request must carry it, so other local processes can't use the API.
+- **headless** (`server/src/main.ts`): the same server on a configurable host and port, configured from the environment, secrets encrypted with AES-256-GCM keyed by `PLUTUS_SECRET_KEY`. The cookie guard is available behind `PLUTUS_API_GUARD` and off by default.
+- **web** (`web/`): the React SPA. Its API client uses `location.origin`, so it works unchanged in both.
 
-No Redis, no broker, no separate worker. If a sync ever needs to outlive a request, APScheduler runs it in a thread; the UI polls the sync-run row for status.
+No Redis, no broker, no separate worker. A manual sync answers 202 and runs in the background of the same process; the UI polls the sync-run row for status.
 
-## Backend
+## Server
 
-Python 3.14, managed with uv. Package layout, one module per concern:
+TypeScript on Node 24 (ESM, strict). Layout, one module per concern:
 
 ```
-api/
-  app/
-    main.py            FastAPI app factory, routers, scheduler startup
-    config.py          pydantic-settings; all config from env
-    db.py              SQLAlchemy 2 engine/session
-    models/            SQLAlchemy models (one file per aggregate)
-    schemas/           Pydantic request/response models
-    routers/           accounts, transactions, categories, sync, manual_entries,
-                       recurring, projection, goals, auth, health
+server/
+  src/
+    app.ts             createApp(): routes, error handler, SPA, cookie guard
+    main.ts            headless entry: open the database, serve on HOST:PORT
+    config.ts          environment: data dir, secret key, today override, runtime defaults
+    secrets.ts         SecretStore interface, KeySecretStore (AES-256-GCM)
+    scheduler.ts       periodic sync: setTimeout chain with jitter, follows config changes
+    db/
+      schema.ts        Drizzle tables, one file
+      index.ts         openDb(path): pragmas, migrations, category seed
+      migrations/      drizzle-kit SQL migrations; seed/categories.json (Plaid PFC v2)
+    lib/
+      money.ts         integer cents: parse, format, half-even division, median
+      dates.ts         PlainDate helpers, today()
+      errors.ts        DomainError family, problem+json
+      log.ts           pino
+    schemas/           Zod schemas, one file per domain; the OpenAPI source
+    routes/            one file per router: parse, call one service, return the schema
+    services/          business logic: sync, categorize, scrub, transfers, recurring,
+                       schedule, aggregates, reports, changes, projection, goals,
+                       suggestions, config, app_settings, ...
     providers/
-      bank/base.py     BankProvider protocol
-      bank/simplefin.py
-      llm/base.py      LLMProvider protocol
-      llm/claude.py
-      llm/ollama.py
-    services/
-      sync.py          orchestrates a sync run
-      categorize.py    rules → cache → LLM pipeline
-      scrub.py         PII scrubbing + merchant normalization
-      transfers.py     internal transfer matching
-      recurring.py     recurrence detection
-      projection.py    month-end and 3-month outlook
-      suggestions.py   aggregates → LLM → stored suggestions
-      auth.py          password verify, session cookie
-    scheduler.py       APScheduler setup: sync every 6h
-  alembic/             migrations
-  tests/
+      bank/            types.ts (BankProvider), simplefin.ts
+      llm/             types.ts (LLMProvider), prompts.ts, claude.ts, ollama.ts, fake.ts
+  scripts/
+    export-openapi.ts  writes web/src/api/openapi.json
+    demo.ts            load | clear fake demo data through the real sync pipeline
+    import-json.ts     import an export of the old Docker app (docs/MIGRATING_DATA.md)
+  test/                Vitest; setup.ts gives each test its own in-memory SQLite
 ```
 
-Key libraries: FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, psycopg 3, pydantic-settings, httpx, APScheduler, structlog, anthropic SDK, argon2-cffi (password hashing), cryptography (Fernet for the SimpleFIN access URL at rest).
+Key libraries: Hono with `@hono/node-server` and `@hono/zod-openapi`, Zod 4, Drizzle ORM with better-sqlite3, pino, `@anthropic-ai/sdk`. Ollama is called with `fetch`.
 
-### Backend conventions
+### Server conventions
 
-These apply to all backend code. Agents follow them without asking.
+These apply to all server code. Agents follow them without asking.
 
 | Area | Convention |
 |---|---|
-| Tooling | uv for dependencies and lockfile. ruff for lint and format. mypy in strict mode. pytest. pre-commit runs ruff and mypy. |
-| Sync vs async | Plain `def` endpoints with sync SQLAlchemy and psycopg 3. FastAPI runs them in a threadpool. One user does not need async, and sync avoids lazy-load and session-lifetime pitfalls. httpx is used in sync mode. |
-| Models | SQLAlchemy 2 typed models (`Mapped[...]`, `mapped_column`) for tables. Pydantic v2 models for every request and response. The two are never mixed; SQLModel is not used. Response schemas set `from_attributes=True`. |
-| Schema naming | `XCreate`, `XUpdate` (all fields optional, used for PATCH), `XRead`. List endpoints return `Page[XRead]` with `items`, `total`, `limit`, `offset`. |
-| Money | `Decimal` everywhere, `NUMERIC(14,2)` in Postgres, serialized as a JSON string so no float rounding reaches the browser. Never `float`. |
-| Time | `timestamptz` stored in UTC. Transaction posting dates are plain `date`. |
-| Dependency injection | `Annotated` aliases such as `DbSession = Annotated[Session, Depends(get_db)]` and `CurrentUser`. One session per request, committed by the service layer, not the router. |
-| Layers | Routers handle HTTP only: parse, call one service function, return a schema. Business logic lives in `services/`. Services never import FastAPI. |
-| App lifecycle | `lifespan` context manager starts and stops the scheduler. No `on_event`. |
-| Config | One `Settings` class via pydantic-settings, loaded once and injected. Secrets typed as `SecretStr` so they never print. |
-| Errors | Domain errors are plain exceptions in services, mapped to HTTP responses by one exception handler. Error bodies follow RFC 9457 problem details. |
-| OpenAPI | Every route has a `response_model`, a tag, and a stable operation ID derived from tag and function name. The TypeScript client is generated from this spec with openapi-typescript and called through openapi-fetch. |
-| Logging | structlog. Pretty console in development, JSON in production. A request ID middleware adds the ID to every log line. |
-| Testing | pytest against a real Postgres from compose, never SQLite. Each test runs inside a transaction that is rolled back. `TestClient` for routes. Fake providers for SimpleFIN and the LLM. |
-| Docker | Multi-stage build with uv, slim base image, non-root user, healthcheck on `/health`. |
-| Pagination | `limit` and `offset` query parameters. Cursor pagination is not needed at this scale. |
-
+| Tooling | npm workspaces from the root lockfile. oxlint, `tsc` strict, Vitest. `npm run check` in a package runs all three. |
+| Sync vs async | better-sqlite3 is synchronous, and so are services that only touch the database. Services that call a provider are `async`. Never `await` inside an open transaction. |
+| Schemas | Zod schemas in `src/schemas` are both validator and OpenAPI source. Component names: `XCreate`, `XUpdate` (all optional, for PATCH), `XRead`. Request bodies forbid unknown keys. |
+| Money | `INTEGER` cents in the database, a branded `Cents` type in code, a two-decimal string on the wire (`Money`); requests take `MoneyInput` (a number or a decimal string). Arithmetic on integers; division rounds half to even (`lib/money.ts`). Never a float for money. |
+| Dates and time | Transaction and planning dates are `PlainDate` strings `YYYY-MM-DD`, compared as strings. Timestamps are UTC ISO 8601. "Today" comes from `lib/dates.today()`, which honours `PLUTUS_TODAY` so tests can pin it. |
+| Layers | Routes handle HTTP only: parse, call one service function, return the schema. Business logic lives in `services/`. Services never import Hono. `services/aggregates.ts` is the single definition of income, expenses, transfers, money movement, essentiality buckets, and recent active months. |
+| Config | Runtime knobs (LLM provider, model, API key, Ollama URL, owner name tokens, sync interval, first-sync history, scheduler) live in `app_settings`, seeded once from the environment; read them with `runtimeConfig()` / `llmSettings()` in `services/config.ts`, never `process.env`. The headless server applies set environment variables over them at every start; the desktop reads only the table. |
+| Secrets | Through a `SecretStore`: `KeySecretStore` headless and in tests, `SafeStorageSecretStore` in the desktop. Encrypted settings keep `is_encrypted`. |
+| Errors | Domain errors are classes in `lib/errors.ts`, rendered by one handler as RFC 9457 problem details. Validation failures are 422 problem+json with a `detail` naming the failing fields. |
+| OpenAPI | Every route has a response schema (or is 204), a tag, and a stable operation ID. `make openapi` writes the spec and regenerates the TypeScript client (openapi-typescript, called through openapi-fetch); a test fails if either is stale. |
+| Database | Foreign keys on, WAL. Migrations generated by drizzle-kit and reviewed by hand; never edit an applied migration. |
+| Logging | pino, JSON lines on stdout. |
+| Testing | Vitest. `makeDb()` returns a fresh migrated and seeded in-memory database per test; `makeApp()` builds the app over it, and route tests call `app.request('/api/...')`. Fake providers for SimpleFIN and the LLM; the fake LLM records every call so tests assert exactly what would have been sent. |
+| Pagination | `limit` and `offset` query parameters. |
 
 ### Provider interfaces
 
-```python
-class BankProvider(Protocol):
-    def fetch(self, start: date, end: date) -> ProviderSnapshot: ...
-    # ProviderSnapshot: list[ProviderAccount] each with balance, available,
-    # balance_date, and list[ProviderTransaction] (external_id, posted,
-    # amount, description, payee, memo, pending)
+```ts
+interface BankProvider {
+  readonly name: string
+  readonly requestsMade?: number   // for the daily request budget
+  fetch(start: PlainDate, end: PlainDate): Promise<ProviderSnapshot>
+}
 
-class LLMProvider(Protocol):
-    def classify_merchants(self, items: list[MerchantInput]) -> list[MerchantClassification]: ...
-    def suggest_savings(self, aggregates: SavingsContext) -> list[Suggestion]: ...
+interface LLMProvider {
+  readonly name: string
+  classifyMerchants(items: readonly MerchantInput[]): Promise<MerchantClassification[]>
+  suggestSavings(context: SavingsContext): Promise<SavingsSuggestion[]>
+}
 ```
 
-Both return plain dataclasses. Nothing provider-specific leaks past these boundaries. Adding Plaid later means one new file under `providers/bank/` plus a Link flow in the UI.
+Both return plain objects. Nothing provider-specific leaks past these boundaries. Adding Plaid later means one new file under `providers/bank/` plus a Link flow in the UI.
 
 ### SimpleFIN sync algorithm
 
 1. Create a `sync_runs` row with status `running`.
-2. Determine window: `start = last_successful_sync_start - 5 days` (or `SYNC_FIRST_HISTORY_DAYS`, default 180, on the first run), `end = now`. Requests are chunked to 45 days: SimpleFIN documents 90, but the live bridge warns above 45 and may cap there.
+2. Determine window: `start = last_successful_sync_start - 5 days` (or the first-sync history, default 180 days, on the first run), `end = now`. Requests are chunked to 45 days: SimpleFIN documents 90, but the live bridge warns above 45 and may cap there.
 3. `GET {access_url}/accounts?start-date=…&end-date=…` with Basic Auth from the access URL.
 4. For each account: upsert by `(provider, external_account_id)`. Insert a `balance_snapshots` row.
-5. For each transaction: upsert by `(account_id, external_transaction_id)`. If an existing row was `pending` and is now posted, update in place. Rows absent from a window they previously appeared in are left alone in v1 (SimpleFIN does not report removals).
-6. Run `transfers.match()` on new rows, then `categorize.run()` on uncategorized rows.
+5. For each transaction: upsert by `(account_id, external_transaction_id)`. If an existing row was `pending` and is now posted, update in place. Rows absent from a window they previously appeared in are left alone (SimpleFIN does not report removals), except stale pending rows.
+6. Run transfer matching on new rows, then categorization on uncategorized rows.
 7. Mark the run `success` or `error` with counts and provider `errlist` messages. Never retry within the same run.
 
-Request budget: one request per 45-day chunk per sync. A default first sync is 4 requests. Steady state is 1 request per sync, 4 scheduled syncs per day.
+Request budget: one request per 45-day chunk per sync, at most 24 in a rolling day. A default first sync is 4 requests. Steady state is 1 request per sync, 4 scheduled syncs per day.
 
 ### Categorization pipeline
 
@@ -120,24 +121,24 @@ raw description
   → normalize   (uppercase, collapse whitespace, strip store numbers, strip "SQ *", "TST*", "PP*", etc.)
   → scrub       (remove digit runs ≥4, dates, phone numbers, "CHK #", "REF", names after "ZELLE TO/FROM", "VENMO")
   → key = normalized merchant string
-  → rules       owner-defined, exact or prefix match on key → category + essentiality
+  → rules       owner-defined, exact, prefix, or contains match → category + essentiality
   → cache       merchant_classifications table keyed by `key`
   → LLM         batch of unseen keys (up to ~50 per call) with amount bucket and account type
                 → store in cache with confidence, source=llm
   → write categorization row on transaction (source, confidence, category_id, essentiality)
 ```
 
-The LLM prompt includes the fixed taxonomy and the three essentiality labels and asks for JSON. Response is validated against the taxonomy; unknown labels fall back to `UNCATEGORIZED` with low confidence. Manual override on a transaction writes `source=manual`; "save as rule" also inserts a rules row and refreshes cache.
+The LLM prompt includes the fixed taxonomy and the three essentiality labels and asks for structured output. The response is validated against the taxonomy; unknown labels fall back to `UNCATEGORIZED` with low confidence. A manual override on a transaction writes `source=manual`; "save as rule" also inserts a rules row and refreshes the cache.
 
-Privacy invariant, enforced in `scrub.py` with tests: the string sent to the LLM contains no digit run longer than 3 characters and none of the configured owner-name tokens.
+Privacy invariant, enforced in `services/scrub.ts` with tests: the string sent to the LLM contains no digit run longer than 3 characters and none of the configured owner-name tokens.
 
 ### Transfer detection
 
-For each new transaction, look for a transaction in a different owned account within ±5 days with amount equal and sign opposite. Mark both `is_transfer=true` and link them. Excluded from income/expense aggregates. Independently, `aggregates.MONEY_MOVEMENT` categories (credit card payments; account, savings, and investment transfers) are excluded even when unpaired, for example when a card's history starts later than the account paying it.
+For each new transaction, look for a transaction in a different owned account within ±5 days with amount equal and sign opposite. Mark both `is_transfer=true` and link them. Excluded from income/expense aggregates. Independently, the money-movement categories in `aggregates.ts` (credit card payments; account, savings, and investment transfers) are excluded even when unpaired, for example when a card's history starts later than the account paying it.
 
 ### Recurring detection
 
-Group transactions by merchant key and account. For groups with ≥3 occurrences, compute intervals between dates. If median interval is near 7, 14, 30/31, or 365 days with low variance and amounts within 15%, propose a recurrence. Owner confirms or dismisses. Confirmed recurrences have `next_expected_date` advanced on each matching sync.
+Group transactions by merchant key and account. For groups with ≥3 occurrences, compute intervals between dates. If the median interval is near 7, 14, 30/31, or 365 days (or twice a month) with low variance and amounts within 15%, propose a recurrence. The owner confirms or dismisses. Confirmed recurrences have `next_expected_date` advanced on each matching sync.
 
 ### Projection
 
@@ -152,11 +153,7 @@ The daily non-recurring averages cover the trailing 90 days (or less when histor
 
 ### Savings suggestions
 
-Build a `SavingsContext`: per-category monthly totals for the last 6 months, discretionary and flexible recurring charges (category, amount, cadence; merchant name replaced by category label), goal target, deadline, and current gap. Send to `LLMProvider.suggest_savings`. Store each returned suggestion with `status=open`. Owner sets `kept` or `dismissed`. Dismissed ones are passed back as exclusions on the next call.
-
-### Auth
-
-`APP_PASSWORD_HASH` (argon2) in env. `POST /auth/login` verifies and sets an HttpOnly, Secure, SameSite=Lax session cookie signed with `SECRET_KEY`. Middleware requires the cookie on everything except `/health` and `/auth/*`. Sessions table is not needed; the cookie is a signed, expiring token. Passkeys later: add a `credentials` table and WebAuthn endpoints; the session cookie stays the same.
+Build a `SavingsContext`: per-category monthly totals for the last 6 months, discretionary and flexible recurring charges (category, amount, cadence; merchant name replaced by category label), goal target, deadline, and current gap. Send to `LLMProvider.suggestSavings`. Store each returned suggestion with `status=open`. The owner sets `kept` or `dismissed`. Dismissed ones are passed back as exclusions on the next call.
 
 ## Data model
 
@@ -164,37 +161,39 @@ Build a `SavingsContext`: per-category monthly totals for the last 6 months, dis
 |---|---|
 | `accounts` | id, provider, external_id, name, type (checking/savings/credit/other), institution_name, currency, is_active |
 | `balance_snapshots` | account_id, balance, available, as_of |
-| `transactions` | id, account_id, external_id, posted_at, amount (negative = outflow), raw_description, payee, memo, pending, merchant_key, is_transfer, transfer_pair_id |
+| `transactions` | id, account_id, external_id, posted_on, transacted_at, amount (negative = outflow), raw_description, payee, memo, pending, merchant_key, is_transfer, transfer_pair_id, note, one_time |
 | `categories` | id, primary, detailed, label, is_hidden, is_custom |
 | `categorizations` | transaction_id (unique), category_id, essentiality, source, confidence, updated_at |
 | `merchant_classifications` | merchant_key (unique), category_id, essentiality, confidence, source |
-| `rules` | id, match_type (exact/prefix), pattern, category_id, essentiality |
+| `rules` | id, match_type (exact/prefix/contains), pattern, category_id, essentiality |
 | `manual_entries` | id, amount, description, category_id, due_date, recurrence, fulfilled_transaction_id |
 | `recurrences` | id, merchant_key, account_id, amount, cadence, next_expected_date, status (proposed/confirmed/dismissed), essentiality |
-| `goals` | id, name, target_amount, target_date, start_balance_snapshot |
+| `goals` | id, name, target_amount, target_date, starting_amount, is_active |
 | `suggestions` | id, goal_id, text, estimated_monthly_saving, status, created_at |
-| `sync_runs` | id, provider, started_at, finished_at, status, added, updated, error_text |
-| `settings` | key, value_encrypted (SimpleFIN access URL lives here) |
+| `sync_runs` | id, provider, trigger, started_at, finished_at, status, added, updated, requests, error_text |
+| `app_settings` | key, value, is_encrypted (the SimpleFIN access URL, the API key, and the runtime config) |
+| `change_dismissals` | key, signal, dismissed_at ("What changed" items the owner dismissed) |
 
-Amounts are `NUMERIC(14,2)`. Timestamps are `timestamptz`.
+Money is `INTEGER` cents. Dates are `YYYY-MM-DD` text; timestamps are UTC ISO 8601 text. `server/src/db/schema.ts` is authoritative.
 
 ## API surface
 
-All routes live under `/api`, so the browser, the Vite dev proxy, and nginx in production all use the same paths. The authoritative contract is the generated spec at `web/src/api/openapi.json`; this list is a summary.
+All routes live under `/api`. The authoritative contract is the generated spec at `web/src/api/openapi.json`; this list is a summary.
 
 ```
 GET  /api/health
-POST /api/auth/login        POST /api/auth/logout        GET /api/auth/session
 GET  /api/accounts
-POST /api/sync              GET  /api/sync/runs          GET /api/sync/runs/{id}
+POST /api/sync              GET  /api/sync/runs          GET /api/sync/runs/{id}     GET /api/sync/schedule
 GET  /api/settings/simplefin   POST /api/settings/simplefin   DELETE /api/settings/simplefin
-GET  /api/settings/llm
+GET  /api/settings/llm      GET  /api/settings/config    PUT /api/settings/config
 GET  /api/transactions      PATCH /api/transactions/{id}
 GET  /api/categories        POST /api/categories         PATCH /api/categories/{id}
 GET  /api/rules             DELETE /api/rules/{id}
-GET  /api/reports/monthly   GET /api/reports/by-category?month=   GET /api/reports/balances
+GET  /api/reports/monthly   GET /api/reports/month/{month}   GET /api/reports/by-category?month=
+GET  /api/reports/balances  GET /api/reports/changes     POST /api/reports/changes/dismiss
+DELETE /api/reports/changes/dismissals
 GET  /api/projection?months=3
-GET  /api/recurring         PATCH /api/recurring/{id}
+GET  /api/recurring         POST /api/recurring          PATCH /api/recurring/{id}
 GET  /api/manual-entries    POST /api/manual-entries     PATCH /api/manual-entries/{id}   DELETE …
 GET  /api/goals             POST /api/goals              GET /api/goals/{id}   PATCH /api/goals/{id}
 GET  /api/goals/{id}/suggestions   POST /api/goals/{id}/suggestions   PATCH /api/suggestions/{id}
@@ -202,7 +201,7 @@ GET  /api/goals/{id}/suggestions   POST /api/goals/{id}/suggestions   PATCH /api
 
 ## Frontend
 
-React 19, TypeScript 6, Vite 8. Libraries: TanStack Query (server state), React Router, shadcn/ui on Tailwind 4 (components), Recharts (charts), openapi-fetch with types generated by openapi-typescript (API calls). Lint with oxlint, the Vite template default. Test with Vitest, Testing Library, and MSW. No global state library and no runtime schema validation, because types come straight from the API spec.
+React 19, TypeScript 6, Vite 8. Libraries: TanStack Query (server state), React Router, shadcn/ui on Tailwind 4 (components), Recharts (charts), openapi-fetch with types generated by openapi-typescript (API calls). Lint with oxlint. Test with Vitest, Testing Library, and MSW. No global state library and no runtime schema validation, because types come straight from the API spec.
 
 Pages, in navigation order:
 
@@ -211,61 +210,32 @@ Pages, in navigation order:
 3. **Recurring** — detected and confirmed recurrences with annual cost.
 4. **Goals** — goal card with on-track indicator, suggestions list, Suggest button.
 5. **Planned** — manual expected income and expenses: simple form and list.
-6. **Settings** — SimpleFIN token, sync now, sync history, category management, LLM provider status.
+6. **Settings** — SimpleFIN token, sync now, sync history, runtime config (LLM provider, model, key, owner name tokens, sync settings), category management, rules.
 
 Design rules: one primary action per page, muted palette with a single accent, numbers right-aligned in tabular figures, charts follow the `dataviz` skill conventions when implemented.
 
-## Configuration (environment)
+## Configuration
 
-```
-DATABASE_URL=postgresql+psycopg://…
-SECRET_KEY=…                      session signing + Fernet key derivation
-APP_PASSWORD_HASH=…               argon2 hash
-LLM_PROVIDER=claude|ollama
-ANTHROPIC_API_KEY=…               when claude
-LLM_MODEL=claude-haiku-4-5
-OLLAMA_BASE_URL=http://ollama:11434   when ollama
-SYNC_INTERVAL_HOURS=6
-OWNER_NAME_TOKENS=…               comma-separated names to scrub
-LOG_LEVEL=info
-```
-
-`.env.example` committed; `.env` ignored. Same image for local and remote; only env differs.
-
-## Twelve-factor mapping
-
-| Factor | How |
-|---|---|
-| Codebase | One repo, `api/`, `web/`, `compose.yaml` |
-| Dependencies | `pyproject.toml` + lockfile (uv), `package-lock.json` |
-| Config | Env only, see above |
-| Backing services | Postgres, SimpleFIN, LLM all addressed by URL |
-| Build/release/run | Images built in CI; `alembic upgrade head` as release step; `compose up` to run |
-| Processes | API stateless; scheduler state is config-derived |
-| Port binding | API on 8000, web on 80 inside containers |
-| Concurrency | Scale not needed; uvicorn workers=1 |
-| Disposability | Fast start, graceful shutdown stops scheduler |
-| Dev/prod parity | Same compose file with an override for dev (Vite, bind mounts) |
-| Logs | stdout, JSON in prod |
-| Admin processes | `alembic`, a `seed-categories` CLI, run via `docker compose run api …` |
+The desktop app reads its settings from the `app_settings` table only; the Settings page changes them. The headless server reads its process settings from the environment (`.env.example` lists them: `PLUTUS_SECRET_KEY`, `PLUTUS_DATA_DIR` / `PLUTUS_DB_PATH`, `PLUTUS_WEB_DIST`, `HOST`, `PORT`, `PLUTUS_API_GUARD`, `LOG_LEVEL`) and lets the runtime knobs (`LLM_PROVIDER`, `LLM_MODEL`, `ANTHROPIC_API_KEY`, `OLLAMA_BASE_URL`, `OWNER_NAME_TOKENS`, `SYNC_INTERVAL_HOURS`, `SYNC_FIRST_HISTORY_DAYS`, `SCHEDULER_ENABLED`) seed or override the table. `.env.example` is committed; `.env` is ignored.
 
 ## Security and privacy
 
-- SimpleFIN access URL encrypted with Fernet at rest; decrypted only in `providers/bank/simplefin.py`.
-- LLM payloads are built exclusively by `scrub.py` and `suggestions.py`; both have tests asserting no PII patterns.
-- Outbound network from `api` is limited to SimpleFIN and the LLM endpoint. Document this; enforce with firewall rules at remote deployment.
-- Cookies HttpOnly + Secure. HTTPS terminated by a reverse proxy (Caddy) on the remote host.
-- No secrets in logs; `config.py` redacts on repr.
+- Secrets (the SimpleFIN access URL, the Anthropic API key) are encrypted at rest through the `SecretStore`: the macOS Keychain via `safeStorage` in the desktop, AES-256-GCM keyed by `PLUTUS_SECRET_KEY` headless. The desktop refuses to save a secret when OS encryption is unavailable.
+- LLM payloads are built exclusively by `services/scrub.ts` and `services/suggestions.ts`; both have tests asserting no PII patterns.
+- Outbound network is limited to SimpleFIN and the LLM endpoint.
+- The desktop listens on loopback only, behind the per-launch cookie guard; links outside the app's origin open in the system browser.
+- No secrets in logs.
 
 ## Testing
 
-- Unit: scrub/normalize (golden file of real-looking descriptions → expected keys), transfer matching, recurrence detection, projection math.
-- Integration: sync against a recorded SimpleFIN fixture JSON; categorization with a fake LLM provider.
-- Frontend: component tests for the transactions table edit flow; otherwise rely on TypeScript and zod.
-- CI: lint (ruff, oxlint), type-check (mypy, tsc), tests, generated-client freshness, image builds.
+- Unit: scrub/normalize (golden file of descriptions → expected keys), transfer matching, recurrence detection, projection math, money and date helpers.
+- Integration: sync against a recorded SimpleFIN fixture; categorization with the fake LLM provider; every route through `app.request`.
+- Desktop: the testable parts in `desktop/src/lib` unit-tested; `npm run smoke` in `desktop/` opens the real window on a throwaway data dir and checks the SPA reaches `/api/health` through the cookie guard.
+- Frontend: component tests with MSW.
+- CI: `npm ci`, `npm run check` (lint, typecheck, tests for web, server, desktop), generated-client freshness, and an unsigned macOS desktop build.
 
 ## Deployment
 
-**Local**: `docker compose up`. `compose.override.yaml` mounts source and runs Vite + uvicorn `--reload`.
+**Desktop**: `make dist` packages the app with electron-builder (`desktop/README.md`). The scheduler only runs while the app is open; an overdue sync runs about two minutes after launch.
 
-**Remote (later)**: single VPS, Docker Compose, Caddy for TLS, Postgres volume backed up nightly with `pg_dump` to object storage. Same images, different `.env`. Consider Tailscale instead of a public domain if the owner is the only client.
+**Headless (later)**: the same server on a single host behind a TLS reverse proxy, with the guard on and the SQLite file backed up.
