@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import type { Schemas } from '@/api/client'
 import { requestsInLastDay } from '@/features/settings/requests'
 import { rules } from '@/mocks/rules'
 import { settingsState } from '@/mocks/settings'
@@ -35,6 +36,101 @@ describe('Settings: rules', () => {
     server.use(http.get('/api/rules', () => HttpResponse.json([])))
     renderAt('/settings')
     expect(await screen.findByText(/choose "Apply to all"/)).toBeInTheDocument()
+  })
+
+  it('refreshes transactions after deleting a rule', async () => {
+    const user = userEvent.setup()
+    const fetches = countTransactionFetches()
+    renderAt('/settings')
+    await user.click(await screen.findByRole('button', { name: 'Delete rule for SHELL OIL' }))
+    await waitFor(() => expect(fetches.count).toBeGreaterThan(0))
+    const before = fetches.count
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(fetches.count).toBeGreaterThan(before))
+  })
+})
+
+/** Counts GET /api/transactions (the nav badge keeps one active query on every page). */
+function countTransactionFetches() {
+  const fetches = { count: 0 }
+  server.use(
+    http.get('/api/transactions', () => {
+      fetches.count += 1
+      return undefined
+    }),
+  )
+  return fetches
+}
+
+describe('Settings: new rule', () => {
+  function recordRulePosts() {
+    const bodies: Schemas['RuleCreate'][] = []
+    server.use(
+      http.post('/api/rules', async ({ request }) => {
+        bodies.push((await request.json()) as Schemas['RuleCreate'])
+        return undefined
+      }),
+    )
+    return bodies
+  }
+
+  async function openDialog() {
+    const user = userEvent.setup()
+    renderAt('/settings')
+    await screen.findByText('NETFLIX.COM CA')
+    await user.click(screen.getByRole('button', { name: 'New rule' }))
+    return { user, dialog: await screen.findByRole('dialog', { name: 'New rule' }) }
+  }
+
+  it('creates a rule with a match type, pattern, category, and essentiality', async () => {
+    const bodies = recordRulePosts()
+    const fetches = countTransactionFetches()
+    const { user, dialog } = await openDialog()
+    const create = within(dialog).getByRole('button', { name: 'Create rule' })
+    expect(create).toBeDisabled()
+
+    const matchType = within(dialog).getByRole('combobox', { name: 'Match type' })
+    expect(matchType).toHaveTextContent('Merchant is')
+    await user.click(matchType)
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Merchant is',
+      'Merchant starts with',
+      'Bank description contains',
+    ])
+    await user.click(screen.getByRole('option', { name: 'Merchant starts with' }))
+    await user.type(within(dialog).getByRole('textbox', { name: 'Pattern' }), 'uber')
+    expect(create).toBeDisabled() // no category yet
+    await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+    await user.click(await screen.findByRole('option', { name: 'Public transit' }))
+    await user.click(within(dialog).getByRole('combobox', { name: 'Essentiality' }))
+    await user.click(await screen.findByRole('option', { name: 'Flexible' }))
+    const before = fetches.count
+    await user.click(create)
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toEqual({ match_type: 'prefix', pattern: 'uber', category_id: 13, essentiality: 'flexible' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const row = (await screen.findByText('UBER')).closest('tr')!
+    expect(row.textContent).toMatch(/^starts withUBER/)
+    expect(within(row).getByText('Public transit')).toBeInTheDocument()
+    await waitFor(() => expect(fetches.count).toBeGreaterThan(before))
+  })
+
+  it('leaves essentiality out when not chosen, and shows a server error', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.post('/api/rules', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ title: 'Bad Request', status: 400, detail: 'Rule pattern must not be empty' }, { status: 400 })
+      }),
+    )
+    const { user, dialog } = await openDialog()
+    await user.type(within(dialog).getByRole('textbox', { name: 'Pattern' }), 'Paypal')
+    await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
+    await user.click(await screen.findByRole('option', { name: 'Coffee' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Create rule' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Rule pattern must not be empty')
+    expect(bodies[0]).toEqual({ match_type: 'exact', pattern: 'Paypal', category_id: 6 })
   })
 })
 
