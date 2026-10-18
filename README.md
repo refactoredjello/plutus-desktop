@@ -24,12 +24,14 @@ Nothing identifying leaves your machine.
 ## Prerequisites
 
 - [Node](https://nodejs.org) 24 or later, and GNU Make for the shortcuts below
+- macOS for the desktop app (the headless server runs wherever Node does)
 - A [SimpleFIN Bridge](https://bridge.simplefin.org) account ($15 a year) for read-only bank access
 - An [Anthropic API key](https://console.anthropic.com) for categorization, or [Ollama](https://ollama.com) to keep everything local
 
+In a checkout of this repository, install every package from the root lockfile:
+
 ```bash
-git clone git@github.com:refactoredjello/plutus-desktop.git
-cd plutus && npm ci
+npm ci
 ```
 
 ## The desktop app
@@ -38,7 +40,7 @@ cd plutus && npm ci
 make dist
 ```
 
-This builds the web app, the server, and the Electron shell and packages an unsigned app into `desktop/release/` (`mac-arm64/Plutus.app` on Apple Silicon, `mac/Plutus.app` on Intel). Copy it to Applications and open it. Data lives in `~/Library/Application Support/Plutus/plutus.sqlite`; secrets are encrypted with the macOS Keychain. See [desktop/README.md](desktop/README.md) for signing and where things live.
+This builds the web app, the server, and the Electron shell and packages the app into `desktop/release/`: a dmg and a zip for Apple Silicon and for Intel, and the unpacked `mac-arm64/Plutus.app` and `mac/Plutus.app`. Open the dmg for your Mac, drag Plutus to Applications (or copy the `.app` there), and open it. Without a signing certificate the build is signed ad hoc, which runs on the Mac that built it. Data lives in `~/Library/Application Support/Plutus/plutus.sqlite` and the log in `logs/plutus.log` next to it; secrets are encrypted with the macOS Keychain. See [desktop/README.md](desktop/README.md) for signing, a second profile, and where things live.
 
 `make dev` opens a development build instead, with its data in `Plutus Dev`, so it never touches the installed app's database.
 
@@ -68,6 +70,13 @@ make demo-data      # into the headless server's database (PLUTUS_DATA_DIR, PLUT
 make demo-clear
 ```
 
+For the desktop app, load demo data into a separate profile with the app closed, then open that profile (both from the repository root):
+
+```bash
+PLUTUS_DB_PATH=/tmp/plutus-demo/plutus.sqlite make demo-data
+cd desktop && npx electron . --data-dir /tmp/plutus-demo    # after make dev has built it once
+```
+
 Run `make demo-clear` before connecting a real account, so demo categories aren't reused.
 
 ## Development
@@ -78,7 +87,7 @@ Run `make demo-clear` before connecting a real account, so demo categories aren'
 | `make openapi` | Regenerate the API spec and the TypeScript client after a schema change |
 | `make dev` / `make smoke` | Open the desktop app from source / check it reaches the API on a throwaway data dir |
 | `make dev-server` | Headless server on :8000 with reload |
-| `make dist` | Package the unsigned desktop app |
+| `make dist` | Package the desktop app (ad hoc signed unless a certificate is configured) |
 | `make demo-data` / `make demo-clear` | Load or remove fake demo data |
 
 Run `make help` for the full list.
@@ -105,6 +114,8 @@ Income, spending, and averages are defined once in `server/src/services/aggregat
 
 - [Requirements](docs/REQUIREMENTS.md): what Plutus does, the decisions log, and known limitations
 - [Architecture](docs/ARCHITECTURE.md): system design and conventions
+- [Desktop app](desktop/README.md): building, signing, profiles, and where data and logs live
+- [Backlog](docs/BACKLOG.md): open bugs and wanted changes
 - [Agent plan](docs/AGENT_PLAN.md): the multi-agent workflow
 
 ## Status
