@@ -33,6 +33,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 | `make check` | Everything CI runs. Must pass before a change is done. |
 | `make openapi` | After any change to `server/src/schemas` or routes: regenerates `web/src/api/openapi.json` from the TypeScript server, then `schema.d.ts`. A test fails if they're stale. `server/test/contract.test.ts` also checks the spec against FastAPI's, frozen in `server/test/fixtures/fastapi-openapi.json`. |
 | `make parity-self` / `make parity` | Parity harness (`tools/parity`): Python against itself (must be zero differences), then Python against the TypeScript server on demo data; writes `tools/parity/report.md`. Needs the compose Postgres; not part of `make check`. |
+| `node_modules/.bin/tsx tools/parity/visual/audit.ts` | Electron request audit: the built desktop app on demo data in a temp dir, every route, requests, console, screenshots, and harness coverage; writes `tools/parity/visual/out/`. Build first (`npm run build:all --prefix desktop`). |
 | `make import-check` | Postgres export (`python -m app.export_json`) to SQLite import (`server/scripts/import-json.ts`) on demo data in a throwaway `plutus_export` database; counts, secrets, runtime config, and the monthly report must match. See docs/MIGRATING_DATA.md. |
 | `npm run demo -- load` / `-- clear` (in `server/`) | Fake demo data in the TypeScript server's database through the real sync pipeline (same 295 transactions as `make demo-data`). |
 | `make revision m="..."` | New Alembic migration (autogenerate), then review it. |
@@ -79,6 +80,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - Docker Compose expands `$` in `.env`: quote values containing `$` (the argon2 hash) in single quotes.
 - Bank merchant names vary (e.g. `SEAMLESS` vs `SEAMLSS`); prefer prefix or contains rules, and check variants in the data before writing one.
 - Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
+- Driving `desktop/dist/main.js` from a script: set `appData` synchronously before importing it (as `tools/parity/visual/electron_main.mjs` does). A deferred preload loses the race and main.js opens the shared `~/Library/Application Support/Plutus Dev`.
 - Agent file writes can turn `\uXXXX` escapes in source into literal characters (a literal U+2028 broke a regex class). Keep sources ASCII: `LC_ALL=C grep -nP '[^\x00-\x7F]' <file>` finds strays.
 - Python `re` is Unicode-aware where JS `RegExp` is not (`\b`, `\d`, `\s`, `.`); `services/scrub.ts` shows the rewrites.
 - In zsh, unquoted variables don't word-split; loop over query results with Python or `${=var}`.
