@@ -118,4 +118,32 @@ describe('loadConfig from the environment', () => {
   ])('refuses %s=%j', (name, value) => {
     expect(() => loadConfig({ [name]: value })).toThrow(name)
   })
+
+  // The same minimum as ConfigUpdate in schemas/settings.ts, so a bad seed cannot get past
+  // what Settings would refuse.
+  it.each([
+    ['SYNC_INTERVAL_HOURS', '0'],
+    ['SYNC_INTERVAL_HOURS', '-3'],
+    ['SYNC_INTERVAL_HOURS', '0.5'],
+    ['SYNC_FIRST_HISTORY_DAYS', '0'],
+    ['SYNC_FIRST_HISTORY_DAYS', '-30'],
+    ['SYNC_FIRST_HISTORY_DAYS', '7.5'],
+  ])('refuses %s=%j with a ConfigError naming the variable and the rule', (name, value) => {
+    let error: unknown
+    try {
+      loadConfig({ [name]: value })
+    } catch (e) {
+      error = e
+    }
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).name).toBe('ConfigError')
+    expect((error as Error).message).toBe(`${name}=${JSON.stringify(value)} is invalid: expected an integer >= 1`)
+  })
+
+  it.each([
+    ['SYNC_INTERVAL_HOURS', 'syncIntervalHours'],
+    ['SYNC_FIRST_HISTORY_DAYS', 'syncFirstHistoryDays'],
+  ] as const)('accepts %s=1, the minimum', (name, field) => {
+    expect(loadConfig({ [name]: '1' }).defaults[field]).toBe(1)
+  })
 })
