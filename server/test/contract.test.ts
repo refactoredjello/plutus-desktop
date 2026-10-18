@@ -381,14 +381,14 @@ async function call(method: string, url: string, body?: unknown): Promise<Respon
 }
 
 /**
- * A valid request for every operation. Wave 0 stubs answer 501 problem+json; a route its brief
- * has implemented answers anything but a validation error or a server error (on an empty
- * database that is often 404; a fake SimpleFIN token is a 502 upstream provider error, decided
- * without the network). Wave 3's gate is that no 501 remains.
+ * A valid request for every operation reaches a real handler: anything but a validation error
+ * or a server error (on an empty database that is often 404; a fake SimpleFIN token is a 502
+ * upstream provider error, decided without the network). Wave 3 retired the last 501 stub, so
+ * no operation may answer 501 any more.
  */
-const parsed = (status: number) => status !== 422 && (status < 500 || status === 501 || status === 502)
+const parsed = (status: number) => status !== 422 && (status < 500 || status === 502)
 
-describe('every operation accepts its sample request; stubs answer 501 problem+json', () => {
+describe('every operation accepts its sample request and is implemented', () => {
   const ops = [...serverOps].filter(([, op]) => op.operationId !== 'get_health')
 
   it('has a sample request for every operation', () => {
@@ -400,21 +400,12 @@ describe('every operation accepts its sample request; stubs answer 501 problem+j
     const sample = SAMPLES[op.operationId] ?? {}
     const res = await call(method, sampleUrl(path, sample.query), sample.body)
     expect(res.status).toSatisfy(parsed)
-    if (res.status !== 501) return
-    expect(res.headers.get('content-type')).toBe('application/problem+json')
-    expect(await res.json()).toEqual({
-      type: 'about:blank',
-      title: 'Not implemented',
-      status: 501,
-      detail: 'Not implemented yet',
-      instance: sampleUrl(path),
-    })
   })
 })
 
 /**
  * Request parsing mirrors FastAPI and Pydantic's lax mode. A request that parses reaches the
- * handler (`parsed`: a stub's 501 or the route's own answer); one that does not is a 422 problem.
+ * handler (`parsed`: the route's own answer); one that does not is a 422 problem.
  */
 describe('request parsing (FastAPI and Pydantic lax mode)', () => {
   async function status(method: string, url: string, body?: unknown) {
