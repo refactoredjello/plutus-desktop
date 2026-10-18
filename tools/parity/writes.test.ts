@@ -224,6 +224,19 @@ describe('WRITE_STEPS', () => {
     )
   })
 
+  it('marks last month\'s largest expense one-time when this month has none yet', async () => {
+    const step = WRITE_STEPS.find((s) => s.name === 'mark one-time')!
+    const api = fakeApi({
+      '/api/reports/month/2026-10': { largest: [] },
+      '/api/reports/month/2026-09': { largest: [tx(11, { amount: '-2100.00' })] },
+    })
+    expect(await runPrepare(step, api, {}, '2026-10-01')).toEqual({
+      method: 'PATCH',
+      path: '/api/transactions/11',
+      body: { one_time: true },
+    })
+  })
+
   it('fails preparation when a step needs state an earlier step did not capture', async () => {
     const step = WRITE_STEPS.find((s) => s.name === 'generate suggestions')!
     await expect(runPrepare(step, fakeApi(), {}, TODAY)).rejects.toThrow('goalId')
