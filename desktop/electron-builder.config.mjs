@@ -50,11 +50,9 @@ export default {
       { target: 'dmg', arch: ['arm64', 'x64'] },
       { target: 'zip', arch: ['arm64', 'x64'] },
     ],
-    ...macSigning(process.env),
-  },
-  dmg: {
-    // Plutus-0.1.0-arm64.dmg, Plutus-0.1.0-x64.dmg
+    // Plutus-0.1.0-arm64.dmg, Plutus-0.1.0-x64.zip, ...
     artifactName: '${productName}-${version}-${arch}.${ext}',
+    ...macSigning(process.env),
   },
 
   // Configured, not verified: built and tested on macOS only so far.
