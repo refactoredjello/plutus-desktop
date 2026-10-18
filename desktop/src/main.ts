@@ -1,6 +1,6 @@
 /**
  * Electron main process: open the database, run the server in-process on a loopback port,
- * and show it in a window. Plan section 8, briefs 1F and 5B.
+ * and show it in a window.
  *
  * --data-dir <folder> runs a second profile: its own database, log, and single-instance lock.
  * PLUTUS_DEVTOOLS=1 opens the DevTools panel in dev builds (ignored when packaged).

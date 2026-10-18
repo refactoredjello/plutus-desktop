@@ -1,5 +1,5 @@
 /**
- * The desktop SecretStore (plan section 5.7): secrets are encrypted by the OS through
+ * The desktop SecretStore: secrets are encrypted by the OS through
  * Electron's safeStorage (the Keychain on macOS, DPAPI on Windows, libsecret on Linux).
  * Blobs are base64 of safeStorage's output. Error messages never include the secret.
  */
