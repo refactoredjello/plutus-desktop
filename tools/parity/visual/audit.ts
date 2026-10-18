@@ -158,6 +158,15 @@ async function main(): Promise<number> {
     for (const r of results) for (const p of r.problems) log(`  ${r.path}: ${p}`)
     for (const g of gaps) log(`  gap: ${g}`)
     log(`report: ${join(OUT, 'audit.md')}`)
+    const tagged = (t: string) => events.filter((l) => l.startsWith(`{"t":"${t}"`)).map((l) => JSON.parse(l) as Record<string, unknown>)
+    const seed = tagged('seed')[0]?.statuses
+    log(`seed statuses (goal, suggestions, planned item, recurrence): ${JSON.stringify(seed ?? null)}`)
+    const guard = tagged('guard')[0]?.status
+    log(`unguarded GET /api/health from outside the page: ${String(guard ?? 'not checked')}`)
+    if (guard !== 401) {
+      log('the cookie guard did not answer 401')
+      return 1
+    }
     const finished = events.some((l) => l.startsWith('{"t":"done"'))
     if (code !== 0 || !finished || shots.length !== ROUTES.length) {
       log(`Electron ${code === null ? 'timed out' : `exited ${code}`}${finished ? '' : ' before finishing'}; see ${join(OUT, 'electron.log')}`)

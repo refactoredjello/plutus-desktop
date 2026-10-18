@@ -152,6 +152,32 @@ function navigateInApp(wc, path) {
   })()`)
 }
 
+/**
+ * After the first page: one goal with suggestions, one planned item, one confirmed recurrence,
+ * sent by the page itself (so through the cookie guard), so Goals, Planned, and Recurring show
+ * data and send their per-item requests. Recorded under its own marker, not as a page.
+ */
+function seed(wc) {
+  return wc.executeJavaScript(`(async () => {
+    const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
+    const send = async (method, path, body) => {
+      const res = await fetch(path, {
+        method,
+        credentials: 'include',
+        headers: body === undefined ? {} : { 'content-type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+      return { status: res.status, body: res.status === 204 ? null : await res.json() }
+    }
+    const goal = await send('POST', '/api/goals', { name: 'Emergency fund', target_amount: '6000.00', target_date: day(365) })
+    const suggestions = await send('POST', '/api/goals/' + goal.body.id + '/suggestions')
+    const entry = await send('POST', '/api/manual-entries', { amount: '-180.00', description: 'Car registration', due_date: day(14), recurrence: 'none' })
+    const proposed = (await send('GET', '/api/recurring?status=proposed')).body
+    const confirmed = proposed.length > 0 ? await send('PATCH', '/api/recurring/' + proposed[0].id, { status: 'confirmed' }) : { status: null }
+    return [goal.status, suggestions.status, entry.status, confirmed.status]
+  })()`)
+}
+
 async function audit() {
   const win = await waitFor(() => BrowserWindow.getAllWindows()[0], 'the window', 60_000)
   const wc = win.webContents
@@ -175,7 +201,15 @@ async function audit() {
     const image = await wc.capturePage()
     writeFileSync(join(OUT, route.file), image.toPNG())
     emit({ t: 'screenshot', path: route.path, file: route.file, how, url: wc.getURL() })
+    if (i === 0) {
+      emit({ t: 'route', path: '(seed: a goal, a planned item, a confirmed recurrence)' })
+      emit({ t: 'seed', statuses: await seed(wc) })
+      await quiet()
+    }
   }
+  // The guard: the same API from outside the page, without the cookie.
+  const unguarded = await fetch(`${origin}/api/health`)
+  emit({ t: 'guard', status: unguarded.status })
 }
 
 audit()
