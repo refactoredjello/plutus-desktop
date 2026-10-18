@@ -58,7 +58,7 @@ describe('startServer', () => {
     rmSync(webDist, { recursive: true, force: true })
   })
 
-  async function start(): Promise<RunningServer> {
+  async function start(extra: { appVersion?: string } = {}): Promise<RunningServer> {
     const config = desktopConfig(loadConfig({}), { ...paths, webDist })
     running = await startServer({
       db: openDb(':memory:'),
@@ -66,6 +66,7 @@ describe('startServer', () => {
       config,
       log: silentLogger(),
       guardToken: token,
+      ...extra,
     })
     return running
   }
@@ -98,6 +99,12 @@ describe('startServer', () => {
     const res = await fetch(`${origin}/api/health`, { headers: { cookie: `plutus_guard=${token}` } })
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ status: 'ok', database: 'ok' })
+  })
+
+  it('reports the desktop release version on /api/health', async () => {
+    const { origin } = await start({ appVersion: '4.5.6' })
+    const res = await fetch(`${origin}/api/health`, { headers: { cookie: `plutus_guard=${token}` } })
+    expect(await res.json()).toMatchObject({ status: 'ok', version: '4.5.6' })
   })
 
   it('rejects a token from another launch', async () => {

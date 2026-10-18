@@ -37,9 +37,22 @@ describe('health', () => {
     expect(await res.json()).toEqual({ status: 'degraded', database: 'unreachable', version: '0.1.0' })
   })
 
-  it('reports the package version', async () => {
+  it('reports the package version when no app version is given (headless)', async () => {
     const { app } = makeApp()
     const res = await app.request('/api/health')
     expect(((await res.json()) as Record<string, unknown>).version).toBe('0.1.0')
+  })
+
+  it('reports the app version it was given (the desktop release)', async () => {
+    const { app } = makeApp({ appVersion: '9.8.7' })
+    const res = await app.request('/api/health')
+    expect(await res.json()).toEqual({ status: 'ok', database: 'ok', version: '9.8.7' })
+  })
+
+  it('reports the given app version when degraded too', async () => {
+    const { app, db } = makeApp({ appVersion: '9.8.7' })
+    db.$client.close()
+    const res = await app.request('/api/health')
+    expect(await res.json()).toEqual({ status: 'degraded', database: 'unreachable', version: '9.8.7' })
   })
 })

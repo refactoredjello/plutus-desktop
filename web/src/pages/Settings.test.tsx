@@ -115,3 +115,11 @@ describe('Settings dismissed changes', () => {
     expect(called).toBe(true)
   })
 })
+
+describe('Settings app version', () => {
+  it('shows the version the server reports', async () => {
+    server.use(http.get('/api/health', () => HttpResponse.json({ status: 'ok', database: 'ok', version: '0.2.0' })))
+    renderAt('/settings')
+    expect(await screen.findByText('Plutus 0.2.0')).toBeInTheDocument()
+  })
+})
