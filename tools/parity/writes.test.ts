@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { Envelope } from './diff.ts'
-import { NOT_COMPARED, templateFor } from './endpoints.ts'
+import { ENDPOINTS, NOT_COMPARED, templateFor } from './endpoints.ts'
 import type { Json } from './normalize.ts'
 import { type Api, PrepareError, type State, type StepRequest, WRITE_STEPS, runPrepare } from './writes.ts'
 
 const TODAY = '2026-09-30'
+const skippedOps = new Set(NOT_COMPARED.map((n) => n.endpoint))
 
 const tx = (id: number, extra: Record<string, Json> = {}): Json => ({
   id,
@@ -30,8 +31,9 @@ const GETS: Record<string, Json> = {
       tx(5, { merchant_key: 'NETFLIX.COM CA' }),
       tx(6, { merchant_key: 'BLUE BOTTLE COFFEE OAKLAND CA', categorization: null }),
       tx(7, { merchant_key: 'SHELL OIL OAKLAND CA' }),
+      tx(8, { merchant_key: 'TRADER JOE S OAKLAND CA' }),
     ],
-    total: 7,
+    total: 8,
     limit: 500,
     offset: 0,
   },
@@ -52,6 +54,12 @@ const GETS: Record<string, Json> = {
   ],
   '/api/reports/changes?all=true': { items: [{ key: 'S4:category:110:2026-09' }, { key: 'S7:review:1:2' }] },
   '/api/rules': [{ id: 4 }, { id: 9 }],
+  '/api/transactions?include_transfers=true&limit=500': {
+    items: [tx(1), tx(2, { is_transfer: true }), tx(5, { merchant_key: 'NETFLIX.COM CA' })],
+    total: 3,
+    limit: 500,
+    offset: 0,
+  },
 }
 
 const WRITES: Record<string, Json> = {
@@ -59,6 +67,7 @@ const WRITES: Record<string, Json> = {
   'POST /api/goals': { id: 41 },
   'POST /api/goals/{goal_id}/suggestions': [{ id: 51 }, { id: 52 }],
   'POST /api/categories': { id: 200 },
+  'PATCH /api/suggestions/{suggestion_id}': { id: 51 },
 }
 
 function fakeApi(gets: Record<string, Json> = GETS): Api & { calls: string[] } {
@@ -212,5 +221,115 @@ describe('WRITE_STEPS', () => {
   it('fails preparation when a step needs state an earlier step did not capture', async () => {
     const step = WRITE_STEPS.find((s) => s.name === 'generate suggestions')!
     await expect(runPrepare(step, fakeApi(), {}, TODAY)).rejects.toThrow('goalId')
+  })
+})
+
+describe('error paths and edge cases', () => {
+  async function requestsByName(): Promise<Record<string, StepRequest | undefined>> {
+    const { requests } = await runAll(fakeApi())
+    return Object.fromEntries(WRITE_STEPS.map((s, i) => [s.name, requests[i]]))
+  }
+
+  it('sends every write with a path parameter to a missing id too', async () => {
+    const { requests } = await runAll(fakeApi())
+    const templated = ENDPOINTS.filter((e) => !e.startsWith('GET ') && e.includes('{') && !skippedOps.has(e))
+    const missing = new Set(
+      requests.filter((r) => r.path.split('/').includes('999999')).map((r) => templateFor(r.method, r.path)),
+    )
+    expect(templated.filter((e) => !missing.has(e))).toEqual([])
+  })
+
+  it('sends an invalid body to every write that takes one', async () => {
+    const { requests } = await runAll(fakeApi())
+    const names = WRITE_STEPS.map((s) => s.name)
+    for (const name of [
+      'reject an invalid goal body',
+      'reject an invalid transaction update',
+      'reject a bad cadence',
+      'reject an invalid recurrence update',
+      'reject an invalid manual entry',
+      'reject an invalid suggestion status',
+      'reject an invalid category',
+      'reject an empty change key',
+    ]) {
+      expect(names).toContain(name)
+    }
+    expect(requests.some((r) => r.method === 'PATCH' && r.body === undefined)).toBe(true)
+    expect(requests.some((r) => r.method === 'POST' && r.path === '/api/goals' && r.body === undefined)).toBe(true)
+  })
+
+  it('picks targets for the transaction edge cases from the app\'s own data', async () => {
+    const byName = await requestsByName()
+    expect(byName['recategorize with a contains rule']).toEqual({
+      method: 'PATCH',
+      path: '/api/transactions/7',
+      body: { category_id: 61, essentiality: 'flexible', save_as_rule: true, rule_match_type: 'contains' },
+    })
+    expect(byName['recategorize with a prefix rule']?.path).toBe('/api/transactions/8')
+    expect(byName['recategorize with a prefix rule']?.body).toMatchObject({ rule_match_type: 'prefix' })
+    expect(byName['clear a note and essentiality']).toEqual({
+      method: 'PATCH',
+      path: '/api/transactions/9',
+      body: { note: '', essentiality: null },
+    })
+    expect(byName['add a note with accents']).toEqual({
+      method: 'PATCH',
+      path: '/api/transactions/1',
+      body: { note: 'Caf\u00e9 \u00e9t\u00e9 \u00c9T\u00c9 (parity)' },
+    })
+    expect(byName['recategorize to an unknown category']?.body).toEqual({ category_id: 999999 })
+    expect(byName['edit a note with save_as_rule false']).toEqual({
+      method: 'PATCH',
+      path: '/api/transactions/4',
+      body: { note: 'Parity default flag', save_as_rule: false },
+    })
+    expect(byName['update a transaction with no body']).toEqual({ method: 'PATCH', path: '/api/transactions/9' })
+    expect(byName['update a transaction with an empty body']?.body).toEqual({})
+  })
+
+  it('picks targets for the recurring edge cases', async () => {
+    const byName = await requestsByName()
+    expect(byName['mark a missing transaction recurring']?.body).toEqual({ transaction_id: 999999, cadence: 'monthly' })
+    expect(byName['mark a transfer recurring']?.body).toEqual({ transaction_id: 2, cadence: 'monthly' })
+    expect(byName['re-mark a dismissed recurrence']?.body).toEqual({ transaction_id: 5, cadence: 'monthly' })
+    expect(byName['change a recurrence cadence and amount']).toEqual({
+      method: 'PATCH',
+      path: '/api/recurring/2',
+      body: { cadence: 'weekly', amount: '-21.99', essentiality: null },
+    })
+  })
+
+  it('sends money as numbers and edge-case strings', async () => {
+    const byName = await requestsByName()
+    expect(byName['create a manual entry from a number']?.body).toEqual({
+      amount: -42.5,
+      description: 'Parity weekly lunch',
+      category_id: 63,
+      due_date: '2026-10-02',
+      recurrence: 'weekly',
+    })
+    expect(byName['create a manual entry with a sub-cent amount']?.body).toMatchObject({ amount: '12.345' })
+    expect(byName['create a manual entry with a negative half cent']?.body).toMatchObject({ amount: '-0.005' })
+    expect(byName['create a manual entry with an exponent']?.body).toMatchObject({ amount: '1e2' })
+    expect(byName['reject a NaN manual entry amount']?.body).toMatchObject({ amount: 'NaN' })
+    expect(byName['create a goal from a number']?.body).toEqual({
+      name: 'Parity trip',
+      target_amount: 2500,
+      target_date: '2027-04-18',
+    })
+    expect(byName['mark a manual entry fulfilled']?.body).toEqual({ fulfilled_transaction_id: 1 })
+  })
+
+  it('repeats the category create for the conflict and renames seeded and custom categories', async () => {
+    const byName = await requestsByName()
+    expect(byName['create a duplicate category']?.body).toEqual(byName['create a category']?.body)
+    expect(byName['rename a category to spaces']).toEqual({
+      method: 'PATCH',
+      path: '/api/categories/200',
+      body: { label: '   ' },
+    })
+    expect(byName['rename a seeded category']?.path).toBe('/api/categories/63')
+    expect(byName['keep a suggestion']).toEqual({ method: 'PATCH', path: '/api/suggestions/51', body: { status: 'kept' } })
+    expect(byName['use a method the endpoint lacks']?.method).toBe('PUT')
   })
 })
