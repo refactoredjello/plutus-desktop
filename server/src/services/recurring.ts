@@ -193,15 +193,17 @@ export function detectRecurring(db: Db): number {
     const cadence = items.length >= MIN_OCCURRENCES ? detectCadence(dates) : null
     if (cadence === null || !amountsConsistent(amounts)) {
       // Too few or irregular to detect, e.g. a yearly fee the owner marked by hand.
-      // Still keep an existing recurrence's dates current.
+      // Still keep an existing recurrence's dates and amount current (backlog 5).
       const lastDate = dates.at(-1)
+      const lastAmount = amounts.at(-1)
       if (
         found !== undefined &&
         lastDate !== undefined &&
+        lastAmount !== undefined &&
         (found.last_seen_on === null || lastDate > found.last_seen_on)
       ) {
         db.update(recurrences)
-          .set({ last_seen_on: lastDate, next_expected_date: nextAfter(lastDate, found.cadence) })
+          .set({ amount: lastAmount, last_seen_on: lastDate, next_expected_date: nextAfter(lastDate, found.cadence) })
           .where(eq(recurrences.id, found.id))
           .run()
         changed += 1
@@ -230,15 +232,14 @@ export function detectRecurring(db: Db): number {
     const nxt = nextAfter(last, found.cadence)
     if (found.amount !== amount || found.last_seen_on !== last || found.next_expected_date !== nxt) {
       Object.assign(patch, { amount, last_seen_on: last, next_expected_date: nxt })
-      changed += 1
     }
     const ess = essentiality.get(key)
     if (found.essentiality === null && ess !== undefined) {
       patch.essentiality = ess
-      changed += 1
     }
     if (Object.keys(patch).length > 0) {
       db.update(recurrences).set(patch).where(eq(recurrences.id, found.id)).run()
+      changed += 1 // once per recurrence, however many fields changed (backlog 3)
     }
   }
   return changed
