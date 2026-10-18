@@ -566,6 +566,26 @@ export interface paths {
         patch: operations["update_transaction"];
         trace?: never;
     };
+    "/api/transactions/{transaction_id}/unpair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unpair Transfer
+         * @description Split a transfer pair: both rows count as ordinary transactions again, and later syncs leave them unpaired.
+         */
+        post: operations["unpair_transaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2196,6 +2216,28 @@ export interface operations {
                 "application/json": components["schemas"]["TransactionUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionRead"];
+                };
+            };
+        };
+    };
+    unpair_transaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

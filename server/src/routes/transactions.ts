@@ -9,6 +9,7 @@ import { pathInt, queryBool, queryInt, queryIntList } from '../schemas/params.js
 import { TransactionPage, TransactionRead, TransactionUpdate } from '../schemas/transactions.js'
 import { plainDate } from '../lib/dates.js'
 import * as service from '../services/transactions.js'
+import { unpairTransfer } from '../services/transfers.js'
 import { json, jsonBody } from './openapi.js'
 
 const listTransactions = createRoute({
@@ -45,6 +46,17 @@ const updateTransaction = createRoute({
   responses: { 200: json(TransactionRead) },
 })
 
+const unpairTransaction = createRoute({
+  method: 'post',
+  path: '/api/transactions/{transaction_id}/unpair',
+  operationId: 'unpair_transaction',
+  summary: 'Unpair Transfer',
+  description: 'Split a transfer pair: both rows count as ordinary transactions again, and later syncs leave them unpaired.',
+  tags: ['transactions'],
+  request: { params: params({ transaction_id: pathInt() }) },
+  responses: { 200: json(TransactionRead) },
+})
+
 export function registerTransactions(app: App): void {
   app.openapi(listTransactions, (c) => {
     const query = c.req.valid('query')
@@ -70,4 +82,5 @@ export function registerTransactions(app: App): void {
     const tx = service.updateTransaction(db, secrets, config.defaults, c.req.valid('param').transaction_id, c.req.valid('json'), fields)
     return c.json(tx, 200)
   })
+  app.openapi(unpairTransaction, (c) => c.json(unpairTransfer(c.var.db, c.req.valid('param').transaction_id), 200))
 }
