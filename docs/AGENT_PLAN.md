@@ -1,6 +1,6 @@
 # Plutus — Multi-Agent Build Plan
 
-How Plutus is built with one orchestrating Opus session managing a small set of subagents in Claude Code. The desktop port (Waves 0 to 6 of docs/DESKTOP_PLAN.md) runs on this model; the original build is kept below as history.
+How Plutus is built with one orchestrating Opus session managing a small set of subagents in Claude Code.
 
 ## Shape: hub and spoke
 
@@ -38,7 +38,6 @@ Role definitions live in `.claude/agents/`. Review uses the built-in `/code-revi
 | `frontend-engineer` | `web/` | pages and components against the generated client and MSW |
 | `desktop-engineer` | `desktop/` | the Electron shell and packaging |
 | `docs-writer` | docs and READMEs | making every doc describe the repository as it is |
-| `parity-engineer` | (retired) | the port's parity harness and data export; the harness was deleted at the cutover (brief 5A) |
 
 `AGENTS.md` at the repository root carries the principles, setup, and conventions into every agent (`CLAUDE.md` imports it for Claude Code).
 
@@ -59,53 +58,3 @@ Role definitions live in `.claude/agents/`. Review uses the built-in `/code-revi
 - **No real secrets in any agent's environment.** Fixtures and fake providers only. The owner adds real keys in the app's Settings.
 - **Merges happen one at a time**, each followed by a green `make check`.
 - **Items on docs/BACKLOG.md are fixed only with the owner's go-ahead.**
-
-## History: the original build (2026-10-03)
-
-The first version was a Python (FastAPI, Postgres, Docker Compose) app built by `backend-engineer` and `frontend-engineer` subagents in `~/dev/Plutus`. Its waves are kept for the record; the code they describe left this repository at the desktop cutover (tag `wave-4`, brief 5A).
-
-### Build waves
-
-Parallel work is only safe once the shared contracts exist. Wave 0 builds them serially, then later waves fan out.
-
-#### Wave 0: contracts (orchestrator, serial) — built 2026-10-03, awaiting your review
-
-The orchestrator does this itself or with one agent, then reviews it with you before anything runs in parallel.
-
-- Phase 0 scaffold: compose, FastAPI health, Vite app, lint and test tooling, CI.
-- **The entire data model as one initial Alembic migration.** ARCHITECTURE.md already specifies every table, so doing it up front removes the main source of parallel merge conflicts.
-- **Every router stubbed with its Pydantic request and response schemas**, returning 501. This produces the full OpenAPI spec.
-- Generated TypeScript client from that spec, plus MSW set up so pages can be built against mocks. Each frontend brief adds the mock handlers its pages need.
-- Test fixtures: a recorded-style SimpleFIN JSON file with fake data, a FakeLLMProvider, a golden file of messy bank descriptions.
-- CLAUDE.md and the two agent definitions above.
-
-**Checkpoint with you:** review the schema and API shape. Changing them later is the expensive kind of change.
-
-#### Wave 1: data in (three agents in parallel) — merged 2026-10-03
-
-| Agent | Brief | Requirements | Owns |
-|---|---|---|---|
-| backend-engineer A | SimpleFIN provider, sync service, scheduler, setup-token exchange, encrypted settings | R1 | `providers/bank/`, `services/sync.py`, `scheduler.py`, sync and settings routers |
-| backend-engineer B | Taxonomy seed, scrub and normalize, LLM providers, categorization pipeline, rules, transfer detection | R2, R3 | `providers/llm/`, `services/scrub.py`, `services/categorize.py`, `services/transfers.py`, transactions and categories routers |
-| frontend-engineer C | App shell and navigation, Settings page, Transactions page with inline edits | R1.3, R2 UI | `web/src/pages/Settings*`, `web/src/pages/Transactions*`, layout |
-
-**Checkpoint with you:** paste your real SimpleFIN token into your local `.env` and run a real sync. Agents never see the real token.
-
-#### Wave 2: insight (three agents in parallel) — merged 2026-10-03
-
-| Agent | Brief | Requirements | Owns |
-|---|---|---|---|
-| backend-engineer A (resumed) | Reports, recurring detection, projection | R4, R6, R7 | `services/recurring.py`, `services/projection.py`, reports, recurring and projection routers |
-| backend-engineer B (resumed) | Manual entries, goals, savings suggestions | R5, R8 | `services/suggestions.py`, manual-entries, goals and suggestions routers |
-| frontend-engineer C (resumed) | Overview charts, Recurring, Manual entries, Goals pages; a rules list with delete in Settings | R4 to R8 UI, R2.3 | remaining `web/src/pages/*`, `src/features/settings/RulesCard.tsx` |
-
-Resuming the Wave 1 agents with SendMessage keeps what they learned about the codebase.
-
-**Checkpoint with you:** a full click-through of the app on your real data. This is the moment to cut or reshape UI.
-
-#### Wave 3: harden and ship (orchestrator plus one agent, serial)
-
-- Auth: password login, session cookie, route protection, login page (R9).
-- Production compose profile, Caddy, JSON logs, backup script, deploy README.
-- An end-to-end test from sync through categorization to the Overview numbers.
-
