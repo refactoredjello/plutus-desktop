@@ -1,4 +1,4 @@
-/** Ports app/schemas/recurring.py. */
+/** Request and response schemas for recurring charges. */
 
 import { z } from '@hono/zod-openapi'
 import { Money, MoneyInput, PlainDate } from './common.js'

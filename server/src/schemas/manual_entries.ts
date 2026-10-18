@@ -1,4 +1,4 @@
-/** Ports app/schemas/manual_entries.py. */
+/** Request and response schemas for manual entries. */
 
 import { z } from '@hono/zod-openapi'
 import { Money, MoneyInput, PlainDate } from './common.js'

@@ -1,9 +1,8 @@
 /**
- * Ollama implementation of LLMProvider over its HTTP chat API (no extra dependency). Ports
- * app/providers/llm/ollama.py.
+ * Ollama implementation of LLMProvider over its HTTP chat API (no extra dependency).
  *
- * httpx becomes an injected `fetch`. httpx does not follow redirects, so neither does this; its
- * 300-second timeout becomes AbortSignal.timeout.
+ * HTTP goes through an injected `fetch` (tests pass a stub). Redirects are not followed, and a
+ * request times out after 300 seconds (AbortSignal.timeout).
  */
 
 import type { z } from 'zod'
@@ -35,7 +34,7 @@ export type FetchFn = (input: string | URL | Request, init?: RequestInit) => Pro
 
 class Unusable extends Error {}
 
-/** `value[key]` in Python: a dict lookup, KeyError or TypeError otherwise. */
+/** `value[key]` on an object that has the key; Unusable otherwise. */
 function item(value: unknown, key: string): unknown {
   if (value === null || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, key)) {
     throw new Unusable(key)

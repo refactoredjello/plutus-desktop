@@ -1,8 +1,8 @@
 /**
- * Key/value app settings with optional encryption of values. Ports app/services/app_settings.py,
- * plus the SimpleFIN connection logic that lived in app/routers/settings.py (routes stay thin).
+ * Key/value app settings with optional encryption of values, plus the SimpleFIN connection
+ * logic (routes stay thin).
  *
- * Encryption goes through the SecretStore (plan 5.7) instead of Fernet. With KeySecretStore the
+ * Encryption goes through the SecretStore. With KeySecretStore the
  * key is derived from PLUTUS_SECRET_KEY, so rotating it invalidates stored secrets.
  */
 

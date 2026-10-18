@@ -1,17 +1,12 @@
 /**
  * SimpleFIN sync (R1). One run = one pass over the provider; never retried within a run.
- * Ports app/services/sync.py, plus the background half of app/routers/sync.py's manual run
- * and its run queries (routes stay thin).
+ * Also the background half of the manual run and the run queries (routes stay thin).
  *
- * Rewritten for better-sqlite3 and async providers:
- * - Python ran a whole run in one session and committed once at the end, rolling everything
- *   back on an exception. A transaction here cannot stay open across an await (the LLM call in
- *   categorization), so a run commits per step: the upsert with transfer matching, then
- *   categorization (which commits its own batches), then recurring detection with the run's
- *   outcome. A failure rolls back its own step only; earlier steps stay committed.
- * - start_run's prune, guards, and insert commit together, as Python's single commit did; a
- *   refused run rolls the prune back, as closing Python's session without a commit did.
- * - The clock is the real one, as Python's datetime.now(UTC); `syncClock` lets tests pin it.
+ * - A transaction cannot stay open across an await (the LLM call in categorization), so a
+ *   run commits per step: the upsert with transfer matching, then categorization (which
+ *   commits its own batches), then recurring detection with the run's outcome. A failure rolls back its own step only; earlier steps stay committed.
+ * - startRun's prune, guards, and insert commit together; a refused run rolls the prune back.
+ * - The clock is the real UTC clock; `syncClock` lets tests pin it.
  *   Services downstream (recurring detection) read lib/dates.today() themselves.
  */
 
@@ -61,7 +56,7 @@ function iso(ms: number): string {
   return new Date(ms).toISOString()
 }
 
-/** Python's repr() of a str, for the error text of a non-domain exception. */
+/** A string quoted and escaped for the error text of a non-domain exception. */
 function reprString(text: string): string {
   const quote = text.includes("'") && !text.includes('"') ? '"' : "'"
   let out = ''
@@ -196,7 +191,7 @@ function upsertAccount(db: Db, providerName: string, pa: ProviderAccount): Accou
       .returning()
       .get()
   }
-  // SQLAlchemy writes only changed attributes, so an unchanged account keeps updated_at.
+  // Write only changed columns, so an unchanged account keeps updated_at.
   const changed = Object.fromEntries(
     Object.entries(values).filter(([key, value]) => account[key as keyof typeof values] !== value),
   )
@@ -226,8 +221,8 @@ function changes(tx: Transaction | undefined, pt: ProviderTransaction): Partial<
 
 function upsertTransactions(db: Db, account: Account, txs: readonly ProviderTransaction[]): [number, number] {
   if (txs.length === 0) return [0, 0]
-  // Python selected `external_id IN (ids)`; reading the account's rows and looking ids up gives
-  // the same rows without SQLite's bound-parameter limit.
+  // Read the account's rows and look ids up, rather than `external_id IN (ids)`, to stay clear
+  // of SQLite's bound-parameter limit.
   const ids = new Set(txs.map((t) => t.external_id))
   const existing = new Map(
     db
@@ -261,8 +256,8 @@ function upsertTransactions(db: Db, account: Account, txs: readonly ProviderTran
 
 /** A pending row that was not returned again either posted under a new id or was dropped. */
 function dropStalePending(db: Db, account: Account, start: PlainDate, seen: ReadonlySet<string>): void {
-  // Python deleted `external_id NOT IN (seen)` (no filter when seen is empty); filtering the
-  // candidates here avoids SQLite's bound-parameter limit.
+  // Delete the candidates whose external_id is not in `seen` (all of them when seen is empty);
+  // filtering here rather than with NOT IN avoids SQLite's bound-parameter limit.
   const stale = db
     .select({ id: transactions.id, external_id: transactions.external_id })
     .from(transactions)
@@ -333,7 +328,7 @@ export async function executeRun(
   }
 }
 
-/** Record a run as failed. Writes the run's request count too, as Python's commit did. */
+/** Record a run as failed, with the run's request count. */
 export function failRun(db: Db, run: SyncRun, message: string): SyncRun {
   const outcome = {
     status: 'error' as const,
@@ -371,7 +366,7 @@ export function startManualSync(
 }
 
 /**
- * POST /api/sync after it answers (Python's `_execute_in_background`). Never rejects: a
+ * The run POST /api/sync starts after it answers. Never rejects: a
  * detached promise must record its own failure, not surface as an unhandled rejection.
  */
 export async function executeInBackground(

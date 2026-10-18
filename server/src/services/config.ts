@@ -1,7 +1,6 @@
 /**
- * Runtime config: the knobs that lived in the Python app's environment (plan 5.7), kept in
- * app_settings so the desktop can change them. New: the Python app read app/config.py's
- * Settings on every call. The rest of the server reads these through this module, never env.
+ * Runtime config: the knobs kept in app_settings so the desktop can change them at run time.
+ * The rest of the server reads these through this module, never env.
  *
  * The rule:
  * - Seeding. The first time the config is read or updated, every knob without a row is written
@@ -42,7 +41,7 @@ export const CONFIG_KEYS = {
 /** Marks a database whose config has been seeded from the env defaults. */
 export const CONFIG_SEEDED_AT = 'config_seeded_at'
 
-/** The environment variable of each knob, as app/config.py and loadConfig name it. */
+/** The environment variable of each knob, as loadConfig names it. */
 const ENV_NAMES: Record<keyof RuntimeDefaults, string> = {
   llmProvider: 'LLM_PROVIDER',
   llmModel: 'LLM_MODEL',
@@ -221,7 +220,7 @@ export function llmProvider(db: Db, secrets: SecretStore, defaults: RuntimeDefau
   return getLlmProvider(llmSettings(db, secrets, defaults), log)
 }
 
-/** app/routers/settings.py get_llm_status: Claude is configured only with a non-blank key. */
+/** The LLM status: Claude is configured only with a non-blank key. */
 export function llmStatus(db: Db, secrets: SecretStore, defaults: RuntimeDefaults): LlmStatus {
   const config = runtimeConfig(db, secrets, defaults)
   return {

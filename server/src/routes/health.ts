@@ -1,4 +1,4 @@
-/** Ports app/routers/health.py. */
+/** Routes for the health check. */
 
 import { readFileSync } from 'node:fs'
 import { createRoute } from '@hono/zod-openapi'

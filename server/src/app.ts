@@ -1,7 +1,6 @@
 /**
- * App factory. Ports app/main.py: error handlers, the request id middleware, and route
- * registration, plus serving the SPA (web/nginx.conf) and the API guard (plan section 5.9).
- * Route registration is pre-wired here so feature briefs never edit it.
+ * App factory: error handlers, the request id middleware, route registration, serving the
+ * SPA, and the API guard.
  */
 
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
@@ -77,7 +76,7 @@ export interface AppEnv {
 
 export type App = OpenAPIHono<AppEnv>
 
-/** FastAPI's names for the request parts, used as the first element of an issue location. */
+/** Names for the request parts, used as the first element of an issue location. */
 const LOCATIONS: Record<string, string> = {
   json: 'body',
   form: 'body',
@@ -96,7 +95,7 @@ function problem(c: Context, body: Problem): Response {
 /**
  * The body checks that run before a route's validation hook: @hono/zod-openapi's media type
  * gate (415, missing or wrong Content-Type) and Hono's json validator (400, malformed or empty
- * JSON). FastAPI answered 422 for both; plan 5.5 makes them 422 problem+json.
+ * JSON). Both answer 422 problem+json, like any other invalid body.
  */
 function isBodyValidationException(err: unknown): err is HTTPException {
   if (!(err instanceof HTTPException)) return false
@@ -141,7 +140,7 @@ function apiGuard(token: string): MiddlewareHandler<AppEnv> {
 
 /**
  * A required JSON body sent with no Content-Type and no bytes: Hono's json validator hands the
- * route {} (all-optional PATCHes became no-ops), where FastAPI answered 422 at `body`. The
+ * route {} (all-optional PATCHes would become no-ops), so this answers 422 at `body`. The
  * routes come from the OpenAPI document, read on first use once every route is registered.
  */
 function requiredBody(app: App): MiddlewareHandler<AppEnv> {
@@ -253,7 +252,7 @@ export function createApp(deps: AppDeps): App {
     return c.text('Not Found', 404)
   })
 
-  // Routes, in app/main.py's ROUTERS order. Brief 0B adds one line per router here.
+  // Routes, one line per router.
   registerHealth(app)
   registerAccounts(app)
   registerSync(app)

@@ -1,6 +1,5 @@
 /**
  * Bank data provider interface. Nothing provider-specific may leak past these types.
- * Ports app/providers/bank/base.py; the frozen dataclasses become readonly types.
  */
 
 import type { AccountType } from '../../db/schema.js'
@@ -13,13 +12,12 @@ export interface ProviderTransaction {
   /** Negative is an outflow. */
   readonly amount: Cents
   readonly description: string
-  /** Python default None. */
+  /** Null when the bank sends none. */
   readonly payee: string | null
-  /** Python default None. */
+  /** Null when the bank sends none. */
   readonly memo: string | null
-  /** Python default False. */
   readonly pending: boolean
-  /** ISO 8601 UTC timestamp; Python default None. */
+  /** ISO 8601 UTC timestamp, or null. */
   readonly transacted_at: string | null
 }
 
@@ -33,26 +31,24 @@ export interface ProviderAccount {
   readonly available: Cents | null
   /** ISO 8601 UTC timestamp. */
   readonly balance_as_of: string
-  /** Python default []. */
   readonly transactions: readonly ProviderTransaction[]
 }
 
 export interface ProviderSnapshot {
   readonly accounts: readonly ProviderAccount[]
-  /** Python default []. */
+  /** Messages the provider reports alongside the data. */
   readonly errors: readonly string[]
 }
 
 export interface BankProvider {
   readonly name: string
   /**
-   * HTTP requests made so far, so syncs can track the daily request budget. Python read it with
-   * getattr(provider, "requests_made", 0); providers without a budget may omit it.
+   * HTTP requests made so far, so syncs can track the daily request budget. Providers without
+   * a budget may omit it (read as 0).
    */
   readonly requestsMade?: number
   /**
-   * All accounts with transactions posted between start and end, inclusive. Async because
-   * HTTP is async in Node; the Python method was synchronous.
+   * All accounts with transactions posted between start and end, inclusive.
    */
   fetch(start: PlainDate, end: PlainDate): Promise<ProviderSnapshot>
 }

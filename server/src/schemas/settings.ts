@@ -1,6 +1,6 @@
 /**
- * The runtime config contract (plan 5.7, brief 0B). New: the Python app read these knobs from
- * the environment. The Anthropic API key is write-only: reads say only whether it is set.
+ * The runtime config contract. The Anthropic API key is write-only: reads say only whether it
+ * is set.
  */
 
 import { z } from '@hono/zod-openapi'

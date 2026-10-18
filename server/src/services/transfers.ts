@@ -1,5 +1,5 @@
 /**
- * Internal transfer matching (R2.4). Ports app/services/transfers.py.
+ * Internal transfer matching (R2.4).
  *
  * Called by services/sync.ts after new transactions are stored. Keep the signature stable.
  */
@@ -39,7 +39,7 @@ export function matchTransfers(db: Db): number {
     .orderBy(asc(transactions.id))
     .all()
 
-  // defaultdict(list) keyed by abs(amount): insertion order is first-seen order, as in Python.
+  // Lists keyed by abs(amount); a Map keeps first-seen order, which decides pairing.
   const outflows = new Map<number, Tx[]>()
   const inflows = new Map<number, Tx[]>()
   for (const tx of unmatched) {

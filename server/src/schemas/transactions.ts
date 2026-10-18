@@ -1,4 +1,4 @@
-/** Ports app/schemas/transactions.py. */
+/** Request and response schemas for transactions. */
 
 import { z } from '@hono/zod-openapi'
 import { Money, Page, PlainDate } from './common.js'

@@ -1,6 +1,6 @@
 /**
- * The enums of app/models/base.py that appear in the API, each its own component as Pydantic
- * registered them. Values come from db/schema.ts, so the table and the API share one list.
+ * The enums that appear in the API, each registered as its own component. Values come from
+ * db/schema.ts, so the table and the API share one list.
  */
 
 import {

@@ -1,15 +1,13 @@
 /**
- * Transaction queries and manual overrides (R2.1-R2.3). Ports app/services/transactions.py.
+ * Transaction queries and manual overrides (R2.1-R2.3).
  *
- * Rewritten from Python:
- * - `body.model_fields_set` (the fields the client sent, defaults excluded) is the `fields`
- *   argument; the route takes it from the request body's keys.
- * - `icontains(..., autoescape=True)` on Postgres lowered both sides with lower(); SQLite's
- *   lower() is ASCII-only, so `q` goes through pg_lower (categorize.ts).
- * - SQLAlchemy writes a column only when its value changes, so a row whose values are all
- *   unchanged keeps its updated_at; `changedValues` does the same here.
- * - The request ran in one session and committed at the end; here it is one transaction, so a
- *   DomainError part-way writes nothing, as the uncommitted session wrote nothing.
+ * - `fields` holds the fields the client sent (defaults excluded); the route takes it from
+ *   the request body's keys.
+ * - Search lowers both sides; SQLite's lower() is ASCII-only, so `q` goes through pg_lower
+ *   (categorize.ts).
+ * - A column is written only when its value changes, so a row whose values are all unchanged
+ *   keeps its updated_at (`changedValues`).
+ * - An update is one transaction, so a DomainError part-way writes nothing.
  */
 
 import { type SQL, and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
@@ -59,7 +57,7 @@ export function toTransactionRead(tx: Tx, cat: Categorization | null | undefined
   }
 }
 
-/** list_transactions' keyword arguments. */
+/** listTransactions' filters and paging. */
 export interface TransactionFilters {
   q: string | null
   start: PlainDate | null
@@ -116,7 +114,7 @@ export function listTransactions(db: Db, filters: TransactionFilters): [Transact
   return [rows.map((r) => toTransactionRead(r.tx, r.cat)), total]
 }
 
-/** The values that differ from the row: what SQLAlchemy would write. */
+/** The values that differ from the row: what an update writes. */
 function changedValues<T extends object>(row: T, values: Partial<T>): Partial<T> {
   return Object.fromEntries(Object.entries(values).filter(([k, v]) => row[k as keyof T] !== v)) as Partial<T>
 }
@@ -129,7 +127,7 @@ function getCategorization(db: Db, transactionId: number): Categorization | unde
   return db.select().from(categorizations).where(eq(categorizations.transaction_id, transactionId)).get()
 }
 
-/** Context _override_category reads from Settings: the owner name tokens, read when needed. */
+/** Context the override needs: the owner name tokens, read when needed. */
 interface OwnerSettings {
   secrets: SecretStore
   defaults: RuntimeDefaults
@@ -137,7 +135,7 @@ interface OwnerSettings {
 
 /**
  * Manual override of category and/or essentiality; optionally saved as a rule.
- * `fields` is Pydantic's model_fields_set: the body keys the client sent.
+ * `fields` holds the body keys the client sent.
  */
 export function updateTransaction(
   db: Db,

@@ -1,4 +1,4 @@
-/** Ports app/routers/projection.py. */
+/** Routes for the balance projection. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'

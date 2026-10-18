@@ -1,13 +1,12 @@
 /**
  * Cash projection (R7): current balance plus planned flows minus variable spending.
- * Ports app/services/projection.py.
  *
- * Python's trailing averages are unquantized Decimals (`total / days` in the default context:
- * 28 significant digits, half even), multiplied by a day count and only then quantized to
+ * A trailing average is the daily rate `total / days` rounded half to even to 28 significant
+ * digits, multiplied by a day count, rounded to 28 digits again, and only then rounded to
  * cents. That intermediate rounding decides ties: 0.01 / 6 * 3 is exactly 0.005, which one
- * half-even division rounds to 0.00, but Python's 0.001666...667 * 3 quantizes to 0.01. So a
- * rate is kept as the exact fraction `total / days`, and `rateTimes` replays the Decimal
- * context steps on integers (BigInt, as 28 digits exceed a double).
+ * half-even division rounds to 0.00, but 0.001666...667 * 3 rounds to 0.01. So a rate is kept
+ * as the exact fraction `total / days`, and `rateTimes` does the 28-digit steps on integers
+ * (BigInt, as 28 digits exceed a double).
  */
 
 import { eq, gt, isNull, min, or } from 'drizzle-orm'
@@ -50,7 +49,7 @@ export interface Projection {
   assumptions: string[]
 }
 
-/** A daily average as the exact fraction Python divided: `max(total, 0) / days`. */
+/** A daily average as an exact fraction: `max(total, 0) / days`. */
 export interface DailyRate {
   total: Cents
   days: number
@@ -63,7 +62,7 @@ export function isLapsed(charge: Pick<RecurringCharge, 'last_seen_on' | 'cadence
   return daysBetween(charge.last_seen_on, today) > limit
 }
 
-// --- Decimal context arithmetic ----------------------------------------------------------------
+// --- 28-digit decimal arithmetic ---------------------------------------------------------------
 
 const PRECISION = 28
 const TEN = 10n
@@ -86,14 +85,14 @@ interface Dec {
   exponent: number
 }
 
-/** Round to the context precision, half to even (what every Decimal operation does). */
+/** Round to 28 significant digits, half to even. */
 function toPrecision(value: Dec): Dec {
   const extra = digits(value.coefficient) - PRECISION
   if (extra <= 0) return value
   return { coefficient: divRound(value.coefficient, TEN ** BigInt(extra)), exponent: value.exponent + extra }
 }
 
-/** `Decimal(total) / days`: the correctly rounded 28-digit quotient. */
+/** `total / days`: the correctly rounded 28-digit quotient. */
 function contextDivide(rate: DailyRate): Dec {
   if (rate.total === 0) return { coefficient: 0n, exponent: 0 }
   let n = BigInt(rate.total)
@@ -108,13 +107,13 @@ function contextDivide(rate: DailyRate): Dec {
   return { coefficient: divRound(n, d), exponent }
 }
 
-/** `value.quantize(Decimal("0.00"))`: to whole cents, half to even. */
+/** To whole cents, half to even. */
 function quantizeCents(value: Dec): Cents {
   if (value.exponent >= 0) return cents(Number(value.coefficient * TEN ** BigInt(value.exponent)))
   return cents(Number(divRound(value.coefficient, TEN ** BigInt(-value.exponent))))
 }
 
-/** `_cents(rate * days)`: the 28-digit quotient times days, rounded to 28 digits, then cents. */
+/** `rate * days`: the 28-digit quotient times days, rounded to 28 digits, then cents. */
 export function rateTimes(rate: DailyRate, days: number): Cents {
   const q = contextDivide(rate)
   return quantizeCents(toPrecision({ coefficient: q.coefficient * BigInt(days), exponent: q.exponent }))

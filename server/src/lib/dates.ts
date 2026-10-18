@@ -1,7 +1,7 @@
 /**
- * Plain calendar dates as branded "YYYY-MM-DD" strings (plan section 5.3).
+ * Plain calendar dates as branded "YYYY-MM-DD" strings.
  *
- * Python uses `datetime.date`; here a date is a string, so comparisons are string comparisons
+ * A date is a string, so comparisons are string comparisons
  * and the database stores TEXT. Day arithmetic goes through a day number (days since
  * 1970-01-01, proleptic Gregorian), never through a JavaScript Date, so time zones and DST
  * cannot shift a date.
@@ -75,8 +75,8 @@ function fromDayNumber(n: number): PlainDate {
 }
 
 /**
- * The one place "today" comes from: PLUTUS_TODAY when set, else the UTC date. Mirrors
- * services/schedule.today() in Python, which tests and the parity harness pin.
+ * The one place "today" comes from: PLUTUS_TODAY when set, else the UTC date. Tests pin it
+ * with PLUTUS_TODAY.
  */
 export function today(): PlainDate {
   const pinned = process.env.PLUTUS_TODAY

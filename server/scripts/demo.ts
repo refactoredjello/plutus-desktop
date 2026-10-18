@@ -1,5 +1,5 @@
 /**
- * Load or clear fake demo data for local development. Ports app/demo.py.
+ * Load or clear fake demo data for local development.
  *
  *   npm run demo -- load    # sync the fake SimpleFIN fixture through the real pipeline
  *   npm run demo -- clear   # delete demo accounts, their transactions, and demo sync runs
@@ -8,7 +8,7 @@
  * Demo rows use provider "demo", so they never mix with a real SimpleFIN connection.
  * Run `clear` before connecting a real bank so demo classifications are not reused.
  *
- * Python renamed a SimpleFINProvider instance; here a small wrapper carries the name.
+ * A small wrapper around the SimpleFIN provider carries the "demo" name.
  */
 
 import { readFileSync } from 'node:fs'
@@ -47,7 +47,7 @@ export function demoProvider(): BankProvider {
   }
 }
 
-/** Sync the fixture; returns the lines Python printed. */
+/** Sync the fixture; returns the lines to print. */
 export async function load(
   db: Db,
   secrets: SecretStore,
@@ -60,7 +60,7 @@ export async function load(
   return lines
 }
 
-/** Delete the demo data; returns the lines Python printed. */
+/** Delete the demo data; returns the lines to print. */
 export function clear(db: Db): string[] {
   return db.transaction(() => {
     const removed = db.delete(accounts).where(eq(accounts.provider, DEMO_PROVIDER)).returning({ id: accounts.id }).all()
@@ -83,7 +83,7 @@ export function clear(db: Db): string[] {
   })
 }
 
-/** `python -m app.demo <command>`: returns the exit code. */
+/** `demo <command>`: returns the exit code. */
 export async function main(argv: readonly string[], env: Record<string, string | undefined> = process.env): Promise<number> {
   const command = argv.length === 1 ? argv[0] : undefined
   if (command !== 'load' && command !== 'clear') {

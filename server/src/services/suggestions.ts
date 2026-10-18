@@ -1,13 +1,12 @@
 /**
- * Savings suggestions (R8). Ports app/services/suggestions.py.
+ * Savings suggestions (R8).
  *
  * Privacy boundary: the LLM sees only what this module builds. The SavingsContext holds
  * category labels, rounded-to-cent monthly totals, cadences, and goal numbers. Never merchant
  * keys, descriptions, account names, or balances.
  *
- * Every amount in the context is whole cents, as every Decimal Python put there had two places
- * (NUMERIC(14,2) columns, sums of them, or values quantized to 0.00), so the prompt spells
- * them the same.
+ * Every amount in the context is whole cents (stored amounts, sums of them, or values
+ * rounded to the cent), so the prompt writes each as a two-place decimal.
  */
 
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
@@ -39,7 +38,7 @@ export const HISTORY_MONTHS = 6
 const SUGGESTIBLE: Essentiality[] = ['flexible', 'discretionary']
 export const UNCATEGORIZED = 'Uncategorized'
 
-/** What Python's Settings supplied: the way to build the configured provider. */
+/** What building the configured provider needs. */
 export interface LlmDeps {
   secrets: SecretStore
   defaults: RuntimeDefaults

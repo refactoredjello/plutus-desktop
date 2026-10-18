@@ -1,9 +1,8 @@
 /**
- * Date helpers shared by recurring detection and projection. Ports app/services/schedule.py.
+ * Date helpers shared by recurring detection and projection.
  *
- * `today` and `add_months` live in lib/dates.ts (the one place "today" comes from) and are
- * re-exported here under their schedule.py names, so callers can keep importing them from the
- * schedule module as the Python services do.
+ * `today` and `addMonths` live in lib/dates.ts (the one place "today" comes from) and are
+ * re-exported here, so services import every schedule helper from one module.
  */
 
 import type { Cadence, Recurrence } from '../db/schema.js'

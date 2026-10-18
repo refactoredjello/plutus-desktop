@@ -1,6 +1,5 @@
 /**
- * Deterministic LLM stand-in for tests and credential-free development. Ports
- * app/providers/llm/fake.py.
+ * Deterministic LLM stand-in for tests and credential-free development.
  *
  * Records every call so privacy tests can assert on exactly what would have been sent.
  */

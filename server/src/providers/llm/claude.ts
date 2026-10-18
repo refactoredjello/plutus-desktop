@@ -1,11 +1,8 @@
 /**
- * Claude implementation of LLMProvider using the Anthropic SDK's structured outputs. Ports
- * app/providers/llm/claude.py.
+ * Claude implementation of LLMProvider using the Anthropic SDK's structured outputs.
  *
- * Python passed a pydantic model as `output_format`; the Python SDK sent its JSON schema as
- * `output_config.format` and validated the reply into `parsed_output`. Here the provider passes
- * the same JSON schema and a parser that validates with the Zod port of the pydantic model, and
- * the TypeScript SDK's `messages.parse` fills `parsed_output` with it.
+ * The provider passes a hand-written JSON schema as `output_config.format` and a parser that
+ * validates the reply with the matching Zod schema; `messages.parse` fills `parsed_output`.
  */
 
 import Anthropic, {
@@ -43,9 +40,9 @@ export const MAX_TOKENS = 8000
 export type ClaudeClient = Pick<Anthropic, 'messages'>
 
 /**
- * The schemas the Python SDK sent for ClassificationBatch and SuggestionBatch (its
- * transform_schema over pydantic's model_json_schema). The TypeScript SDK's zodOutputFormat
- * would move `enum` into a description, so Claude would no longer be held to the enum values.
+ * The JSON schemas sent for ClassificationBatch and SuggestionBatch. They are written out
+ * because the SDK's zodOutputFormat would move `enum` into a description, so Claude would no
+ * longer be held to the enum values.
  */
 export const CLASSIFICATION_OUTPUT_SCHEMA = {
   $defs: {
@@ -106,8 +103,8 @@ export const SUGGESTION_OUTPUT_SCHEMA = {
 
 /**
  * An output format the SDK sends as `output_config.format` and parses replies with.
- * `onInvalid` records that the reply was not JSON or failed validation: Python saw pydantic's
- * ValidationError there, while the TypeScript SDK wraps any parse failure in AnthropicError.
+ * `onInvalid` records that the reply was not JSON or failed validation, because the SDK wraps
+ * any parse failure in AnthropicError and the cause is lost.
  */
 function outputFormat<S extends z.ZodType>(
   schema: S,
@@ -135,11 +132,11 @@ function outputFormat<S extends z.ZodType>(
   }
 }
 
-/** The except chain in claude.py, in order. */
+/** SDK errors to ProviderError messages, checked in order. */
 function toProviderError(error: unknown, invalid: boolean): unknown {
   if (invalid) return new ProviderError('Claude returned output that failed validation')
   if (error instanceof RateLimitError) return new ProviderError('Claude rate limit reached')
-  // Python's APIStatusError: every APIError that carries an HTTP status.
+  // Every APIError that carries an HTTP status.
   if (error instanceof APIError && typeof error.status === 'number') {
     return new ProviderError(`Claude API returned status ${error.status}`)
   }

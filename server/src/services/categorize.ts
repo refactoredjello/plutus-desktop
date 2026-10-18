@@ -1,18 +1,17 @@
 /**
- * Categorization pipeline (R3): rules, then cache, then LLM. Ports app/services/categorize.py.
+ * Categorization pipeline (R3): rules, then cache, then LLM.
  *
  * Called by services/sync.ts after transfer matching. Keep the signature stable.
  *
- * Rewritten from Python:
- * - Python held every change in one session and flushed at the end. better-sqlite3 is
- *   synchronous and nothing may be awaited inside a transaction, so the work before the LLM
- *   (merchant keys, transfers, rules, cache) is written in one transaction, and each LLM batch
- *   in its own once its answer is in. A failing LLM still leaves the earlier work in place.
- * - Python read `settings.owner_name_tokens` and built the provider from `settings`; here both
- *   come from the config service (runtimeConfig and llmProvider), never from the environment.
- * - `str.casefold` (contains rules) and Postgres `lower()` (apply_rule's icontains) have no
- *   JavaScript equivalent and SQLite's lower() is ASCII-only: see casefold and pgLower.
- * - `sorted()` on keys compares code points; JavaScript's default sort compares UTF-16 units.
+ * - better-sqlite3 is synchronous and nothing may be awaited inside a transaction, so the work
+ *   before the LLM (merchant keys, transfers, rules, cache) is written in one transaction, and
+ *   each LLM batch in its own once its answer is in. A failing LLM still leaves the earlier work in place.
+ * - The owner name tokens and the provider come from the config service (runtimeConfig and
+ *   llmProvider), never from the environment.
+ * - Contains rules compare with full case folding; applying a rule to past transactions (and
+ *   transaction search) match with a simple lowercase mapping. JavaScript has neither and
+ *   SQLite's lower() is ASCII-only: see casefold and pgLower.
+ * - Keys sort by code point; JavaScript's default sort compares UTF-16 units.
  */
 
 import { type Column, and, asc, eq, isNull, sql } from 'drizzle-orm'
@@ -47,10 +46,10 @@ export type Rule = typeof rules.$inferSelect
 const ASCII = /^[ -~]*$/
 
 /**
- * Python's `str.casefold()`. Per code point, uppercasing then lowercasing is full case folding
- * except for the cases below, checked against Python 3.14 (Unicode 16) over every code point;
- * the only other differences are characters Unicode 17 added, which Python does not fold yet.
- * One code point at a time, so JavaScript's final-sigma rule never applies.
+ * Full case folding (Unicode 16). Per code point, uppercasing then lowercasing is full case
+ * folding except for the cases below, checked over every code point; characters Unicode 17
+ * added are not folded. One code point at a time, so JavaScript's final-sigma rule never
+ * applies.
  */
 export function casefold(text: string): string {
   if (ASCII.test(text)) return text.toLowerCase()
@@ -66,10 +65,9 @@ export function casefold(text: string): string {
 }
 
 /**
- * Postgres `lower()` as the Python app ran it: postgres:16-alpine, en_US.utf8 with the libc
- * provider, so musl's towlower one code point at a time (simple lowercase mapping). Checked
- * against that server over every code point; the only other differences are characters newer
- * than musl's tables.
+ * Lowercase one code point at a time with the simple lowercase mapping, as musl's towlower
+ * does: U+0130 becomes a plain "i" and circled letters stay as they are. Used for
+ * case-insensitive matching in SQL, where lower() is ASCII-only.
  */
 export function pgLower(text: string): string {
   if (ASCII.test(text)) return text.toLowerCase()
@@ -86,8 +84,8 @@ export function pgLower(text: string): string {
 const withPgLower = new WeakSet<object>()
 
 /**
- * Register `pg_lower(text)` on the connection, so SQL can match case-insensitively the way
- * SQLAlchemy's `icontains` did on Postgres (`lower(x) LIKE '%' || lower(y) || '%'`).
+ * Register `pg_lower(text)` on the connection, so SQL can match a substring
+ * case-insensitively beyond ASCII.
  */
 export function ensurePgLower(db: Db): void {
   if (withPgLower.has(db.$client)) return
@@ -97,12 +95,12 @@ export function ensurePgLower(db: Db): void {
   withPgLower.add(db.$client)
 }
 
-/** `column.icontains(text, autoescape=True)` on Postgres: a literal, case-insensitive substring. */
+/** A literal (no wildcards), case-insensitive substring match on a column. */
 export function icontains(column: Column, text: string) {
   return sql`instr(pg_lower(${column}), ${pgLower(text)}) > 0`
 }
 
-/** Python's str ordering: by code point. */
+/** String ordering by code point. */
 export function compareCodePoints(a: string, b: string): number {
   const x = Array.from(a, (c) => c.codePointAt(0) as number)
   const y = Array.from(b, (c) => c.codePointAt(0) as number)
@@ -164,7 +162,7 @@ export async function categorizePending(
 
   db.transaction(() => {
     for (const tx of pending) {
-      // SQLAlchemy writes an attribute only when it changes, so unchanged rows keep updated_at.
+      // Write only what changed, so unchanged rows keep updated_at.
       if (tx.merchant_key !== keyOf(tx)) {
         db.update(transactions).set({ merchant_key: keyOf(tx) }).where(eq(transactions.id, tx.id)).run()
       }
@@ -184,8 +182,8 @@ export async function categorizePending(
       else pipeline.assign(tx, rule.category_id, rule.essentiality, 'rule', 'very_high')
     }
 
-    // Python selected the cache rows `WHERE merchant_key IN (keys)`; reading the table and
-    // looking keys up gives the same rows without SQLite's bound-parameter limit.
+    // Read the table and look keys up, rather than `WHERE merchant_key IN (keys)`, to stay
+    // clear of SQLite's bound-parameter limit.
     const wanted = new Set(afterRules.map(keyOf).filter((k) => k))
     const cache = new Map(
       db
@@ -328,7 +326,7 @@ class Pipeline {
     this.assign(tx, this.category(detailed), null, 'rule', 'high')
   }
 
-  /** self.category_ids[detailed]: a KeyError in Python. */
+  /** The id of a seeded category; an unknown slug is a programming error. */
   private category(detailed: string): number {
     const id = this.categoryIds.get(detailed)
     if (id === undefined) throw new Error(`KeyError: '${detailed}'`)

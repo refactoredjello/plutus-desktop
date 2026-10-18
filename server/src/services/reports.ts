@@ -1,7 +1,7 @@
 /**
- * Report data for the dashboard (R4). Ports api/app/services/reports.py.
+ * Report data for the dashboard (R4).
  *
- * Like the Python service, functions return the response schemas, so money leaves here as the
+ * Functions return the response schemas, so money leaves here as the
  * wire string (formatMoney) and routes stay thin.
  */
 
@@ -100,7 +100,7 @@ export function balanceHistory(
       .limit(1)
       .get()
     if (snap === undefined) continue
-    // snap.as_of.date(): timestamps are stored as ISO 8601 UTC, and the Python session is UTC.
+    // The snapshot's UTC date: timestamps are stored as ISO 8601 UTC.
     const snapDay = plainDate(snap.as_of.slice(0, 10))
     const daily = new Map<string, Cents>()
     const rows = db
@@ -134,13 +134,13 @@ export function balanceHistory(
   return out
 }
 
-/** Significant digits of the default Decimal context (decimal.getcontext().prec). */
+/** Significant digits a ratio is rounded to before it becomes a double. */
 const DECIMAL_PRECISION = 28
 
 /**
- * float(Decimal(a) / Decimal(b)) for two cent amounts (the scales cancel): the exact quotient
- * rounded half to even to 28 significant digits, as Decimal division does, then parsed to the
- * nearest double, as float() does. Long division on safe integers; |b| * 10 must stay safe.
+ * a / b for two cent amounts (the scales cancel) as a double: the exact quotient rounded half
+ * to even to 28 significant digits, then parsed to the nearest double. Long division on safe
+ * integers; |b| * 10 must stay safe.
  */
 function decimalQuotient(a: Cents, b: Cents): number {
   if (b === 0) throw new RangeError('division by zero')
@@ -189,7 +189,7 @@ function decimalQuotient(a: Cents, b: Cents): number {
 }
 
 /**
- * Python's round(x, 4) on a float: half to even on the double's exact value. A tie at the
+ * x rounded to 4 decimals: half to even on the double's exact value. A tie at the
  * fourth decimal means x * 20000 is an odd integer, which holds exactly when x * 32 is an odd
  * integer; anything else rounds to nearest, which toFixed does exactly.
  */
@@ -202,7 +202,7 @@ function round4(x: number): number {
   return Number(x.toFixed(4))
 }
 
-/** round(float(a / b), 4) for Decimal amounts a and b, as reports.py computes its ratios. */
+/** a / b for cent amounts, as a double rounded to 4 decimals: how report ratios are computed. */
 export function roundedRatio(a: Cents, b: Cents): number {
   return round4(decimalQuotient(a, b))
 }

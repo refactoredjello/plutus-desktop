@@ -1,4 +1,4 @@
-/** Ports app/schemas/accounts.py. */
+/** Request and response schemas for accounts. */
 
 import { z } from '@hono/zod-openapi'
 import { DateTime, Money } from './common.js'

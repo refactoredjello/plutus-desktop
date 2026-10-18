@@ -1,4 +1,4 @@
-/** Manual entries (R5). Ports app/routers/manual_entries.py. */
+/** Manual entries (R5). */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'

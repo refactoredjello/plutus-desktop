@@ -1,6 +1,5 @@
 /**
  * Manual entries: expected income (positive) or expenses (negative) not yet in bank data (R5).
- * Ports app/services/manual_entries.py.
  */
 
 import { asc, eq } from 'drizzle-orm'

@@ -1,6 +1,5 @@
 /**
  * What changed (R12): signals about the current month, and their dismissals.
- * Ports app/routers/changes.py.
  */
 
 import { createRoute } from '@hono/zod-openapi'

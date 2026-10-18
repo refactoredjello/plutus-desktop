@@ -1,4 +1,4 @@
-/** Ports app/schemas/reports.py. */
+/** Request and response schemas for reports. */
 
 import { z } from '@hono/zod-openapi'
 import { Money, PlainDate } from './common.js'

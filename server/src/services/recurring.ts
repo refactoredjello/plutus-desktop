@@ -1,5 +1,5 @@
 /**
- * Recurring charge detection and management (R6). Ports app/services/recurring.py.
+ * Recurring charge detection and management (R6).
  *
  * detectRecurring is called by services/sync.ts after categorization. Keep its signature stable.
  */
@@ -23,10 +23,10 @@ export type RecurringCharge = typeof recurrences.$inferSelect
 
 export const MIN_OCCURRENCES = 3
 export const LOOKBACK_MONTHS = 18
-/** AMOUNT_TOLERANCE = Decimal("0.15"), as a ratio of integers for cross-multiplication. */
+/** Amount tolerance 0.15, as a ratio of integers for cross-multiplication. */
 const TOLERANCE_NUMERATOR = 15
 const TOLERANCE_DENOMINATOR = 100
-/** Allowed gap in days between consecutive occurrences, per cadence (in Python's order). */
+/** Allowed gap in days between consecutive occurrences, per cadence (checked in this order). */
 export const GAP_BANDS: ReadonlyArray<readonly [Cadence, number, number]> = [
   ['weekly', 6, 8],
   ['biweekly', 13, 15],
@@ -72,12 +72,12 @@ function isSemimonthlyDays(dates: readonly PlainDate[]): boolean {
   if (Math.max(...low) - Math.min(...low) > SEMIMONTHLY_SPREAD || Math.max(...high) - Math.min(...high) > SEMIMONTHLY_SPREAD) {
     return false
   }
-  // Float means, as Python computes them: the same IEEE 754 operations give the same result.
+  // Float means: the day numbers are small integers, so the result is deterministic.
   const centers = total(high) / high.length - total(low) / low.length
   return centers >= 12 && centers <= 19
 }
 
-/** statistics.median of integers: the middle value, or the mean of the two middle values. */
+/** The median of integers: the middle value, or the mean of the two middle values. */
 function medianNumber(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
@@ -112,7 +112,7 @@ export function detectCadence(dates: readonly PlainDate[]): Cadence | null {
  *
  * Like gaps, this tolerates the odd outlier, e.g. a paycheck that includes a bonus.
  *
- * Python compares against the unrounded Decimal median, which can end in half a cent. Here the
+ * The comparison is against the unrounded median, which can end in half a cent, so the
  * median is kept doubled (twice the middle value, or the sum of the two middle values) so the
  * comparison stays exact in integers: |a - mid| <= |mid| * 15/100 becomes
  * |2a - 2mid| * 100 <= |2mid| * 15.
@@ -147,7 +147,7 @@ const groupKey = (merchantKey: string, accountId: number): string => JSON.string
  * Propose or refresh recurring charges from transaction history.
  *
  * Returns the number of recurrences created or updated. Does not open a transaction; the
- * caller decides (Python: does not commit).
+ * caller decides.
  */
 export function detectRecurring(db: Db): number {
   const rows = db

@@ -1,4 +1,4 @@
-/** Ports app/schemas/month.py. */
+/** Request and response schemas for the month view. */
 
 import { z } from '@hono/zod-openapi'
 import { Money } from './common.js'

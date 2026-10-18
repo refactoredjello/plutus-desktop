@@ -1,6 +1,6 @@
 /**
- * Open the SQLite database: pragmas, migrations, and the category seed. Ports app/db.py and
- * the Alembic release step; migrations run at app start because a desktop has no release step.
+ * Open the SQLite database: pragmas, migrations, and the category seed. Migrations run at app
+ * start because a desktop has no release step.
  */
 
 import { mkdirSync, readFileSync } from 'node:fs'
@@ -28,8 +28,8 @@ interface SeedCategory {
 }
 
 /**
- * Alembic 0002: Plaid's Personal Finance Categories v2. Applied once, to an empty categories
- * table, in file order so ids match the Python migration.
+ * Plaid's Personal Finance Categories v2. Applied once, to an empty categories table, in file
+ * order so ids are stable.
  */
 export function seedCategories(db: Db, migrationsFolder = MIGRATIONS_FOLDER): void {
   const existing = db.$client.prepare('SELECT count(*) FROM categories').pluck().get() as number

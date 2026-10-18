@@ -1,4 +1,4 @@
-/** Ports app/routers/recurring.py. */
+/** Routes for recurring charges. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
