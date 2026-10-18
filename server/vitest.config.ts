@@ -9,6 +9,8 @@ export default defineConfig({
       ENVIRONMENT: 'test',
       SCHEDULER_ENABLED: 'false',
       LLM_PROVIDER: 'fake',
+      // today() is the local date; a fixed zone keeps tests that read the real clock deterministic.
+      TZ: 'UTC',
     },
   },
 })

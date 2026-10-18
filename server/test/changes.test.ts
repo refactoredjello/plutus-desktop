@@ -452,6 +452,18 @@ describe('S9 projection negative', () => {
     balance(acct, '5000.00')
     expect(items('S9')).toEqual([])
   })
+
+  it('S9 projects from the day given to compute, not the real today', () => {
+    // Real today is pinned to 2026-10-20; compute for 2026-11-02. A one-off planned payment
+    // on 2026-11-10 falls in November's projection only (backlog item 24).
+    const acct = account()
+    balance(acct, '100.00')
+    db.insert(manualEntries)
+      .values({ amount: parseMoney('-500.00'), description: 'x', due_date: d('2026-11-10'), recurrence: 'none' })
+      .run()
+    const found = changes.compute(db, d('2026-11-02'), { includeAll: true }).items.filter((i) => i.signal === 'S9')
+    expect(found.map((i) => [i.key, i.amount])).toEqual([['S9:projection:2026-11', '-400.00']])
+  })
 })
 
 // --- dismissal, ordering, cap, determinism -------------------------------------------------
