@@ -11,6 +11,8 @@ import {
 import type { Json } from './normalize.ts'
 
 const TODAY = '2026-09-30'
+/** The wall-clock date: both apps' sync windows come from the clock, not PLUTUS_TODAY. */
+const CLOCK = '2026-10-17'
 
 const FIXTURE: Json = {
   errors: [],
@@ -42,7 +44,7 @@ describe('encodeToken', () => {
 describe('bridgePayload', () => {
   it('serves the fixture plus extra rows dated from today, without changing the fixture', () => {
     const before = structuredClone(FIXTURE)
-    const p = bridgePayload(FIXTURE, TODAY, 'ok') as Payload
+    const p = bridgePayload(FIXTURE, TODAY, 'ok', CLOCK) as Payload
     expect(FIXTURE).toEqual(before)
     expect(p.errors).toEqual([])
     const checking = p.accounts[0]!
@@ -51,8 +53,9 @@ describe('bridgePayload', () => {
     // Posted two days before today, at noon UTC.
     expect(byId['PARITY-CAFE']?.posted).toBe(Date.parse('2026-09-28T12:00:00Z') / 1000)
     expect(byId['PARITY-CAFE']?.description).toBe('CAF\u00c9 DE LA PAIX PARIS FR')
-    // A pending charge with a transaction time and none with neither.
-    expect(byId['PARITY-PENDING']).toMatchObject({ pending: true, transacted_at: Date.parse('2026-09-29T12:00:00Z') / 1000 })
+    // A pending charge with a transaction time and one with neither. The first is dated a day
+    // before the clock's date, inside the sync window, so a later sync can drop it.
+    expect(byId['PARITY-PENDING']).toMatchObject({ pending: true, transacted_at: Date.parse('2026-10-16T12:00:00Z') / 1000 })
     expect(byId['PARITY-PENDING']?.posted).toBeUndefined()
     expect(byId['PARITY-HOLD']).toMatchObject({ pending: true })
     expect(byId['PARITY-HOLD']?.transacted_at).toBeUndefined()
@@ -60,14 +63,14 @@ describe('bridgePayload', () => {
   })
 
   it('reports a bridge error and leaves out one pending row in errors mode', () => {
-    const p = bridgePayload(FIXTURE, TODAY, 'errors') as Payload
+    const p = bridgePayload(FIXTURE, TODAY, 'errors', CLOCK) as Payload
     expect(p.errors).toHaveLength(1)
     expect(p.errors[0]).toMatch(/Example Bank/)
     expect(p.accounts[0]?.transactions.map((t) => t.id)).not.toContain('PARITY-PENDING')
   })
 
   it('leaves out the same pending row without an error in drop-pending mode', () => {
-    const p = bridgePayload(FIXTURE, TODAY, 'drop-pending') as Payload
+    const p = bridgePayload(FIXTURE, TODAY, 'drop-pending', CLOCK) as Payload
     expect(p.errors).toEqual([])
     expect(p.accounts[0]?.transactions.map((t) => t.id)).not.toContain('PARITY-PENDING')
     expect(p.accounts[0]?.transactions.map((t) => t.id)).toContain('PARITY-HOLD')
@@ -77,7 +80,7 @@ describe('bridgePayload', () => {
 describe('startBridge', () => {
   let bridge: Bridge
   beforeAll(async () => {
-    bridge = await startBridge(FIXTURE, TODAY, 1)
+    bridge = await startBridge(FIXTURE, TODAY, 1, CLOCK)
   })
   afterAll(async () => {
     await bridge.close()
