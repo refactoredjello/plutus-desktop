@@ -46,7 +46,7 @@ export const SuggestedSaving = z.object({
 export const SuggestionBatch = z.object({ suggestions: z.array(SuggestedSaving) })
 export type SuggestionBatch = z.infer<typeof SuggestionBatch>
 
-/** ClassificationBatch.model_json_schema(), the `format` the Ollama provider sends. */
+/** ClassificationBatch's JSON schema, the `format` the Ollama provider sends. */
 export const CLASSIFICATION_BATCH_JSON_SCHEMA = {
   $defs: {
     ClassifiedMerchant: {
@@ -80,7 +80,7 @@ export const CLASSIFICATION_BATCH_JSON_SCHEMA = {
   type: 'object',
 } as const
 
-/** SuggestionBatch.model_json_schema(), the `format` the Ollama provider sends. */
+/** SuggestionBatch's JSON schema, the `format` the Ollama provider sends. */
 export const SUGGESTION_BATCH_JSON_SCHEMA = {
   $defs: {
     SuggestedSaving: {

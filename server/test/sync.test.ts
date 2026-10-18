@@ -119,7 +119,7 @@ function ago(ms: number): string {
   return new Date(Date.now() - ms).toISOString()
 }
 
-/** (dt - timedelta(days=n)).date() of an ISO timestamp. */
+/** The UTC date n days before an ISO timestamp. */
 function dateBefore(timestamp: string, days: number): PlainDate {
   return new Date(Date.parse(timestamp) - days * DAY_MS).toISOString().slice(0, 10) as PlainDate
 }

@@ -33,7 +33,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
   }
 }
 
-/** The `client` fixture: an app over a fresh database. Call `app.request('/api/...')`. */
+/** An app over a fresh database. Call `app.request('/api/...')`. */
 export function makeApp(overrides: Partial<AppDeps> = {}) {
   const db = overrides.db ?? makeDb()
   const config = overrides.config ?? testConfig()

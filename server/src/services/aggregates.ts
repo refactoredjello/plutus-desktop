@@ -251,7 +251,7 @@ export function categoryTotals(
     count: e.count,
     monthly: e.monthly,
   }))
-  // sorted(..., reverse=True) is stable: equal totals keep their first-seen order.
+  // Largest first; the sort is stable, so equal totals keep their first-seen order.
   return out.sort((a, b) => b.total - a.total)
 }
 

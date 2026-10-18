@@ -37,7 +37,7 @@ import { merchantKey as scrubMerchantKey } from './scrub.js'
 type Tx = typeof transactions.$inferSelect
 type Categorization = typeof categorizations.$inferSelect
 
-/** TransactionRead.model_validate(tx), with the transaction's categorization row if any. */
+/** A transaction as TransactionRead, with its categorization row if any. */
 export function toTransactionRead(tx: Tx, cat: Categorization | null | undefined): TransactionRead {
   return {
     id: tx.id,

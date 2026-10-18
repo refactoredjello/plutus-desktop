@@ -10,7 +10,7 @@ import { transactions } from '../db/schema.js'
 import { daysBetween } from '../lib/dates.js'
 import { ZERO } from '../lib/money.js'
 
-/** WINDOW = timedelta(days=5): card payments often post a few business days apart. */
+/** At most 5 days apart: card payments often post a few business days apart. */
 export const WINDOW_DAYS = 5
 
 type Tx = typeof transactions.$inferSelect
@@ -61,7 +61,7 @@ export function matchTransfers(db: Db): number {
       }
     }
   }
-  // candidates.sort(key=lambda c: c[:3]); the key is unique per pair, so stability is moot.
+  // By gap, then the lower id, then the higher; the key is unique per pair, so stability is moot.
   candidates.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
 
   const used = new Set<number>()

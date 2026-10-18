@@ -94,17 +94,17 @@ function epochMillis(seconds: number): number {
   return seconds * 1000
 }
 
-/** `datetime.fromtimestamp(seconds, UTC).date()`. */
+/** The UTC date of a Unix timestamp in seconds. */
 export function epochToUtcDate(seconds: number): PlainDate {
   return plainDate(new Date(epochMillis(seconds)).toISOString().slice(0, 10))
 }
 
-/** `datetime.fromtimestamp(seconds, UTC)` as an ISO 8601 UTC timestamp. */
+/** A Unix timestamp in seconds as an ISO 8601 UTC timestamp. */
 export function epochToTimestamp(seconds: number): string {
   return new Date(epochMillis(seconds)).toISOString()
 }
 
-/** `day + timedelta(days=n)`. */
+/** The date n days after `day` (before, for negative n). */
 export function addDays(day: PlainDate, n: number): PlainDate {
   return fromDayNumber(toDayNumber(day) + n)
 }

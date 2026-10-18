@@ -47,7 +47,7 @@ export class NotConnectedError extends DomainError {
 /** datetime.now(UTC), swappable in tests. */
 export const syncClock = { now: (): Date => new Date() }
 
-/** `dt.date()` of a UTC instant. */
+/** The UTC date of an instant in milliseconds. */
 function utcDate(ms: number): PlainDate {
   return new Date(ms).toISOString().slice(0, 10) as PlainDate
 }

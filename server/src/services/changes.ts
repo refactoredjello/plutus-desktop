@@ -88,7 +88,7 @@ function priority(item: Item): number {
   return Number.parseInt(item.signal.slice(1), 10)
 }
 
-/** `sorted(..., key=lambda c: (c.priority, -c.impact))`: Array.sort is stable too. */
+/** By priority, then larger impact first; Array.sort is stable, so ties keep their order. */
 function compareItems(a: Item, b: Item): number {
   const byPriority = priority(a) - priority(b)
   if (byPriority !== 0) return byPriority
