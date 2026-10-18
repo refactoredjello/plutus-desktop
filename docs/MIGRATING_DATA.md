@@ -1,8 +1,9 @@
 # Moving your data from the Docker app to the desktop app
 
 The Docker app keeps everything in Postgres. The desktop app (and the headless TypeScript
-server) keeps everything in one SQLite file. Moving over takes two commands: export from
-Postgres to a JSON file, then import that file into a new SQLite database.
+server) keeps everything in one SQLite file. Moving over takes two steps: export from
+Postgres to a JSON file, then import that file into a new SQLite database (from the desktop's
+File menu, or with a command for the headless server).
 
 > **The export file holds your SimpleFIN access URL and your Anthropic API key in clear
 > text.** The URL is a password: anyone who has it can read your bank data. The key lets anyone
@@ -64,37 +65,42 @@ The copied `.env` holds your secrets too; step 5 removes the checkout with it.
 The import needs a database that holds nothing yet. It refuses anything else, so it can never
 merge into or overwrite existing data.
 
-- **Desktop app:** the file is `~/Library/Application Support/Plutus/plutus.sqlite` on macOS.
-  Quit the app first. A desktop that was opened but never synced or edited is fine: the
-  default settings it wrote on first launch are replaced by yours. Anything more (a
-  transaction, a rule, a SimpleFIN connection) and the import refuses the file; move that
-  folder aside if you don't need what is in it.
+- **Desktop app:** the database is `~/Library/Application Support/Plutus/plutus.sqlite`. A
+  desktop that was opened but never synced or edited is fine: the default settings it wrote
+  on first launch are replaced by yours. Anything more (a transaction, a rule, a SimpleFIN
+  connection) and the import refuses; to start over, quit the app and move that folder aside.
+  To try the import first without touching that folder, start the app with a second profile:
+  `/Applications/Plutus.app/Contents/MacOS/Plutus --data-dir ~/plutus-import-test`.
 - **Headless server:** the file is `PLUTUS_DB_PATH`, or `plutus.sqlite` in `PLUTUS_DATA_DIR`
   (default `~/.plutus`).
 
 ## 4. Import
 
-From the repository root, after `npm ci`:
+**Desktop app.** Open Plutus (a new install opens on Settings), choose **File > Import from
+Docker export...**, and pick `~/plutus-export.json`. The desktop encrypts the SimpleFIN URL
+and the API key with its macOS Keychain key, so the connection carries over: when the import
+finishes, the window reloads on the Overview with your data, and Settings shows SimpleFIN
+connected. If macOS asks whether Plutus may use "Plutus Safe Storage", choose Always Allow.
+The message after the import counts accounts, transactions, rules, and goals; compare them
+with step 2's table. If the import is refused, the message says why and nothing was written.
+
+**Headless server.** From the repository root, after `npm ci`:
 
 ```bash
 PLUTUS_SECRET_KEY='<the key the new server will use>' \
   node_modules/.bin/tsx server/scripts/import-json.ts ~/plutus-export.json --db <path to plutus.sqlite>
 ```
 
-`PLUTUS_SECRET_KEY` re-encrypts the SimpleFIN URL and the API key in the new database. It must be the key the
-headless server runs with; pick a new long random value, not the Docker `SECRET_KEY`. Without
-`--db`, the target is `PLUTUS_DB_PATH`, else `PLUTUS_DATA_DIR/plutus.sqlite`.
+`PLUTUS_SECRET_KEY` re-encrypts the SimpleFIN URL and the API key in the new database. It must
+be the key the headless server runs with; pick a new long random value, not the Docker
+`SECRET_KEY`. Without `--db`, the target is `PLUTUS_DB_PATH`, else
+`PLUTUS_DATA_DIR/plutus.sqlite`. Don't use this command for the desktop's database: the
+desktop cannot read secrets encrypted with `PLUTUS_SECRET_KEY` and would ask you to reconnect
+SimpleFIN and enter the API key again.
 
-The import runs in one transaction: it either imports everything or writes nothing. Before
-committing it checks that every table has exactly as many rows as the file. Compare its count
-table with the one from step 2.
-
-**Desktop app and the secrets.** The desktop encrypts secrets with the macOS Keychain, not
-with `PLUTUS_SECRET_KEY`, so it cannot read the URL or the API key this command encrypted.
-All your data and settings import, but the desktop will ask you to reconnect SimpleFIN and
-to enter the API key again. An import from inside
-the desktop app that uses the Keychain is planned (brief 5B in `docs/DESKTOP_PLAN.md`); wait
-for it if you want the connection to carry over.
+Either way the import runs in one transaction: it either imports everything or writes
+nothing. Before committing it checks that every table has exactly as many rows as the file.
+The command prints a count table; compare it with the one from step 2.
 
 ## 5. Delete the export file and the wave-4 checkout
 
@@ -136,4 +142,5 @@ to milliseconds.
 
 `server/test/import-fixture.test.ts` imports a committed export of the fake demo data
 (`server/test/fixtures/demo-export.json`) and checks the row counts, the monthly report, and
-the secrets.
+the secrets. `desktop/test/importer.test.ts` imports it with the desktop's secret store, and
+`PLUTUS_SMOKE_IMPORT` (desktop/README.md) runs the menu's import in the real app.

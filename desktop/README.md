@@ -2,7 +2,7 @@
 
 The Electron shell. It opens the SQLite database, runs the Plutus server in-process on
 `127.0.0.1` with a random port, and shows the SPA in a window. There is no separate backend
-process and nothing listens beyond loopback.
+process and nothing listens beyond loopback. macOS is the only target.
 
 ## Run
 
@@ -11,59 +11,115 @@ From the repository root, once: `npm ci`. Then in `desktop/`:
 | Command | What it does |
 |---|---|
 | `npm run dev` | Builds `web`, `server`, and the shell, then opens the window. |
-| `npm run smoke` | Same build, then opens the window against a throwaway data dir, waits for the SPA to render and reach `/api/health` through the cookie guard, prints a JSON result, and exits 0 (or 1 after 30 s). |
-| `npm run dist` | Builds everything and packages an unsigned app into `release/` (macOS: `release/mac-arm64/Plutus.app` on Apple Silicon, `release/mac/Plutus.app` on Intel). |
-| `npm run smoke:dist` | Runs the smoke check against the packaged app in `release/`. |
+| `npm run smoke` | Same build, then opens the window against a throwaway data dir, waits for the SPA to render its first page and reach `/api` through the cookie guard, prints a JSON result, and exits 0 (or 1 after 30 s; killed after 120 s). |
+| `npm run dist` | Builds everything and packages the app into `release/`: `Plutus-<version>-arm64.dmg` and `.zip`, `Plutus-<version>-x64.dmg` and `.zip`, and the unpacked apps in `release/mac-arm64/` and `release/mac/`. |
+| `npm run smoke:dist` | Runs the smoke check against the packaged app for this Mac's architecture. |
+| `npm run icons` | Regenerates `build/icon.icns` from `build/icon.svg` (macOS `sips` and `iconutil`). |
 | `npm run check` | Lint, typecheck, and unit tests (`src/lib`). Needs no build. |
 
-`PLUTUS_SMOKE_SCREENSHOT=/path/shot.png` with either smoke command also saves what the window
-showed. The first `dev` or `smoke` downloads the Electron binary; the first `dist` downloads
-the packaging copy of Electron.
+Smoke options, with either smoke command:
+
+- `PLUTUS_SMOKE_SCREENSHOT=/path/shot.png` saves what the window showed.
+- `-- --data-dir <folder>` checks that folder instead of a throwaway one (for example after
+  loading demo data). The JSON reports the first page, its account count, and whether
+  SimpleFIN is connected.
+- `PLUTUS_SMOKE_IMPORT=<export.json>` then runs the File menu's import on that file and checks
+  that the window reloads on the Overview and the SimpleFIN URL and API key decrypt. Use the
+  fake `../server/test/fixtures/demo-export.json`.
+
+Electron 44 downloads its binary the first time `electron` runs (not at `npm ci`); the first
+`dist` downloads the packaging copy of Electron into the electron-builder cache.
+
+## First launch
+
+With SimpleFIN not connected (a new install), the window opens on Settings; otherwise on the
+Overview. The shell asks `GET /api/settings/simplefin` before it opens the window.
 
 ## Where things live
 
-- Data: the OS app data folder, `Plutus/plutus.sqlite` (macOS:
-  `~/Library/Application Support/Plutus`). Development runs use `Plutus Dev` instead, so a
-  branch's migrations never touch the installed app's database. Smoke runs use a temp dir.
-- Secrets (SimpleFIN access URL, API keys) are encrypted with Electron `safeStorage` (the
-  macOS Keychain) and stored as blobs in `app_settings`. If OS encryption is unavailable, the
-  app refuses to save a secret rather than storing it in plain text.
+| What | Where (macOS) |
+|---|---|
+| Data (database `plutus.sqlite`, Chromium caches) | `~/Library/Application Support/Plutus` |
+| Log file | `~/Library/Application Support/Plutus/logs/plutus.log` (JSON lines; over 5 MB it moves to `plutus.log.1` at the next launch) |
+| Development runs | `~/Library/Application Support/Plutus Dev`, same layout, so a branch's migrations never touch the installed app's database |
+| Smoke runs | a temp dir, printed as `dataDir` |
+
+Logs also go to stdout when the app is started from a terminal. They never contain the
+SimpleFIN access URL or API keys.
+
+**A second profile:** `--data-dir <folder>` puts the database, the log, and the
+single-instance lock in that folder, so two profiles run side by side:
+
+```bash
+/Applications/Plutus.app/Contents/MacOS/Plutus --data-dir ~/plutus-test
+npx electron . --data-dir /tmp/plutus-try      # development, in desktop/
+"$(sh scripts/packaged-app.sh)" --data-dir /tmp/plutus-try   # the app in release/
+```
+
+Load demo data into a profile with the app closed:
+`PLUTUS_DB_PATH=<folder>/plutus.sqlite npm run demo -- load` in `server/`.
+
+- Secrets (SimpleFIN access URL, API keys) are encrypted with Electron `safeStorage` (a key in
+  the macOS Keychain, item "Plutus Safe Storage") and stored as blobs in `app_settings`. If OS
+  encryption is unavailable, the app refuses to save a secret rather than storing it in plain
+  text.
 - Settings come from the `app_settings` table. Environment variables only seed defaults on
   first run.
-- Logs: JSON lines on stdout (visible when launched from a terminal). 5B adds a log file.
+
+## Importing from the Docker app
+
+**File > Import from Docker export...** picks an export file and imports it into this
+profile's database with the Keychain-backed secret store, so the SimpleFIN connection and the
+API key carry over. It refuses a database that already holds data (anything beyond what a
+first launch writes) and then writes nothing; on success the window reloads. The steps are in
+`docs/MIGRATING_DATA.md`. Like the importer itself, this menu item is temporary.
 
 ## How it is put together
 
-- `src/main.ts`: Electron lifecycle (single-instance lock, window, shutdown, smoke mode).
-  Verified by launching.
+- `src/main.ts`: Electron lifecycle (single-instance lock, menu, window, import, shutdown,
+  smoke mode). Verified by launching.
 - `src/preload.cts`: the sandboxed window's preload; exposes only `window.plutusDesktop.platform`.
-- `src/lib/`: the parts with logic, unit-tested: paths for development and packaged builds,
-  the desktop server config and listener, the per-launch guard token, `SafeStorageSecretStore`,
-  navigation rules, and the smoke poller.
-- The shell runs the server's compiled output (`plutus-server/dist`), but typechecks and
-  tests against `server/src` (tsconfig `paths`, Vitest alias). `tsconfig.build.json` only
-  emits.
+- `src/lib/`: the parts with logic, unit-tested: command-line flags, paths for development and
+  packaged builds, the log file, the desktop server config and listener, the first page, the
+  per-launch guard token, `SafeStorageSecretStore`, the import wrapper, navigation rules,
+  DevTools, signing, and the smoke poller.
+- The shell imports the server through its package exports (`plutus-server/app`,
+  `plutus-server/db`, ...). At run time they resolve to `server/dist`; the tsconfig
+  (`customConditions`) and Vitest (`ssr.resolve.conditions`) add the `plutus-source`
+  condition, which resolves them to `server/src`, so `npm run check` needs no server build.
 - Security: each launch makes a random token. The server sets it as an `HttpOnly`,
   `SameSite=Strict` cookie on the page and rejects `/api` requests without it, so other local
   processes can't use the API. Links outside the app's origin open in the system browser;
   other schemes are blocked.
 - better-sqlite3 13 ships N-API prebuilds, which load in Electron's Node without rebuilding.
-  `npmRebuild` is therefore off, and `asarUnpack` keeps the `.node` file outside `app.asar`.
+  `npmRebuild` is therefore off, each build keeps only its architecture's prebuild, and
+  `asarUnpack` keeps the `.node` file outside `app.asar`.
+- `scripts/with-timeout.mjs` runs the smoke commands with a hard timeout and kills the whole
+  process group, so no Electron helper outlives a run.
 
-## Signing (brief 5B)
+## Signing and notarization
 
-`npm run dist` sets `CSC_IDENTITY_AUTO_DISCOVERY=false`, so it never picks up a keychain
-identity on its own, and the build stays unsigned unless signing variables are provided.
-The unsigned app runs on the machine that built it. Copied to another Mac, Gatekeeper
-quarantines it: right-click, then Open, or run `xattr -dr com.apple.quarantine Plutus.app`.
+`electron-builder.config.mjs` takes the macOS signing settings from `src/lib/signing.ts`:
 
-Signing and notarizing a macOS build needs:
+- **No signing variables (the default):** the app is signed ad hoc (`identity: '-'`), without
+  the hardened runtime, and not notarized. `codesign --verify --deep --strict` passes, Apple
+  Silicon runs it, and safeStorage works. It runs on the Mac that built it. Copied to another
+  Mac, Gatekeeper quarantines it: right-click, then Open, or
+  `xattr -dr com.apple.quarantine Plutus.app`. Each new ad hoc build is a different app to
+  the Keychain, so macOS may ask once to let it use "Plutus Safe Storage"; choose Always Allow.
+- **With a Developer ID certificate:** set `CSC_LINK` (path or base64 of the exported `.p12`)
+  and `CSC_KEY_PASSWORD`, or `CSC_NAME` for a certificate already in the keychain. The app is
+  signed with it and the hardened runtime (electron-builder's default entitlements, which
+  allow JIT and unsigned libraries for Electron and the SQLite addon).
+- **Notarization** runs after a certificate signing when these are set:
+  `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`; or an App Store Connect API
+  key: `APPLE_API_KEY` (path to the `.p8`), `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER`. An ad hoc
+  build is never notarized.
 
-- An Apple Developer ID Application certificate, exported as `.p12`: `CSC_LINK` (a path or
-  base64) and `CSC_KEY_PASSWORD`.
-- Notarization credentials: `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`,
-  or an App Store Connect API key (`APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`).
-- Hardened runtime and entitlements in `electron-builder.yml`, plus `notarize: true`.
+```bash
+CSC_LINK=~/secure/developer-id.p12 CSC_KEY_PASSWORD=... \
+APPLE_ID=you@example.com APPLE_APP_SPECIFIC_PASSWORD=... APPLE_TEAM_ID=ABCDE12345 \
+  npm run dist
+```
 
-Windows signing uses `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD`. Brief 5B wires these up and
-adds dmg, zip, nsis, and AppImage targets and an icon.
+Signed and notarized builds are configured but not yet verified (no certificate here).
