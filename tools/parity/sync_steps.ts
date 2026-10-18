@@ -55,7 +55,14 @@ function connect(name: string, bridge: BridgeControl, kind: TokenKind | null): W
   }
 }
 
-function sync(name: string, bridge: BridgeControl, mode: BridgeMode, reread: string[]): WriteStep {
+/** What a sync changes, with this month's reports. */
+const synced = (today: string) => [
+  ...SYNCED,
+  `/api/reports/month/${today.slice(0, 7)}`,
+  `/api/reports/by-category?month=${today.slice(0, 7)}`,
+]
+
+function sync(name: string, bridge: BridgeControl, mode: BridgeMode, reread: (today: string) => string[]): WriteStep {
   return {
     name,
     endpoint: 'POST /api/sync',
@@ -65,7 +72,7 @@ function sync(name: string, bridge: BridgeControl, mode: BridgeMode, reread: str
       return SYNC
     },
     settle,
-    reread: () => reread,
+    reread: (_state, today) => reread(today),
   }
 }
 
@@ -83,7 +90,7 @@ export function bridgeSteps(bridge: BridgeControl): WriteStep[] {
     connect('connect with a rejected token', bridge, 'rejected'),
     connect('connect with an empty token', bridge, null),
     connect('connect SimpleFIN', bridge, 'ok'),
-    sync('sync from the bridge', bridge, 'ok', SYNCED),
+    sync('sync from the bridge', bridge, 'ok', synced),
     {
       name: 'start a sync while one is running',
       endpoint: 'POST /api/sync',
@@ -101,9 +108,9 @@ export function bridgeSteps(bridge: BridgeControl): WriteStep[] {
       },
       reread: () => [RUNS],
     },
-    sync('sync with bridge errors', bridge, 'errors', SYNCED),
-    sync('sync after a pending charge disappears', bridge, 'drop-pending', SYNCED),
-    sync('sync when the bridge fails', bridge, 'fail', [RUNS, '/api/accounts']),
+    sync('sync with bridge errors', bridge, 'errors', synced),
+    sync('sync after a pending charge disappears', bridge, 'drop-pending', synced),
+    sync('sync when the bridge fails', bridge, 'fail', () => [RUNS, '/api/accounts']),
     {
       name: 'exhaust the daily request budget',
       endpoint: 'POST /api/sync',
