@@ -219,7 +219,16 @@ function changes(tx: Transaction | undefined, pt: ProviderTransaction): Partial<
   ) as Partial<Applied>
 }
 
-function upsertTransactions(db: Db, account: Account, txs: readonly ProviderTransaction[]): [number, number] {
+/**
+ * Insert new rows and update changed ones; returns [added, updated]. `fresh` collects the ids
+ * of new and newly posted rows, the only rows transfer matching may pair.
+ */
+function upsertTransactions(
+  db: Db,
+  account: Account,
+  txs: readonly ProviderTransaction[],
+  fresh: Set<number>,
+): [number, number] {
   if (txs.length === 0) return [0, 0]
   // Read the account's rows and look ids up, rather than `external_id IN (ids)`, to stay clear
   // of SQLite's bound-parameter limit.
@@ -239,15 +248,19 @@ function upsertTransactions(db: Db, account: Account, txs: readonly ProviderTran
     const tx = existing.get(pt.external_id)
     if (tx === undefined) {
       const values = changes(undefined, pt) as Applied
-      db.insert(transactions)
+      const row = db
+        .insert(transactions)
         .values({ account_id: account.id, external_id: pt.external_id, ...values, posted_on: pt.posted_on })
-        .run()
+        .returning({ id: transactions.id })
+        .get()
+      fresh.add(row.id)
       added += 1
       continue
     }
     const changed = changes(tx, pt)
     if (Object.keys(changed).length > 0) {
       db.update(transactions).set(changed).where(eq(transactions.id, tx.id)).run()
+      if (changed.pending === false) fresh.add(tx.id)
       updated += 1
     }
   }
@@ -289,13 +302,14 @@ export async function executeRun(
     const snapshot = await provider.fetch(start, end)
     let added = 0
     let updated = 0
+    const fresh = new Set<number>()
     db.transaction(() => {
       for (const pa of snapshot.accounts) {
         const account = upsertAccount(db, provider.name, pa)
         db.insert(balanceSnapshots)
           .values({ account_id: account.id, balance: pa.balance, available: pa.available, as_of: pa.balance_as_of })
           .run()
-        const [a, u] = upsertTransactions(db, account, pa.transactions)
+        const [a, u] = upsertTransactions(db, account, pa.transactions, fresh)
         added += a
         updated += u
         if (snapshot.errors.length === 0) {
@@ -303,7 +317,7 @@ export async function executeRun(
           dropStalePending(db, account, start, new Set(pa.transactions.map((t) => t.external_id)))
         }
       }
-      matchTransfers(db)
+      matchTransfers(db, fresh)
     })
     await categorizePending(db, secrets, defaults, null, log)
     return db.transaction(() => {

@@ -123,7 +123,10 @@ describe('sync and unpaired transfers', () => {
 
   class Provider implements BankProvider {
     readonly name = 'simplefin'
-    constructor(private readonly snapshots: ProviderSnapshot[]) {}
+    private readonly snapshots: ProviderSnapshot[]
+    constructor(snapshots: ProviderSnapshot[]) {
+      this.snapshots = snapshots
+    }
     async fetch(): Promise<ProviderSnapshot> {
       const next = this.snapshots.shift()
       if (next === undefined) throw new Error('No snapshot left')

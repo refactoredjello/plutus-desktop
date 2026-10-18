@@ -3443,6 +3443,39 @@
           "transactions"
         ]
       }
+    },
+    "/api/transactions/{transaction_id}/unpair": {
+      "post": {
+        "description": "Split a transfer pair: both rows count as ordinary transactions again, and later syncs leave them unpaired.",
+        "operationId": "unpair_transaction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Unpair Transfer",
+        "tags": [
+          "transactions"
+        ]
+      }
     }
   },
   "webhooks": {}
