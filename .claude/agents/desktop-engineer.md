@@ -24,6 +24,7 @@ and your brief.
   before the code; a failing-test commit, then the implementation commit. Window code is
   verified by launching.
 - Commit per piece on your branch only. Never commit to main, never push.
-- Run `npm run check` in desktop/ and `npm run smoke` once before reporting. Say what you saw.
+- Run `npm run check` in desktop/ before reporting. Don't run `npm run smoke` or `smoke:dist`
+  locally: CI runs the packaged-app smoke on every push. Launch the window only when shell work needs it.
 - Report: what you built, files changed, how you verified the window and a packaged build,
   open questions.

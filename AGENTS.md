@@ -48,6 +48,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 
 - Most features touch only `server/` and `web/`: build and check them as a web app (server tests, MSW frontend tests, `npm run dev` in `server/` opened in a browser). Use the real window only for shell work or a final check.
 - Dev runs (`npm run dev` in `desktop/`, or `npx electron .` after a build) keep data in `~/Library/Application Support/Plutus Dev/plutus.sqlite`, separate from the installed app's (`.../Plutus`). Prefer `--data-dir <tmp>` (its own database, `logs/plutus.log`, and single-instance lock) and never open the installed app's folder. Load demo data with the app closed: `PLUTUS_DB_PATH=<data dir>/plutus.sqlite npm run demo -- load` in `server/`.
+- The smoke check runs in CI on every push (`smoke:dist` on the packaged app, macOS job); agents don't run them locally, since each run opens a window on the owner's screen.
 - Any script that launches Electron needs a hard timeout and must kill the process group: wrap it in `node scripts/with-timeout.mjs <seconds> ...` as `smoke` and `smoke:dist` do.
 - Debug the real window with `npx electron . --remote-debugging-port=9222` in `desktop/`. A human attaches Chrome DevTools from `chrome://inspect`; an agent reads `http://127.0.0.1:9222/json/list`, opens the page's `webSocketDebuggerUrl` with Node's built-in `WebSocket`, and sends DevTools Protocol commands (`Runtime.evaluate`, `Page.captureScreenshot`, `Network.enable`). Code run in the page passes the cookie guard, so `fetch('/api/...')` works there; the same origin opened in another browser answers 401. Dev builds and demo data only, since any local program can drive an open port; quit the app when done.
 - `PLUTUS_DEVTOOLS=1 npx electron .` opens the DevTools panel with the window, for a human at the screen. Dev builds only: the packaged app ignores it (`src/lib/devtools.ts`).
@@ -72,7 +73,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 
 - Server tests use Vitest; `server/test/setup.ts` gives each test its own migrated, seeded in-memory SQLite via `makeDb()`, and `makeApp()` an app over it for `app.request('/api/...')`. Fake SimpleFIN and LLM providers only.
 - Frontend tests use Vitest, Testing Library, and MSW via `renderAt(path)` in `src/test/render.tsx`.
-- Desktop: unit tests for `desktop/src/lib`; window code is checked with `npm run smoke`.
+- Desktop: unit tests for `desktop/src/lib`; window code is checked by the smoke checks in CI.
 
 ## Gotchas that cost time
 

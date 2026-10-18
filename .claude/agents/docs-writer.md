@@ -14,8 +14,8 @@ Before starting, read AGENTS.md, README.md, docs/ARCHITECTURE.md, and your brief
 - Check, don't trust: read the code, package.json scripts, the Makefile, and CI before writing a
   line about them. Run every command a doc tells a reader to run, in a fresh worktree, and record
   the result. Use temp data dirs; never open `~/Library/Application Support/Plutus`. Check what
-  you can through the headless server and curl, and launch Electron as little as possible, with
-  its hard timeout.
+  you can through the headless server and curl. Never run the smoke checks (CI runs them), and
+  launch Electron as little as possible, with its hard timeout.
 - Keep each doc's purpose and voice. Cut lines that stopped being true instead of adding history.
   Plain, short sentences; no marketing.
 - Docs describe the current app only (owner decision 2026-10-17): no earlier stacks, no
