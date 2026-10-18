@@ -1,0 +1,464 @@
+{
+ "_comment": "What importing demo-export.json must give: the Postgres row counts per table, the Python API's GET /api/reports/monthly on the exported database (PLUTUS_TODAY below), and the fake secrets. Recorded with the Python app at tag wave-4.",
+ "today": "2026-09-30",
+ "counts": {
+  "accounts": 3,
+  "balance_snapshots": 3,
+  "categories": 128,
+  "merchant_classifications": 15,
+  "rules": 1,
+  "goals": 1,
+  "sync_runs": 1,
+  "app_settings": 1,
+  "change_dismissals": 1,
+  "transactions": 295,
+  "categorizations": 295,
+  "manual_entries": 1,
+  "recurrences": 7,
+  "suggestions": 1
+ },
+ "secrets": {
+  "simplefin_access_url": "https://demo-user:demo-pass@bridge.invalid/simplefin",
+  "anthropic_api_key": "sk-ant-fake-import-check-not-a-key"
+ },
+ "monthly": {
+  "/api/reports/monthly": [
+   {
+    "month": "2025-10",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-11",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-12",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-01",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-02",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-03",
+    "income": "5700.00",
+    "expenses": "965.55",
+    "net": "4734.45",
+    "essential": "136.72",
+    "flexible": "587.91",
+    "discretionary": "240.92",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-04",
+    "income": "5700.00",
+    "expenses": "3574.67",
+    "net": "2125.33",
+    "essential": "140.84",
+    "flexible": "3246.13",
+    "discretionary": "187.70",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-05",
+    "income": "8550.00",
+    "expenses": "3055.61",
+    "net": "5494.39",
+    "essential": "271.97",
+    "flexible": "2661.15",
+    "discretionary": "122.49",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-06",
+    "income": "5700.00",
+    "expenses": "3288.65",
+    "net": "2411.35",
+    "essential": "122.53",
+    "flexible": "3037.88",
+    "discretionary": "128.24",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-07",
+    "income": "5700.00",
+    "expenses": "4586.97",
+    "net": "1113.03",
+    "essential": "289.94",
+    "flexible": "3668.92",
+    "discretionary": "628.11",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-08",
+    "income": "5700.00",
+    "expenses": "4172.27",
+    "net": "1527.73",
+    "essential": "266.55",
+    "flexible": "3514.21",
+    "discretionary": "391.51",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-09",
+    "income": "5700.00",
+    "expenses": "3378.59",
+    "net": "2321.41",
+    "essential": "333.33",
+    "flexible": "2812.82",
+    "discretionary": "232.44",
+    "uncategorized": "0.00"
+   }
+  ],
+  "/api/reports/monthly?months=1": [
+   {
+    "month": "2026-09",
+    "income": "5700.00",
+    "expenses": "3378.59",
+    "net": "2321.41",
+    "essential": "333.33",
+    "flexible": "2812.82",
+    "discretionary": "232.44",
+    "uncategorized": "0.00"
+   }
+  ],
+  "/api/reports/monthly?months=6": [
+   {
+    "month": "2026-04",
+    "income": "5700.00",
+    "expenses": "3574.67",
+    "net": "2125.33",
+    "essential": "140.84",
+    "flexible": "3246.13",
+    "discretionary": "187.70",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-05",
+    "income": "8550.00",
+    "expenses": "3055.61",
+    "net": "5494.39",
+    "essential": "271.97",
+    "flexible": "2661.15",
+    "discretionary": "122.49",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-06",
+    "income": "5700.00",
+    "expenses": "3288.65",
+    "net": "2411.35",
+    "essential": "122.53",
+    "flexible": "3037.88",
+    "discretionary": "128.24",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-07",
+    "income": "5700.00",
+    "expenses": "4586.97",
+    "net": "1113.03",
+    "essential": "289.94",
+    "flexible": "3668.92",
+    "discretionary": "628.11",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-08",
+    "income": "5700.00",
+    "expenses": "4172.27",
+    "net": "1527.73",
+    "essential": "266.55",
+    "flexible": "3514.21",
+    "discretionary": "391.51",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-09",
+    "income": "5700.00",
+    "expenses": "3378.59",
+    "net": "2321.41",
+    "essential": "333.33",
+    "flexible": "2812.82",
+    "discretionary": "232.44",
+    "uncategorized": "0.00"
+   }
+  ],
+  "/api/reports/monthly?months=24": [
+   {
+    "month": "2024-10",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2024-11",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2024-12",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-01",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-02",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-03",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-04",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-05",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-06",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-07",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-08",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-09",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-10",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-11",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2025-12",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-01",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-02",
+    "income": "0.00",
+    "expenses": "0.00",
+    "net": "0.00",
+    "essential": "0.00",
+    "flexible": "0.00",
+    "discretionary": "0.00",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-03",
+    "income": "5700.00",
+    "expenses": "965.55",
+    "net": "4734.45",
+    "essential": "136.72",
+    "flexible": "587.91",
+    "discretionary": "240.92",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-04",
+    "income": "5700.00",
+    "expenses": "3574.67",
+    "net": "2125.33",
+    "essential": "140.84",
+    "flexible": "3246.13",
+    "discretionary": "187.70",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-05",
+    "income": "8550.00",
+    "expenses": "3055.61",
+    "net": "5494.39",
+    "essential": "271.97",
+    "flexible": "2661.15",
+    "discretionary": "122.49",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-06",
+    "income": "5700.00",
+    "expenses": "3288.65",
+    "net": "2411.35",
+    "essential": "122.53",
+    "flexible": "3037.88",
+    "discretionary": "128.24",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-07",
+    "income": "5700.00",
+    "expenses": "4586.97",
+    "net": "1113.03",
+    "essential": "289.94",
+    "flexible": "3668.92",
+    "discretionary": "628.11",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-08",
+    "income": "5700.00",
+    "expenses": "4172.27",
+    "net": "1527.73",
+    "essential": "266.55",
+    "flexible": "3514.21",
+    "discretionary": "391.51",
+    "uncategorized": "0.00"
+   },
+   {
+    "month": "2026-09",
+    "income": "5700.00",
+    "expenses": "3378.59",
+    "net": "2321.41",
+    "essential": "333.33",
+    "flexible": "2812.82",
+    "discretionary": "232.44",
+    "uncategorized": "0.00"
+   }
+  ]
+ }
+}
