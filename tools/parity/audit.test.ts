@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
-import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
-import { AuditLog, ROUTES, coverageGaps, fileName, fixedClockScript, harnessKeys, requestKey, seedSteps } from './visual/audit_lib.ts'
+import { AuditLog, ROUTES, coverageGaps, fileName, harnessKeys, requestKey } from './visual/audit_lib.ts'
 
 const TODAY = '2026-09-30'
 
@@ -32,34 +31,6 @@ describe('ROUTES', () => {
     expect(new Set(names).size).toBe(names.length)
     expect(fileName('/')).toBe('overview')
     expect(fileName('/month/2026-08')).toBe('month-2026-08')
-  })
-})
-
-describe('fixedClockScript', () => {
-  it('makes new Date() and Date.now() start at the fixed instant, leaving explicit dates alone', () => {
-    const script = fixedClockScript('2026-09-30T12:00:00Z')
-    const result = runInNewContext(
-      `${script}; ({ now: Date.now(), made: new Date().toISOString(), explicit: new Date(0).toISOString(), parsed: Date.parse('2020-01-01T00:00:00Z'), isDate: new Date() instanceof Date, utc: Date.UTC(2020, 0, 1) })`,
-      { Date },
-    ) as Record<string, unknown>
-    const fixed = Date.parse('2026-09-30T12:00:00Z')
-    expect(result.now as number).toBeGreaterThanOrEqual(fixed)
-    expect(result.now as number).toBeLessThan(fixed + 5000)
-    expect((result.made as string).slice(0, 13)).toBe('2026-09-30T12')
-    expect(result.explicit).toBe('1970-01-01T00:00:00.000Z')
-    expect(result.parsed).toBe(Date.parse('2020-01-01T00:00:00Z'))
-    expect(result.isDate).toBe(true)
-    expect(result.utc).toBe(Date.UTC(2020, 0, 1))
-  })
-})
-
-describe('seedSteps', () => {
-  it('gives the app a goal, planned entries, and a confirmed recurrence', () => {
-    const steps = seedSteps(TODAY)
-    const paths = steps.map((s) => `${s.method} ${s.path}`)
-    expect(paths).toContain('POST /api/goals')
-    expect(paths.filter((p) => p === 'POST /api/manual-entries')).toHaveLength(2)
-    expect(steps.some((s) => s.confirmFirstProposed === true)).toBe(true)
   })
 })
 

@@ -32,58 +32,6 @@ export function fileName(path: string): string {
   return bare === '' ? 'overview' : bare.replaceAll('/', '-').toLowerCase()
 }
 
-/**
- * Page script that starts the browser clock at `iso` (the frontend reads the current month
- * from `new Date()`), so both apps render as of PLUTUS_TODAY. Explicit dates are untouched.
- */
-export function fixedClockScript(iso: string): string {
-  return `(() => {
-  const RealDate = Date
-  const offset = RealDate.parse(${JSON.stringify(iso)}) - RealDate.now()
-  function FixedDate(...args) {
-    if (!new.target) return new RealDate(RealDate.now() + offset).toString()
-    return args.length === 0 ? new RealDate(RealDate.now() + offset) : new RealDate(...args)
-  }
-  FixedDate.prototype = RealDate.prototype
-  FixedDate.now = () => RealDate.now() + offset
-  FixedDate.parse = RealDate.parse
-  FixedDate.UTC = RealDate.UTC
-  globalThis.Date = FixedDate
-})()`
-}
-
-export interface SeedStep {
-  method: 'POST' | 'PATCH'
-  path: string
-  body?: Record<string, unknown>
-  /** PATCH the first proposed recurrence (path is a placeholder). */
-  confirmFirstProposed?: boolean
-  /** Path holds `{goal}`, replaced by the id the first goal POST returned. */
-  usesGoal?: boolean
-}
-
-const day = (today: string, days: number) =>
-  new Date(Date.parse(`${today}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
-
-/** The same requests on both apps before capture, so Goals, Planned, and Recurring have data. */
-export function seedSteps(today: string): SeedStep[] {
-  return [
-    { method: 'POST', path: '/api/goals', body: { name: 'Emergency fund', target_amount: '6000.00', target_date: day(today, 365) } },
-    {
-      method: 'POST',
-      path: '/api/manual-entries',
-      body: { amount: '-180.00', description: 'Car registration', due_date: day(today, 14), recurrence: 'none' },
-    },
-    {
-      method: 'POST',
-      path: '/api/manual-entries',
-      body: { amount: '250.00', description: 'Side income', due_date: day(today, 5), recurrence: 'monthly', end_date: day(today, 120) },
-    },
-    { method: 'PATCH', path: '/api/recurring/{first proposed}', body: { status: 'confirmed' }, confirmFirstProposed: true },
-    { method: 'POST', path: '/api/goals/{goal}/suggestions', usesGoal: true },
-  ]
-}
-
 export interface RequestKey {
   endpoint: string
   /** Sorted, distinct query parameter names joined by commas. */
