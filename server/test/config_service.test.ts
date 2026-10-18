@@ -305,4 +305,17 @@ describe('applyEnvOverrides (headless server only)', () => {
     expect(() => applyEnvOverrides(db, secrets, { LLM_MODEL: 'x', LLM_PROVIDER: 'openai' })).toThrow('LLM_PROVIDER')
     expect(rows(db)).toEqual(before)
   })
+
+  it.each([
+    ['SYNC_INTERVAL_HOURS', '0'],
+    ['SYNC_FIRST_HISTORY_DAYS', '-1'],
+  ])('refuses %s=%j below the Settings minimum before writing anything', (name, value) => {
+    const db = makeDb()
+    runtimeConfig(db, secrets, defaults)
+    const before = rows(db)
+    expect(() => applyEnvOverrides(db, secrets, { LLM_MODEL: 'x', [name]: value })).toThrow(
+      `${name}="${value}" is invalid: expected an integer >= 1`,
+    )
+    expect(rows(db)).toEqual(before)
+  })
 })
