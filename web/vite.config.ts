@@ -9,13 +9,15 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  // The build goes to web/dist, which the headless server (server/src/config.ts) and the desktop
+  // shell (desktop/src/lib/paths.ts, electron-builder.yml) serve.
+  build: { outDir: 'dist' },
   server: {
-    host: true,
     port: 5173,
-    // Local hostnames: plutus.localhost resolves on its own; plutus.local needs an /etc/hosts entry.
-    allowedHosts: ['plutus.local', 'plutus.localhost'],
+    // `npm run dev` in server/ listens on 127.0.0.1:8000. `npm run dev:mock` answers /api from MSW
+    // in the browser, so it needs no server.
     proxy: {
-      '/api': process.env.VITE_API_PROXY ?? 'http://localhost:8000',
+      '/api': process.env.VITE_API_PROXY ?? 'http://127.0.0.1:8000',
     },
   },
   test: {

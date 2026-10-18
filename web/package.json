@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "gen:api": "npx --yes openapi-typescript@7.13.0 src/api/openapi.json -o src/api/schema.d.ts --default-non-nullable false",
-    "dev:mock": "VITE_USE_MOCKS=true vite"
+    "dev:mock": "VITE_USE_MOCKS=true vite",
+    "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
