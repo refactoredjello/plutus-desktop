@@ -42,8 +42,8 @@ Overview. The shell asks `GET /api/settings/simplefin` before it opens the windo
 | Log file | `~/Library/Application Support/Plutus/logs/plutus.log` (JSON lines; over 5 MB it moves to `plutus.log.1` at the next launch) |
 | Development runs | `~/Library/Application Support/Plutus Dev`, same layout, so a branch's migrations never touch the installed app's database |
 | Smoke runs | a temp dir, printed as `dataDir` |
-| Data copies made by `update:app` | `~/Library/Application Support/Plutus/backups/manual-<time>/` (also `before-rollback-` and `before-restore-`) |
-| Apps replaced by `update:app` | `~/Library/Application Support/Plutus/previous-app/Plutus-<version>.zip` (the last two) |
+| Data copies made by `update:app` | `~/Library/Application Support/Plutus/backups/manual-<time>/` (also `before-rollback-` and `before-restore-`; its newest five are kept, other entries are left alone) |
+| Apps replaced by `update:app` | `~/Library/Application Support/Plutus/previous-app/Plutus-<version>.zip` (the two most recently saved) |
 
 Logs also go to stdout when the app is started from a terminal. They never contain the
 SimpleFIN access URL or API keys.
@@ -83,8 +83,9 @@ npm run update:app -- --rollback --restore-data   # and put back the data from b
 
 It refuses to run while Plutus is open. It downloads the zip for this Mac's architecture and
 checks its signature. Before replacing anything, it copies `plutus.sqlite` and its `-wal` and
-`-shm` files to `backups/manual-<time>/` and zips the installed app to
-`previous-app/Plutus-<version>.zip` (keeping the last two), both in
+`-shm` files to `backups/manual-<time>/` (keeping its newest five copies, never the one just
+made, and nothing else in `backups/`) and zips the installed app to
+`previous-app/Plutus-<version>.zip` (keeping the two most recently saved), both in
 `~/Library/Application Support/Plutus`. Then it installs the app with `ditto`, verifies it, and
 prints the old and new versions. A failed signature check changes nothing. `GH_REPO=owner/repo`
 picks the repository if gh can't tell from the checkout. `bash scripts/update.sh --help` lists

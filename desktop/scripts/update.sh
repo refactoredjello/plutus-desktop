@@ -16,8 +16,9 @@
 #
 # Order of work, so nothing is replaced without a copy first: check Plutus is not running,
 # download and verify the new app, copy the data (plutus.sqlite, -wal, -shm) to
-# backups/manual-<time>/, zip the installed app to previous-app/Plutus-<version>.zip (the last
-# two are kept), then swap the app in and verify its signature.
+# backups/manual-<time>/ (its newest five copies are kept), zip the installed app to
+# previous-app/Plutus-<version>.zip (the two most recently saved are kept), then swap the app in
+# and verify its signature.
 
 set -euo pipefail
 
@@ -26,7 +27,9 @@ DATA_DIR="$HOME/Library/Application Support/Plutus"
 PROCESS_NAME="${PLUTUS_PROCESS_NAME:-Plutus}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DATA_FILES="plutus.sqlite plutus.sqlite-wal plutus.sqlite-shm"
-KEEP_APPS=2
+KEEP_APPS=2   # previous-app zips, by when they were saved
+KEEP_COPIES=5 # this script's data copies in backups/, by the time in their names
+CURRENT_COPY="" # the copy made in this run; never pruned
 
 mode=install
 restore_data=0
@@ -202,6 +205,7 @@ copy_data() {
       cmp -s "$DATA_DIR/$f" "$dest/$f" || die "the copy of $f in $dest differs from the original"
     fi
   done
+  CURRENT_COPY="$(basename "$dest")"
   say "Copied your data to $dest"
 }
 
@@ -248,11 +252,36 @@ saved_apps() {
   done | sort -r
 }
 
+# Keeps the most recently saved previous-app zips (ls -t: newest file time first).
 prune_saved_apps() {
-  local key path
-  saved_apps | tail -n +$((KEEP_APPS + 1)) | while read -r key path; do
-    rm -f "$path"
-    say "Removed the older saved app $(basename "$path")"
+  [ -d "$PREV" ] || return 0
+  local name
+  ls -t "$PREV" | awk '/^Plutus-.*\.zip$/' | tail -n +$((KEEP_APPS + 1)) | while read -r name; do
+    rm -f "$PREV/$name"
+    say "Removed the older saved app $name"
+  done
+}
+
+# Keeps this script's newest data copies (manual-, before-rollback-, before-restore-<time>[-n])
+# by the time in their names, always including this run's. Nothing else in backups/ is touched.
+prune_data_copies() {
+  [ -d "$BACKUPS" ] || return 0
+  local keep=$KEEP_COPIES path name stamp key
+  if [ -n "$CURRENT_COPY" ]; then keep=$((keep - 1)); fi
+  find "$BACKUPS" -mindepth 1 -maxdepth 1 -type d \
+    \( -name 'manual-*' -o -name 'before-rollback-*' -o -name 'before-restore-*' \) |
+    while read -r path; do
+      name="$(basename "$path")"
+      if [ "$name" = "$CURRENT_COPY" ]; then continue; fi
+      stamp="${name#manual-}"
+      stamp="${stamp#before-rollback-}"
+      stamp="${stamp#before-restore-}"
+      if [[ "$stamp" =~ ^([0-9]{8}T[0-9]{6}Z)(-([0-9]+))?$ ]]; then
+        printf '%s%06d %s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[3]:-1}" "$path"
+      fi
+    done | sort -r | tail -n +$((keep + 1)) | while read -r key path; do
+    rm -rf "$path"
+    say "Removed the older data copy $(basename "$path")"
   done
 }
 
@@ -264,6 +293,7 @@ restore_data_from() {
   for f in $DATA_FILES; do
     if [ -e "$DATA_DIR/$f" ]; then mv "$DATA_DIR/$f" "$aside/$f"; fi
   done
+  CURRENT_COPY="$(basename "$aside")"
   say "Moved your current data to $aside"
   for f in $DATA_FILES; do
     if [ -e "$from/$f" ]; then ditto "$from/$f" "$DATA_DIR/$f"; fi
@@ -313,6 +343,7 @@ if [ "$mode" = install ]; then
   keep_installed_app
   swap_in "$new_app"
   prune_saved_apps
+  prune_data_copies
   finish "$old" "$new" "To undo: npm run update:app -- --rollback (in desktop/)"
   exit 0
 fi
@@ -361,4 +392,5 @@ else
   swap_in "$back_app"
 fi
 prune_saved_apps
+prune_data_copies
 finish "$old" "$back" "To go forward again: npm run update:app (in desktop/)"

@@ -237,8 +237,8 @@ describe.skipIf(process.platform !== 'darwin')('scripts/update.sh', () => {
     const current = fresh[0]
     expect(readdirSync(b).sort()).toEqual(
       [
+        'before-rollback-20200103T000000Z',
         'before-restore-20200104T000000Z',
-        'manual-20200102T000000Z',
         'manual-20200105T000000Z',
         'manual-20200105T000000Z-2',
         current!,
