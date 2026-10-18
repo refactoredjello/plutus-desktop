@@ -42,6 +42,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - `server/src/services/config.ts` is the runtime config: knobs live in `app_settings`, seeded once from env; read them with `runtimeConfig()`/`llmSettings()`, never `process.env`.
 - `desktop/` is the Electron shell: it runs `plutus-server/dist` in-process (build server first), testable parts in `desktop/src/lib/`. `npm run smoke` in desktop/ opens the real window on a throwaway data dir and checks the SPA reaches `/api/health` through the cookie guard; `smoke:dist` does the same for the packaged app.
 - `web/src/api` is generated; never edit it. `src/pages` one file per route; `src/features/<area>` components and queries; `src/mocks` MSW handlers for tests.
+- `npm run dev` in `web/` proxies `/api` to `127.0.0.1:8000`, where `npm run dev` in `server/` listens (override with `VITE_API_PROXY`); `npm run dev:mock` needs no server.
 - `docs/` requirements (with a decisions log and known limitations), architecture, plans, and PRDs.
 
 ## Working on the desktop app
