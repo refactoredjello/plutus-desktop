@@ -13,6 +13,7 @@ import { getCookie } from 'hono/cookie'
 import { HTTPException } from 'hono/http-exception'
 import type { Config } from './config.js'
 import type { Db } from './db/index.js'
+import { APP_VERSION } from './db/safety.js'
 import {
   DomainError,
   PROBLEM_CONTENT_TYPE,
@@ -61,6 +62,9 @@ export interface AppDeps {
   /** The periodic sync, for GET /api/sync/schedule and for PUT /api/settings/config to
    * reschedule; none when it is not running here. */
   scheduler?: AppScheduler
+  /** The version GET /api/health reports: the desktop's release version in the desktop, the
+   * server package version (the default) headless. */
+  appVersion?: string
 }
 
 export interface AppEnv {
@@ -71,6 +75,7 @@ export interface AppEnv {
     log: Logger
     requestId: string
     scheduler: AppScheduler | null
+    appVersion: string
   }
 }
 
@@ -231,6 +236,7 @@ export function createApp(deps: AppDeps): App {
     c.set('config', config)
     c.set('log', log)
     c.set('scheduler', deps.scheduler ?? null)
+    c.set('appVersion', deps.appVersion ?? APP_VERSION)
     await next()
   })
   app.use('*', requestId())

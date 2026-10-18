@@ -10,6 +10,9 @@ export const useSimplefinStatus = () =>
 export const useLlmStatus = () =>
   useQuery({ queryKey: ['settings', 'llm'], queryFn: () => unwrap(api.GET('/api/settings/llm')) })
 
+export const useHealth = () =>
+  useQuery({ queryKey: ['health'], queryFn: () => unwrap(api.GET('/api/health')), staleTime: Infinity })
+
 export const useAccounts = () =>
   useQuery({ queryKey: ['accounts'], queryFn: () => unwrap(api.GET('/api/accounts')) })
 

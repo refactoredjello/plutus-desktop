@@ -141,10 +141,12 @@ async function start(): Promise<void> {
   log = createLogger({ level: config.logLevel }, fileLogDestination(paths.logFile))
   // Guards, backs up, migrates, and checks; throws (database closed) rather than open data
   // that failed, so the server never starts on it.
-  db = openDb(paths.databasePath, { backupDir: paths.backupDir, appVersion: app.getVersion() })
+  const appVersion = app.getVersion()
+  db = openDb(paths.databasePath, { backupDir: paths.backupDir, appVersion })
   scheduler = createScheduler({ db, secrets, defaults: config.defaults, log })
   const guardToken = newGuardToken()
-  server = await startServer({ db, secrets, config, log, guardToken, scheduler })
+  // appVersion: /api/health (the Settings page) reports the release, not the server package's.
+  server = await startServer({ db, secrets, config, log, guardToken, scheduler, appVersion })
   origin = server.origin
   log.info(
     {

@@ -11,6 +11,7 @@ import { RequestsUsedLine } from '@/features/settings/RequestsUsedLine'
 import { RulesCard } from '@/features/settings/RulesCard'
 import { SyncHistoryCard } from '@/features/settings/SyncHistoryCard'
 import { SyncNowButton } from '@/features/settings/SyncNowButton'
+import { VersionLine } from '@/features/settings/VersionLine'
 
 export function SettingsPage() {
   const status = useSimplefinStatus()
@@ -45,6 +46,7 @@ export function SettingsPage() {
       <CategoriesCard />
       <RulesCard />
       <ClearDismissalsCard />
+      <VersionLine />
     </div>
   )
 }
