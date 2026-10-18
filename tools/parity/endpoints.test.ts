@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { ACCEPTED_NOTES } from './accepted.ts'
 import {
   ENDPOINTS,
   NOT_COMPARED,
@@ -8,6 +9,7 @@ import {
   getCases,
   monthOffset,
   normalizeOptionsFor,
+  ruleNotes,
   templateFor,
 } from './endpoints.ts'
 
@@ -113,5 +115,12 @@ describe('NOT_COMPARED', () => {
     for (const n of NOT_COMPARED) expect(n.reason.length).toBeGreaterThan(10)
     expect(skipped.has('GET /api/settings/config')).toBe(true)
     expect(skipped.has('GET /api/auth/session')).toBe(true)
+  })
+})
+
+describe('ruleNotes', () => {
+  it('lists every accepted difference class in the report', () => {
+    const notes = ruleNotes()
+    for (const note of ACCEPTED_NOTES) expect(notes).toContain(note)
   })
 })
