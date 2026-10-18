@@ -131,6 +131,44 @@ function apiGuard(token: string): MiddlewareHandler<AppEnv> {
   }
 }
 
+/**
+ * A required JSON body sent with no Content-Type and no bytes: Hono's json validator hands the
+ * route {} (all-optional PATCHes became no-ops), where FastAPI answered 422 at `body`. The
+ * routes come from the OpenAPI document, read on first use once every route is registered.
+ */
+function requiredBody(app: App): MiddlewareHandler<AppEnv> {
+  let routes: { method: string; path: RegExp }[] | null = null
+  return async (c, next) => {
+    if (!['POST', 'PUT', 'PATCH'].includes(c.req.method) || c.req.header('content-type') !== undefined) {
+      return next()
+    }
+    routes ??= Object.entries(openApiDocument(app).paths ?? {}).flatMap(([path, item]) =>
+      (['post', 'put', 'patch'] as const)
+        .filter((m) => item?.[m]?.requestBody && 'required' in item[m].requestBody && item[m].requestBody.required)
+        .map((m) => ({ method: m.toUpperCase(), path: new RegExp(`^${path.replace(/\{[^}]+\}/g, '[^/]+')}$`) })),
+    )
+    const route = routes.find((r) => r.method === c.req.method && r.path.test(c.req.path))
+    if (route && (await c.req.arrayBuffer()).byteLength === 0) {
+      return problem(c, problemBody(new ValidationError('body: Field required'), c.req.path))
+    }
+    return next()
+  }
+}
+
+/** The SPA's own files only; style-src allows the inline <style> the chart component writes. */
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ')
+
 /** web/dist with an index.html fallback for client routes, like web/nginx.conf. */
 function spa(webDist: string, guardToken: string | null): MiddlewareHandler<AppEnv> {
   // Built on first use: the web build may appear after the server starts (npm run dev).
@@ -153,6 +191,7 @@ function spa(webDist: string, guardToken: string | null): MiddlewareHandler<AppE
     }
     const html = await index(c, noop)
     if (!html) return next()
+    html.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY)
     if (guardToken !== null) {
       html.headers.append('Set-Cookie', `${GUARD_COOKIE}=${guardToken}; Path=/; HttpOnly; SameSite=Strict`)
     }
@@ -189,6 +228,7 @@ export function createApp(deps: AppDeps): App {
   })
   app.use('*', requestId())
   if (guardToken !== null) app.use('*', apiGuard(guardToken))
+  app.use('*', requiredBody(app))
 
   app.onError((err, c) => {
     if (err instanceof DomainError) return problem(c, problemBody(err, c.req.path))
