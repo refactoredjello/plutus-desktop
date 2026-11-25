@@ -28,10 +28,12 @@ import {
 import { DomainError } from '../lib/errors.js'
 import { type Cents, ZERO, cents, divHalfEven, formatMoney, sum } from '../lib/money.js'
 import type { EssentialityShare, MonthCategory, MonthDetail } from '../schemas/month.js'
+import type { TransactionRead } from '../schemas/transactions.js'
 import type { AccountBalanceSeries, BalancePoint, CategoryTotal, MonthlySummary } from '../schemas/reports.js'
 import {
   type CategoryMonthTotal,
   categoryTotals,
+  incomeIds,
   largestExpenseIds,
   monthRange,
   monthlyTotals,
@@ -231,6 +233,22 @@ function rate(net: Cents, income: Cents): number | null {
   return income > 0 ? roundedRatio(net, income) : null
 }
 
+/** These transactions as TransactionRead, in the order of `ids`. */
+function transactionReads(db: Db, ids: readonly number[]): TransactionRead[] {
+  if (ids.length === 0) return []
+  const rows = db
+    .select()
+    .from(transactions)
+    .leftJoin(categorizations, eq(categorizations.transaction_id, transactions.id))
+    .where(inArray(transactions.id, [...ids]))
+    .all()
+  const byId = new Map(rows.map((row) => [row.transactions.id, toTransactionRead(row.transactions, row.categorizations)]))
+  return ids.flatMap((i) => {
+    const t = byId.get(i)
+    return t === undefined ? [] : [t]
+  })
+}
+
 export function monthDetail(db: Db, month: MonthKey): MonthDetail {
   checkMonth(month)
   const now = today()
@@ -277,17 +295,8 @@ export function monthDetail(db: Db, month: MonthKey): MonthDetail {
     }
   })
 
-  const ids = largestExpenseIds(db, start, end)
-  const rows =
-    ids.length === 0
-      ? []
-      : db
-          .select()
-          .from(transactions)
-          .leftJoin(categorizations, eq(categorizations.transaction_id, transactions.id))
-          .where(inArray(transactions.id, ids))
-          .all()
-  const byId = new Map(rows.map((row) => [row.transactions.id, toTransactionRead(row.transactions, row.categorizations)]))
+  const largest = transactionReads(db, largestExpenseIds(db, start, end))
+  const incomeTransactions = transactionReads(db, incomeIds(db, start, end))
   const [, reviewCount] = listTransactions(db, {
     q: null,
     start,
@@ -334,10 +343,8 @@ export function monthDetail(db: Db, month: MonthKey): MonthDetail {
       share: self.expenses ? roundedRatio(total, self.expenses) : 0.0,
     })),
     categories,
-    largest: ids.flatMap((i) => {
-      const t = byId.get(i)
-      return t === undefined ? [] : [t]
-    }),
+    largest,
+    income_transactions: incomeTransactions,
     transaction_count: transactionCount,
     review_count: reviewCount,
   }

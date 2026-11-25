@@ -8,9 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CategoryTable } from '@/features/month/CategoryTable'
 import type { Detail } from '@/features/month/data'
 import { EssentialityBar } from '@/features/month/EssentialityBar'
-import { LargestList } from '@/features/month/LargestList'
 import { MonthTiles } from '@/features/month/MonthTiles'
 import { useMonthDetail } from '@/features/month/queries'
+import { TransactionList } from '@/features/month/TransactionList'
 import { currentMonth, isMonth } from '@/features/spending/data'
 import { addMonths, monthLabel } from '@/lib/dates'
 
@@ -84,6 +84,12 @@ export function MonthPage() {
         <>
           <MonthTiles d={d!} />
           <EssentialityBar d={d!} />
+          {d!.income_transactions.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Income</CardTitle></CardHeader>
+              <CardContent><TransactionList month={d!.month} rows={d!.income_transactions} /></CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader><CardTitle>Spending by category</CardTitle></CardHeader>
             <CardContent><CategoryTable d={d!} /></CardContent>
@@ -91,7 +97,7 @@ export function MonthPage() {
           {d!.largest.length > 0 && (
             <Card>
               <CardHeader><CardTitle>Largest transactions</CardTitle></CardHeader>
-              <CardContent><LargestList d={d!} /></CardContent>
+              <CardContent><TransactionList month={d!.month} rows={d!.largest} /></CardContent>
             </Card>
           )}
         </>

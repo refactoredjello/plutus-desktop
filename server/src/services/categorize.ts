@@ -15,7 +15,7 @@
  * - Keys sort by code point; JavaScript's default sort compares UTF-16 units.
  */
 
-import { type Column, and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { type Column, and, asc, eq, isNull, ne, sql } from 'drizzle-orm'
 import type { RuntimeDefaults } from '../config.js'
 import type { Db } from '../db/index.js'
 import {
@@ -135,6 +135,33 @@ export async function categorizePending(
   provider: LLMProvider | null = null,
   log: Logger = silentLogger(),
 ): Promise<number> {
+  const pass = localPass(db, secrets, defaults)
+  if (pass === null) return 0
+  const { pipeline, unseen, keyOf, accountTypes } = pass
+  if (unseen.length) {
+    await classifyUnseen(db, secrets, defaults, provider, pipeline, unseen, keyOf, accountTypes, log)
+  }
+  return pipeline.count
+}
+
+/**
+ * categorizePending without the LLM: transfers, rules, and the merchant cache. Merchants never
+ * seen before stay uncategorized. Returns the number of transactions categorized.
+ */
+export function categorizeLocally(db: Db, secrets: SecretStore, defaults: RuntimeDefaults): number {
+  return localPass(db, secrets, defaults)?.pipeline.count ?? 0
+}
+
+interface LocalPass {
+  readonly pipeline: Pipeline
+  /** Uncategorized transactions whose merchant key is not in the cache: the LLM's work. */
+  readonly unseen: Tx[]
+  readonly keyOf: (tx: Tx) => string
+  readonly accountTypes: ReadonlyMap<number, AccountType>
+}
+
+/** The part of categorizePending before the LLM, in one transaction; null when nothing is pending. */
+function localPass(db: Db, secrets: SecretStore, defaults: RuntimeDefaults): LocalPass | null {
   const pending = db
     .select({ tx: transactions })
     .from(transactions)
@@ -143,7 +170,7 @@ export async function categorizePending(
     .orderBy(asc(transactions.id))
     .all()
     .map((row) => row.tx)
-  if (pending.length === 0) return 0
+  if (pending.length === 0) return null
 
   const { ownerNameTokens } = runtimeConfig(db, secrets, defaults)
   const keys = new Map(pending.map((tx) => [tx.id, merchantKey(tx.raw_description, ownerNameTokens)]))
@@ -206,10 +233,51 @@ export async function categorizePending(
     }
   })
 
-  if (unseen.length) {
-    await classifyUnseen(db, secrets, defaults, provider, pipeline, unseen, keyOf, accountTypes, log)
-  }
-  return pipeline.count
+  return { pipeline, unseen, keyOf, accountTypes }
+}
+
+/**
+ * Re-apply every owner rule to categorized non-transfer transactions whose categorization is
+ * not manual, with categorizePending's precedence. A transaction no rule matches keeps its
+ * categorization; only rows that change are written. Returns how many changed.
+ */
+export function reapplyRules(db: Db, secrets: SecretStore, defaults: RuntimeDefaults): number {
+  const all = db.select().from(rules).all()
+  if (all.length === 0) return 0
+  const ruleSet = new Rules(all)
+  const { ownerNameTokens } = runtimeConfig(db, secrets, defaults)
+  const rows = db
+    .select({ tx: transactions, current: categorizations })
+    .from(transactions)
+    .innerJoin(categorizations, eq(categorizations.transaction_id, transactions.id))
+    .where(and(eq(transactions.is_transfer, false), ne(categorizations.source, 'manual')))
+    .all()
+  let changed = 0
+  db.transaction(() => {
+    for (const { tx, current } of rows) {
+      const key = tx.merchant_key ?? merchantKey(tx.raw_description, ownerNameTokens)
+      const rule = ruleSet.match(key, tx.raw_description)
+      if (rule === undefined) continue
+      const same =
+        current.category_id === rule.category_id &&
+        current.essentiality === rule.essentiality &&
+        current.source === 'rule' &&
+        current.confidence === 'very_high'
+      if (same) continue
+      db.update(categorizations)
+        .set({
+          category_id: rule.category_id,
+          essentiality: rule.essentiality,
+          source: 'rule',
+          confidence: 'very_high',
+          updated_at: utcNow(),
+        })
+        .where(eq(categorizations.transaction_id, tx.id))
+        .run()
+      changed += 1
+    }
+  })
+  return changed
 }
 
 async function classifyUnseen(

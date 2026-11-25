@@ -195,6 +195,7 @@ describe('route guards', () => {
 const SAMPLES: Record<string, { query?: string; body?: unknown }> = {
   list_accounts: {},
   start_sync: {},
+  recalculate: {},
   get_sync_schedule: {},
   list_sync_runs: { query: 'limit=20' },
   get_sync_run: {},

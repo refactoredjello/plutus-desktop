@@ -172,6 +172,26 @@ describe('month detail details', () => {
     expect(mystery.categorization).toBeNull()
   })
 
+  it('lists income transactions that sum to the income total, refunds and transfers excluded', async () => {
+    const { app, db } = makeApp()
+    seed(db)
+    const chk = makeAccount(db, 'checking')
+    makeTx(db, chk, '120.00', 'MOBILE DEPOSIT', '2026-09-12') // uncategorized: counts as income
+    const refund = makeTx(db, chk, '15.00', 'COFFEE REFUND', '2026-09-13')
+    categorize(db, refund.id, 'FOOD_AND_DRINK_COFFEE') // a refund reduces spending instead
+    const moved = makeTx(db, chk, '400.00', 'FROM SAVINGS', '2026-09-14')
+    categorize(db, moved.id, 'TRANSFER_IN_SAVINGS') // money movement
+    makeTx(db, chk, '700.00', 'OWN ACCOUNT', '2026-09-15', { is_transfer: true })
+    makeTx(db, chk, '99.00', 'OCTOBER PAY', '2026-10-01')
+    const d = await detail(app, '2026-09')
+    expect(d.income).toBe('3120.00')
+    const amounts = d.income_transactions.map((t: { amount: string }) => t.amount)
+    expect(amounts).toEqual(['3000.00', '120.00'])
+    const total = amounts.reduce((s: number, a: string) => s + Math.round(Number(a) * 100), 0)
+    expect((total / 100).toFixed(2)).toBe(d.income)
+    expect(d.income_transactions[1]).toMatchObject({ raw_description: 'MOBILE DEPOSIT', categorization: null })
+  })
+
   it('rounds shares half to even on the float', async () => {
     const { app, db } = makeApp()
     const chk = makeAccount(db)

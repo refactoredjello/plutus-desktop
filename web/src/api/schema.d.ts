@@ -183,6 +183,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/recalculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recalculate
+         * @description Re-apply rules to non-manual categorizations, categorize from the merchant cache, and detect recurring charges. No bank request and no LLM.
+         */
+        post: operations["recalculate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/recurring": {
         parameters: {
             query?: never;
@@ -977,6 +997,8 @@ export interface components {
             income: string;
             /** Income Average */
             income_average: string | null;
+            /** Income Transactions */
+            income_transactions: components["schemas"]["TransactionRead"][];
             /** Is Complete */
             is_complete: boolean;
             /** Largest */
@@ -1063,6 +1085,18 @@ export interface components {
             current_balance: string;
             /** Months */
             months: components["schemas"]["ProjectedMonth"][];
+        };
+        /**
+         * RecalculateRead
+         * @description What a local recalculation changed. No bank request and no LLM.
+         */
+        RecalculateRead: {
+            /** Categorized */
+            categorized: number;
+            /** Recategorized */
+            recategorized: number;
+            /** Recurring Changes */
+            recurring_changes: number;
         };
         /**
          * Recurrence
@@ -1658,6 +1692,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectionRead"];
+                };
+            };
+        };
+    };
+    recalculate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecalculateRead"];
                 };
             };
         };

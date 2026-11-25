@@ -3,18 +3,20 @@ import { useCategories } from '@/features/transactions/queries'
 import { monthEnd } from '@/lib/dates'
 import { formatDate } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
-import { type Detail, largestLink } from './data'
+import type { Schemas } from '@/api/client'
+import { transactionLink } from './data'
 
-export function LargestList({ d }: { d: Detail }) {
+/** A month's transactions, each linking to Transactions filtered to its payee and month. */
+export function TransactionList({ month, rows }: { month: string; rows: readonly Schemas['TransactionRead'][] }) {
   const categories = useCategories()
-  const last = monthEnd(d.month)
+  const last = monthEnd(month)
   const label = (id: number | undefined) => (id === undefined ? 'Uncategorized' : (categories.data?.find((c) => c.id === id)?.label ?? ''))
   return (
     <ul>
-      {d.largest.map((t) => (
+      {rows.map((t) => (
         <li key={t.id}>
           <Link
-            to={largestLink(t, d.month, last)}
+            to={transactionLink(t, month, last)}
             className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-md px-2 py-2.5 text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
           >
             <span className="min-w-0">

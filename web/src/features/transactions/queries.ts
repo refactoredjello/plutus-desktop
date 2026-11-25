@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap, type Schemas } from '@/api/client'
+import { invalidateDerived } from '@/app/invalidate'
 import { PAGE_SIZE, type Filters } from './filters'
 
 type Page = Schemas['Page_TransactionRead_']
@@ -83,7 +84,8 @@ export function useUpdateTransaction() {
     onError: (_err, _vars, ctx) => {
       for (const [key, data] of ctx?.previous ?? []) qc.setQueryData(key, data)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['transactions'] }),
+    // A category, essentiality, or one-time edit moves report totals and recurring essentiality.
+    onSuccess: () => invalidateDerived(qc),
   })
 }
 

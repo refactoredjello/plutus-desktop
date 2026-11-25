@@ -341,6 +341,19 @@ export function largestExpenseIds(db: Db, start: PlainDate, endExclusive: PlainD
     .map((r) => r.id)
 }
 
+/** Ids of income (aggregates' definition) posted in [start, endExclusive), largest first. */
+export function incomeIds(db: Db, start: PlainDate, endExclusive: PlainDate): number[] {
+  return db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .leftJoin(categorizations, categorizationJoin())
+    .leftJoin(categories, categoryJoin())
+    .where(and(...baseConditions(start, endExclusive), isIncome()))
+    .orderBy(sql`${transactions.amount} desc`, sql`${transactions.id} asc`)
+    .all()
+    .map((r) => r.id)
+}
+
 export const AVERAGE_MONTHS = 3
 export const LOOKBACK_FOR_AVERAGE = 12
 

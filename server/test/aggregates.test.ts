@@ -18,6 +18,7 @@ import {
   expenseIds,
   expensesBetween,
   incomeBetween,
+  incomeIds,
   largestExpenseIds,
   monthRange,
   monthlyTotals,
@@ -290,6 +291,25 @@ describe('other aggregates', () => {
     expect(expenseIds(db, start, end)).toEqual([b.id, c.id, a.id, d.id])
     expect(expenseIds(db, start, end, m('10.00'))).toEqual([b.id, c.id, a.id])
     expect([...expenseAmounts(db, start, end)].sort((x, y) => x - y)).toEqual([m('5.00'), m('10.00'), m('30.00'), m('30.00')])
+  })
+
+  it('income_ids lists money in that counts as income, largest first, then by id', () => {
+    const db = makeDb()
+    const chk = makeAccount(db)
+    const pay = makeTx(db, chk, '50.00', 'PAY', '2026-03-06')
+    categorize(db, pay.id, 'INCOME_SALARY')
+    const dep = makeTx(db, chk, '20.00', 'DEPOSIT', '2026-03-02') // uncategorized
+    const dep2 = makeTx(db, chk, '20.00', 'DEPOSIT 2', '2026-03-01')
+    const refund = makeTx(db, chk, '8.00', 'REFUND', '2026-03-07')
+    categorize(db, refund.id, 'GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE')
+    const moved = makeTx(db, chk, '300.00', 'FROM SAVINGS', '2026-03-08')
+    categorize(db, moved.id, 'TRANSFER_IN_SAVINGS')
+    makeTx(db, chk, '999.00', 'TRANSFER', '2026-03-05', { is_transfer: true })
+    makeTx(db, chk, '-10.00', 'SHOP', '2026-03-03')
+    makeTx(db, chk, '60.00', 'APRIL', '2026-04-01')
+    const [start, end] = [d8('2026-03-01'), d8('2026-04-01')]
+    expect(incomeIds(db, start, end)).toEqual([pay.id, dep.id, dep2.id])
+    expect(incomeBetween(db, start, end)).toBe(m('90.00'))
   })
 
   it('current_total_balance breaks a same-instant tie by the later snapshot id and is zero without snapshots', () => {

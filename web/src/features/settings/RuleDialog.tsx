@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { invalidateDerived } from '@/app/invalidate'
 import { api, unwrap, type Schemas } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,7 +45,7 @@ function useSaveRule(rule: Rule | undefined) {
         : unwrap(api.POST('/api/rules', { body })),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['rules'] })
-      void qc.invalidateQueries({ queryKey: ['transactions'] })
+      void invalidateDerived(qc)
     },
   })
 }

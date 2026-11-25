@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router'
+import { RefreshButton } from '@/app/RefreshButton'
 import { navItems } from '@/app/router'
 import { useReviewCount } from '@/features/review/queries'
 import { cn } from '@/lib/utils'
@@ -36,6 +37,7 @@ export function Layout() {
               </li>
             ))}
           </ul>
+          <RefreshButton />
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">

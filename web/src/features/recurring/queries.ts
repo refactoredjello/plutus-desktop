@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap, type Schemas } from '@/api/client'
+import { invalidateDerived } from '@/app/invalidate'
 
 type Charge = Schemas['RecurringChargeRead']
 
@@ -25,7 +26,8 @@ export function useUpdateRecurring() {
       return { previous }
     },
     onError: (_err, _vars, ctx) => qc.setQueryData(['recurring'], ctx?.previous),
-    onSettled: () => qc.invalidateQueries({ queryKey: ['recurring'] }),
+    // Recurring flags feed the projection and What changed; settling refetches the list either way.
+    onSettled: () => invalidateDerived(qc),
   })
 }
 
@@ -59,7 +61,7 @@ export function useMarkRecurring() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: Schemas['RecurringChargeCreate']) => unwrap(api.POST('/api/recurring', { body })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring'] }),
+    onSuccess: () => invalidateDerived(qc),
   })
 }
 

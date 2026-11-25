@@ -20,6 +20,32 @@ const largestSeed: [string, string, string, number][] = [
   ['Chipotle', 'CHIPOTLE 2093 AUSTIN TX', '-63.85', 8],
 ]
 
+// The month's income as two rows (salary and interest) that sum exactly to `income`.
+function incomeRows(month: string, income: number): Schemas['TransactionRead'][] {
+  if (income <= 0) return []
+  const interest = Math.min(4.12, income)
+  const rows: [string, string, number, number][] = [
+    ['Acme Corp', 'ACME CORP PAYROLL', Math.round((income - interest) * 100) / 100, 1],
+    ['Bank Interest', 'INTEREST PAYMENT', interest, 2],
+  ]
+  return rows
+    .filter(([, , amount]) => amount > 0)
+    .map(([payee, raw, amount, category_id], i) => ({
+      id: 9100 + i,
+      account_id: 1,
+      posted_on: `${month}-${i === 0 ? '01' : '28'}`,
+      amount: cents(amount),
+      raw_description: raw,
+      payee,
+      pending: false,
+      merchant_key: payee.toLowerCase().replace(/\W+/g, '-'),
+      note: null,
+      one_time: false,
+      is_transfer: false,
+      categorization: { category_id, essentiality: null, source: 'rule', confidence: 'high' },
+    }))
+}
+
 export function monthDetail(month: string, now = new Date()): Detail {
   const current = monthKey(now)
   const summaries = monthlySummaries(now)
@@ -80,6 +106,7 @@ export function monthDetail(month: string, now = new Date()): Detail {
           categorization: { category_id, essentiality: 'essential', source: 'rule', confidence: 'high' },
         }))
       : [],
+    income_transactions: incomeRows(month, income),
     transaction_count: count,
     review_count: count ? 3 : 0,
   }

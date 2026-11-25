@@ -30,6 +30,7 @@ import { registerGoals } from './routes/goals.js'
 import { registerHealth } from './routes/health.js'
 import { registerManualEntries } from './routes/manual_entries.js'
 import { registerProjection } from './routes/projection.js'
+import { registerRecalculate } from './routes/recalculate.js'
 import { registerRecurring } from './routes/recurring.js'
 import { registerReports } from './routes/reports.js'
 import { registerSettings } from './routes/settings.js'
@@ -262,6 +263,7 @@ export function createApp(deps: AppDeps): App {
   registerHealth(app)
   registerAccounts(app)
   registerSync(app)
+  registerRecalculate(app)
   registerSettings(app)
   registerTransactions(app)
   registerCategories(app)

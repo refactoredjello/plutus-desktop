@@ -21,6 +21,10 @@ const problem = (status: number, title: string, detail: string) =>
   HttpResponse.json({ title, status, detail }, { status })
 
 export const syncHandlers = [
+  // The header's Refresh: local recalculation, nothing to change in the mocks.
+  http.post('/api/recalculate', () =>
+    HttpResponse.json<Schemas['RecalculateRead']>({ recategorized: 0, categorized: 0, recurring_changes: 0 }),
+  ),
   http.get('/api/sync/schedule', () =>
     HttpResponse.json<Schemas['SyncSchedule']>({
       enabled: true,

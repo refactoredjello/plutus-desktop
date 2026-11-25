@@ -1110,6 +1110,13 @@
               "null"
             ]
           },
+          "income_transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionRead"
+            },
+            "title": "Income Transactions",
+            "type": "array"
+          },
           "is_complete": {
             "title": "Is Complete",
             "type": "boolean"
@@ -1178,6 +1185,7 @@
           "essentiality",
           "categories",
           "largest",
+          "income_transactions",
           "transaction_count",
           "review_count"
         ],
@@ -1366,6 +1374,30 @@
           "assumptions"
         ],
         "title": "ProjectionRead",
+        "type": "object"
+      },
+      "RecalculateRead": {
+        "description": "What a local recalculation changed. No bank request and no LLM.",
+        "properties": {
+          "categorized": {
+            "title": "Categorized",
+            "type": "integer"
+          },
+          "recategorized": {
+            "title": "Recategorized",
+            "type": "integer"
+          },
+          "recurring_changes": {
+            "title": "Recurring Changes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recategorized",
+          "categorized",
+          "recurring_changes"
+        ],
+        "title": "RecalculateRead",
         "type": "object"
       },
       "Recurrence": {
@@ -2533,6 +2565,28 @@
         "summary": "Get Projection",
         "tags": [
           "projection"
+        ]
+      }
+    },
+    "/api/recalculate": {
+      "post": {
+        "description": "Re-apply rules to non-manual categorizations, categorize from the merchant cache, and detect recurring charges. No bank request and no LLM.",
+        "operationId": "recalculate",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecalculateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Recalculate",
+        "tags": [
+          "recalculate"
         ]
       }
     },

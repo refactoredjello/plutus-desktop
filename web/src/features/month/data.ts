@@ -33,5 +33,5 @@ export function categoryRowsSplit<T>(rows: T[], limit = 10): { shown: T[]; rest:
   return { shown: rows.slice(0, limit), rest: rows.slice(limit) }
 }
 
-export const largestLink = (t: Schemas['TransactionRead'], month: string, last: string) =>
+export const transactionLink = (t: Schemas['TransactionRead'], month: string, last: string) =>
   `/transactions?${new URLSearchParams({ q: t.payee ?? t.raw_description, start: `${month}-01`, end: last })}`

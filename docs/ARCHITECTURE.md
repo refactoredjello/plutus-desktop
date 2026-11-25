@@ -196,6 +196,7 @@ All routes live under `/api`. The authoritative contract is the generated spec a
 GET  /api/health
 GET  /api/accounts
 POST /api/sync              GET  /api/sync/runs          GET /api/sync/runs/{id}     GET /api/sync/schedule
+POST /api/recalculate       (header Refresh: re-apply rules, categorize from the cache, detect recurring; no bank, no LLM)
 GET  /api/settings/simplefin   POST /api/settings/simplefin   DELETE /api/settings/simplefin
 GET  /api/settings/llm      GET  /api/settings/config    PUT /api/settings/config
 GET  /api/transactions      PATCH /api/transactions/{id}   POST /api/transactions/{id}/unpair

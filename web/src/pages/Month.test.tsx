@@ -10,7 +10,9 @@ import { renderAt } from '@/test/render'
 
 const current = monthKey(new Date())
 const prev = addMonths(current, -1)
-const tile = (label: string) => screen.getByText(label).closest('[data-slot="card"]') as HTMLElement
+const cardTitle = (name: string) =>
+  [...document.querySelectorAll('[data-slot="card-title"]')].find((e) => e.textContent === name) as HTMLElement | undefined
+const tile = (label: string) => within(screen.getByRole('region', { name: 'Month totals' })).getByText(label).closest('[data-slot="card"]') as HTMLElement
 
 function serve(over: Partial<Schemas['MonthDetail']>) {
   server.use(http.get('/api/reports/month/:month', ({ params }) => HttpResponse.json({ ...monthDetail(String(params.month)), ...over })))
@@ -117,6 +119,38 @@ describe('Month view', () => {
     const row = await screen.findByRole('link', { name: /Landlord LLC/ })
     expect(row.getAttribute('href')).toContain('q=Landlord+LLC')
     expect(await within(row).findByText(/Rent/)).toBeInTheDocument()
+  })
+
+  it('shows an Income card above spending, one linked row per income transaction', async () => {
+    const base = monthDetail(prev).largest[0]!
+    serve({
+      income_transactions: [
+        { ...base, id: 1, amount: '4200.00', payee: 'Acme Corp', raw_description: 'ACME PAYROLL', posted_on: `${prev}-01`, categorization: { category_id: 1, essentiality: null, source: 'rule', confidence: 'high' } },
+        { ...base, id: 2, amount: '120.00', payee: null, raw_description: 'MOBILE DEPOSIT', posted_on: `${prev}-12`, categorization: null },
+      ],
+    })
+    renderAt(`/month/${prev}`)
+    const spending = await screen.findByText('Spending by category')
+    const income = cardTitle('Income')!
+    expect(income).toBeDefined()
+    expect(income.compareDocumentPosition(spending) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const card = income.closest('[data-slot="card"]') as HTMLElement
+    const rows = within(card).getAllByRole('link')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('Acme Corp')
+    expect(rows[0]).toHaveTextContent('$4,200.00')
+    expect(await within(rows[0]!).findByText(/Salary/)).toBeInTheDocument()
+    expect(rows[0]!.getAttribute('href')).toContain('q=Acme+Corp')
+    expect(rows[1]).toHaveTextContent('MOBILE DEPOSIT')
+    expect(rows[1]).toHaveTextContent('Uncategorized')
+    expect(rows[1]!.getAttribute('href')).toContain('q=MOBILE+DEPOSIT')
+  })
+
+  it('hides the Income card when the month has no income transactions', async () => {
+    serve({ income_transactions: [] })
+    renderAt(`/month/${prev}`)
+    await screen.findByText('Spending by category')
+    expect(cardTitle('Income')).toBeUndefined()
   })
 
   it('shows an empty state for a month without transactions', async () => {

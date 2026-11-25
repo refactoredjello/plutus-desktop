@@ -60,6 +60,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - Request money fields use `MoneyInput` (number or decimal string, parsed to cents); responses use `Money` (two-decimal string).
 - Contract first: change schemas, run `make openapi`, then build frontend against the generated types and MSW mocks.
 - Frontend: TanStack Query for server state, shadcn/ui components (base-nova, on Base UI), Recharts. Use the generated client in `src/api/client.ts`; never hand-write fetch calls.
+- A mutation that changes categorizations, rules, or recurring charges calls `invalidateDerived` (`web/src/app/invalidate.ts`) so reports, projection, and goals refetch too.
 - Migrations are drizzle-kit SQL in `server/src/db/migrations`, reviewed by hand. Never edit an applied migration. Table rebuilds (drizzle-kit's `__new_<table>` copy, drop, rename) are safe: `openDb` migrates with foreign keys off, then runs `foreign_key_check` and `integrity_check` and restores the backup on a failure. Before migrating a database with data it writes a verified copy to `<data dir>/backups/` and keeps the newest 5; a database migrated by a newer app refuses to open (docs/ARCHITECTURE.md, "Migrations and backups").
 - Tests first: a failing-test commit, then the implementation commit.
 - Commits end with a `Co-Authored-By` line for the model that wrote them.

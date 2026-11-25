@@ -42,6 +42,7 @@ export const MonthDetail = model(
     essentiality: z.array(EssentialityShare),
     categories: z.array(MonthCategory), // this month's spending, largest first
     largest: z.array(TransactionRead),
+    income_transactions: z.array(TransactionRead), // this month's income, largest first; sums to `income`
     transaction_count: z.int(), // non-transfer transactions posted this month
     review_count: z.int(), // of those, how many need review
   },

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { invalidateDerived } from '@/app/invalidate'
 import { api, unwrap, type Schemas } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +29,7 @@ function useDeleteRule() {
     mutationFn: (id: number) => unwrap(api.DELETE('/api/rules/{rule_id}', { params: { path: { rule_id: id } } })),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['rules'] })
-      void qc.invalidateQueries({ queryKey: ['transactions'] })
+      void invalidateDerived(qc)
     },
   })
 }
