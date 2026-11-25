@@ -135,7 +135,7 @@ export function loadConfig(env: Env = process.env): Config {
     logLevel: opt('LOG_LEVEL', str, 'info'),
     defaults: {
       llmProvider: opt('LLM_PROVIDER', (n, v) => parseChoice(n, v, LLM_PROVIDERS), 'fake'),
-      llmModel: opt('LLM_MODEL', str, 'claude-haiku-4-5'),
+      llmModel: opt('LLM_MODEL', str, 'claude-opus-5-5'),
       anthropicApiKey: opt('ANTHROPIC_API_KEY', str, null as string | null),
       ollamaBaseUrl: opt('OLLAMA_BASE_URL', str, 'http://localhost:11434'),
       ownerNameTokens: opt('OWNER_NAME_TOKENS', parseStringList, []),

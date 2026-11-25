@@ -12,7 +12,7 @@ describe('loadConfig defaults', () => {
     expect(config.logLevel).toBe('info')
     expect(config.defaults).toEqual({
       llmProvider: 'fake',
-      llmModel: 'claude-haiku-4-5',
+      llmModel: 'claude-opus-5-5',
       anthropicApiKey: null,
       ollamaBaseUrl: 'http://localhost:11434',
       ownerNameTokens: [],

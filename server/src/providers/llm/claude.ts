@@ -34,7 +34,8 @@ import type {
   SavingsSuggestion,
 } from './types.js'
 
-export const MAX_TOKENS = 8000
+// Thinking tokens count toward this on models that always think (Opus 5.5), so leave room.
+export const MAX_TOKENS = 16000
 
 /** The part of the SDK client the provider uses; tests pass a stub. */
 export type ClaudeClient = Pick<Anthropic, 'messages'>

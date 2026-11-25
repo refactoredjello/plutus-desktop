@@ -106,7 +106,7 @@ describe('GET /api/settings/llm', () => {
   it('reports provider, model, and whether it is configured', async () => {
     expect(await llmStatus({ llmProvider: 'fake' })).toEqual({
       provider: 'fake',
-      model: 'claude-haiku-4-5',
+      model: 'claude-opus-5-5',
       configured: true,
     })
     expect(await llmStatus({ llmProvider: 'ollama', llmModel: 'llama3.1' })).toEqual({
@@ -128,7 +128,7 @@ describe('GET /api/settings/llm', () => {
     await app.request('/api/settings/config', send('PUT', { anthropic_api_key: API_KEY }))
     expect(await body(await app.request('/api/settings/llm'))).toEqual({
       provider: 'claude',
-      model: 'claude-haiku-4-5',
+      model: 'claude-opus-5-5',
       configured: true,
     })
   })
@@ -141,7 +141,7 @@ describe('/api/settings/config', () => {
     expect(r.status).toBe(200)
     expect(await body(r)).toEqual({
       llm_provider: 'fake',
-      llm_model: 'claude-haiku-4-5',
+      llm_model: 'claude-opus-5-5',
       anthropic_api_key_set: false,
       ollama_base_url: 'http://localhost:11434',
       owner_name_tokens: [],

@@ -207,7 +207,7 @@ describe('ClaudeProvider', () => {
     const kwargs = call(parse)
     expect(kwargs.model).toBe('claude-haiku-4-5')
     expect(kwargs.max_tokens).toBe(MAX_TOKENS)
-    expect(MAX_TOKENS).toBe(8000)
+    expect(MAX_TOKENS).toBe(16000)
     expect(kwargs.output_config.format.type).toBe('json_schema')
     expect(kwargs.output_config.format.schema).toEqual(EXPECTED_SCHEMAS.ClassificationBatch)
     expect(kwargs).not.toHaveProperty('thinking')
@@ -359,7 +359,7 @@ describe('ClaudeProvider over the real SDK', () => {
     expect(requests[0]?.headers.get('x-api-key')).toBe('sk-test')
     expect(sent).toMatchObject({
       model: 'claude-haiku-4-5',
-      max_tokens: 8000,
+      max_tokens: 16000,
       system: [{ type: 'text', text: classifySystemPrompt(), cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: classifyUserMessage(ITEMS) }],
       output_config: { format: { type: 'json_schema', schema: EXPECTED_SCHEMAS.ClassificationBatch } },
@@ -522,6 +522,6 @@ describe('getLlmProvider', () => {
   })
 
   it('defaults the model to an alias with no date suffix', () => {
-    expect(testConfig().defaults.llmModel).toBe('claude-haiku-4-5')
+    expect(testConfig().defaults.llmModel).toBe('claude-opus-5-5')
   })
 })

@@ -38,7 +38,7 @@ const API_KEY = 'sk-ant-test-0123456789'
 
 const defaults: RuntimeDefaults = {
   llmProvider: 'claude',
-  llmModel: 'claude-haiku-4-5',
+  llmModel: 'claude-opus-5-5',
   anthropicApiKey: API_KEY,
   ollamaBaseUrl: 'http://localhost:11434',
   ownerNameTokens: ['ALEX', 'SMITH'],
@@ -60,7 +60,7 @@ describe('seeding', () => {
     const db = makeDb()
     expect(runtimeConfig(db, secrets, defaults)).toEqual({
       llmProvider: 'claude',
-      llmModel: 'claude-haiku-4-5',
+      llmModel: 'claude-opus-5-5',
       anthropicApiKeySet: true,
       ollamaBaseUrl: 'http://localhost:11434',
       ownerNameTokens: ['ALEX', 'SMITH'],
@@ -97,7 +97,7 @@ describe('seeding', () => {
     }
     expect(runtimeConfig(db, secrets, changed)).toMatchObject({
       llmProvider: 'claude',
-      llmModel: 'claude-haiku-4-5',
+      llmModel: 'claude-opus-5-5',
       syncIntervalHours: 6,
       schedulerEnabled: true,
     })
@@ -139,7 +139,7 @@ describe('seeding', () => {
     const config = testConfig()
     expect(runtimeConfig(makeDb(), secrets, config.defaults)).toMatchObject({
       llmProvider: 'fake',
-      llmModel: 'claude-haiku-4-5',
+      llmModel: 'claude-opus-5-5',
       anthropicApiKeySet: false,
       schedulerEnabled: false,
       ownerNameTokens: [],
@@ -158,7 +158,7 @@ describe('updateConfig', () => {
     })
     expect(updated).toEqual({
       llmProvider: 'ollama',
-      llmModel: 'claude-haiku-4-5',
+      llmModel: 'claude-opus-5-5',
       anthropicApiKeySet: true,
       ollamaBaseUrl: 'http://localhost:11434',
       ownerNameTokens: ['JORDAN'],
@@ -204,7 +204,7 @@ describe('llmSettings', () => {
     const db = makeDb()
     expect(llmSettings(db, secrets, defaults)).toStrictEqual({
       llm_provider: 'claude',
-      llm_model: 'claude-haiku-4-5',
+      llm_model: 'claude-opus-5-5',
       anthropic_api_key: API_KEY,
       ollama_base_url: 'http://localhost:11434',
     })
@@ -240,7 +240,7 @@ describe('llmStatus', () => {
 
   it('is configured for fake and ollama, and for claude only with a non-blank key', () => {
     const fake = status({ ...defaults, llmProvider: 'fake', anthropicApiKey: null })
-    expect(fake).toEqual({ provider: 'fake', model: 'claude-haiku-4-5', configured: true })
+    expect(fake).toEqual({ provider: 'fake', model: 'claude-opus-5-5', configured: true })
     const ollama = status({ ...defaults, llmProvider: 'ollama', llmModel: 'llama3.1', anthropicApiKey: null })
     expect(ollama).toEqual({ provider: 'ollama', model: 'llama3.1', configured: true })
     const noKey = status({ ...defaults, llmProvider: 'claude', anthropicApiKey: null })
