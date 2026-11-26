@@ -100,7 +100,10 @@ npm run update:app -- --rollback      # reinstall the app the last update replac
 npm run update:app -- --rollback --restore-data   # and put back the data from before it
 ```
 
-It refuses to run while Plutus is open. It downloads the zip for this Mac's architecture and
+It refuses to run while Plutus is open, or while any other process (a second Plutus, `sqlite3`,
+a demo load) holds `plutus.sqlite` or its `-wal` file open; it names the process (via `lsof`)
+and changes nothing until that is closed. This applies to updates, `--rollback`, and
+`--restore-data`. It downloads the zip for this Mac's architecture and
 checks its signature. Before replacing anything, it copies `plutus.sqlite` and its `-wal` and
 `-shm` files to `backups/manual-<time>/` (keeping its newest five copies, never the one just
 made, and nothing else in `backups/`) and zips the installed app to
@@ -110,6 +113,15 @@ prints the old and new versions. A failed signature check changes nothing. `GH_R
 picks the repository if gh can't tell from the checkout. `bash scripts/update.sh --help` lists
 the testing options (`--target`, `--data-dir`, `PLUTUS_UPDATE_ZIP`).
 
+`PLUTUS_SIGN_IDENTITY="<certificate name>"` re-signs the app with that code-signing identity
+after its download signature is verified, then verifies it again (rollbacks re-sign the saved
+app the same way). Use it with a self-signed certificate (see "Signing and notarization") so
+updates stop asking about the Keychain:
+
+```bash
+PLUTUS_SIGN_IDENTITY="Plutus Local Signing" make update
+```
+
 **By hand:** quit Plutus; copy `plutus.sqlite` (and `plutus.sqlite-wal`, `plutus.sqlite-shm` if
 present; they can hold recent changes) out of `~/Library/Application Support/Plutus`; download
 `Plutus-<version>-arm64.zip` (or `-x64`) from the Releases page, unzip it, and replace
@@ -117,7 +129,9 @@ present; they can hold recent changes) out of `~/Library/Application Support/Plu
 then Open, once. Files fetched with `gh` are not.
 
 **The Keychain prompt:** each new ad hoc build is a different app to the Keychain, so its first
-launch asks to use "Plutus Safe Storage". Choose **Always Allow**. Deny leaves the saved
+launch asks to use "Plutus Safe Storage". Choose **Always Allow**. An app signed with your own
+certificate (`PLUTUS_SIGN_IDENTITY`, above) keeps the same identity across updates: it asks once,
+the first time, and not after later updates signed with the same certificate. Deny leaves the saved
 SimpleFIN connection and API keys unreadable until they are entered again in Settings; the
 financial data is not encrypted and is unaffected.
 
@@ -188,14 +202,17 @@ bump again.
   Mac, Gatekeeper quarantines it: right-click, then Open, or
   `xattr -dr com.apple.quarantine Plutus.app`. Each new ad hoc build is a different app to
   the Keychain, so macOS may ask once to let it use "Plutus Safe Storage"; choose Always Allow.
-- **With a Developer ID certificate:** set `CSC_LINK` (path or base64 of the exported `.p12`)
-  and `CSC_KEY_PASSWORD`, or `CSC_NAME` for a certificate already in the keychain. The app is
-  signed with it and the hardened runtime (electron-builder's default entitlements, which
-  allow JIT and unsigned libraries for Electron and the SQLite addon).
-- **Notarization** runs after a certificate signing when these are set:
+- **With a certificate:** set `CSC_LINK` (path or base64 of the exported `.p12`) and
+  `CSC_KEY_PASSWORD`, or `CSC_NAME` for a certificate already in the keychain. The app is
+  signed with it and the hardened runtime, with electron-builder's default entitlements (JIT,
+  and library validation off, so Electron's frameworks and the SQLite addon load even from a
+  certificate with no Team ID, such as a self-signed one). A Developer ID certificate or a
+  self-signed one both work; only a Developer ID build can be notarized.
+- **Notarization** runs only for a certificate build with a full set of Apple credentials:
   `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`; or an App Store Connect API
-  key: `APPLE_API_KEY` (path to the `.p8`), `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER`. An ad hoc
-  build is never notarized.
+  key: `APPLE_API_KEY` (path to the `.p8`), `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER`. A
+  certificate without them (a self-signed one) is signed but not notarized; an ad hoc build is
+  never notarized.
 
 ```bash
 CSC_LINK=~/secure/developer-id.p12 CSC_KEY_PASSWORD=... \
@@ -204,3 +221,20 @@ APPLE_ID=you@example.com APPLE_APP_SPECIFIC_PASSWORD=... APPLE_TEAM_ID=ABCDE1234
 ```
 
 Signed and notarized builds are configured but not yet verified (no certificate here).
+
+### A self-signed certificate for your own Mac
+
+Ad hoc builds change identity every release, so the Keychain asks about "Plutus Safe Storage"
+after every update. A one-time self-signed code-signing certificate gives the app one identity:
+
+1. Open Keychain Access, then Keychain Access > Certificate Assistant > Create a Certificate.
+2. Name it `Plutus Local Signing`, Identity Type **Self Signed Root**, Certificate Type
+   **Code Signing**, and create it (in the login keychain).
+3. Check it is there: `security find-identity -p codesigning` lists `Plutus Local Signing`
+   (as not trusted, which is fine for signing).
+
+Then install updates with `PLUTUS_SIGN_IDENTITY="Plutus Local Signing" make update`, or build
+with it: `CSC_NAME="Plutus Local Signing" npm run dist` (signed, hardened, not notarized). The
+first signing asks to use the certificate's key: choose Always Allow. The first launch of the
+re-signed app asks about "Plutus Safe Storage" once more; later updates signed the same way do
+not. The certificate is trusted only on this Mac; it does not help Gatekeeper on another one.
