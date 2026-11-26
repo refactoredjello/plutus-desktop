@@ -15,7 +15,7 @@ import { ProviderError } from '../src/lib/errors.js'
 import { createLogger, silentLogger } from '../src/lib/log.js'
 import { simplefinClaim } from '../src/routes/settings.js'
 import { OVERDUE_DELAY_MS, type Scheduler, createScheduler } from '../src/scheduler.js'
-import { KeySecretStore } from '../src/secrets.js'
+import { KeySecretStore, SecretDecryptError } from '../src/secrets.js'
 import { runtimeConfig } from '../src/services/config.js'
 import { ACCESS_URL, makeToken } from './factories.js'
 import { makeApp, makeDb, testConfig } from './setup.js'
@@ -89,6 +89,31 @@ describe('SimpleFIN connection', () => {
     expect(r.status).toBe(502)
     expect(r.headers.get('content-type')).toBe('application/problem+json')
     expect((await body(await app.request('/api/settings/simplefin'))).connected).toBe(false)
+  })
+
+  // Backlog 13 (fixed): an unreadable access URL still reports connected, with 200.
+  it('reports connected with 200 when the stored access URL cannot be decrypted', async () => {
+    const config = testConfig()
+    const db = makeDb()
+    await makeApp({ db, config }).app.request(
+      '/api/settings/simplefin',
+      send('POST', { setup_token: makeToken() }),
+    )
+    const working = await body(await makeApp({ db, config }).app.request('/api/settings/simplefin'))
+    expect(working.connected).toBe(true)
+    const real = new KeySecretStore(config.secretKey)
+    const locked = {
+      encrypt: (plain: string) => real.encrypt(plain),
+      decrypt: (): string => {
+        throw new SecretDecryptError()
+      },
+    }
+    const r = await makeApp({ db, config, secrets: locked }).app.request('/api/settings/simplefin')
+    expect(r.status).toBe(200)
+    expect(await body(r)).toEqual({ connected: true, connected_at: working.connected_at })
+    const empty = await makeApp({ config, secrets: locked }).app.request('/api/settings/simplefin')
+    expect(empty.status).toBe(200)
+    expect(await body(empty)).toEqual({ connected: false, connected_at: null })
   })
 
   it('disconnecting when not connected is still 204', async () => {

@@ -24,7 +24,7 @@ import {
   shell,
 } from 'electron'
 import { type Config, loadConfig } from 'plutus-server/config'
-import { type Db, openDb } from 'plutus-server/db'
+import { type Db, closeDb, openDb } from 'plutus-server/db'
 import { type Logger, createLogger } from 'plutus-server/log'
 import { type Scheduler, createScheduler } from 'plutus-server/scheduler'
 import { type ShellArgs, parseShellArgs } from './lib/args.js'
@@ -173,7 +173,7 @@ async function shutdown(): Promise<void> {
   scheduler = null
   await server?.close()
   server = null
-  db?.$client.close()
+  closeDb(db)
   db = null
 }
 

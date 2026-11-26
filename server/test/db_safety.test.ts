@@ -13,6 +13,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -25,6 +26,7 @@ import {
   KEEP_BACKUPS,
   LAST_APP_VERSION_KEY,
   MIGRATIONS_FOLDER,
+  closeDb,
   openDb,
 } from '../src/db/index.js'
 
@@ -368,5 +370,49 @@ describe('a new database that fails to migrate', () => {
     const err = openError(() => openDb(dbPath, { migrationsFolder: folder }))
     expect(err.kind).toBe('migration_failed')
     expectNoDatabaseFiles()
+  })
+})
+
+describe('closeDb', () => {
+  it('checkpoints the WAL into the main file and leaves the -wal empty or gone', () => {
+    const db = openDb(dbPath)
+    const c = db.$client
+    c.pragma('wal_autocheckpoint = 0')
+    c.prepare(
+      "INSERT INTO accounts (provider, external_id, name, type, currency, is_active) VALUES ('test', 'A1', 'Checking', 'checking', 'USD', 1)",
+    ).run()
+    const insert = c.prepare(
+      "INSERT INTO transactions (account_id, external_id, posted_on, amount, raw_description, pending, is_transfer) VALUES (1, ?, '2026-02-01', -500, 'LUNCH', 0, 0)",
+    )
+    for (let i = 0; i < 20; i++) insert.run(`W${i}`)
+    const wal = `${dbPath}-wal`
+    expect(statSync(wal).size).toBeGreaterThan(0)
+
+    closeDb(db)
+    expect(c.open).toBe(false)
+    expect(!existsSync(wal) || statSync(wal).size === 0).toBe(true)
+    // The main file alone holds every row.
+    const plain = join(dir, 'plain-copy.sqlite')
+    copyFileSync(dbPath, plain)
+    expect(count(plain, 'transactions')).toBe(20)
+  })
+
+  it('accepts null, undefined, an already-closed handle, and an in-memory database', () => {
+    expect(() => closeDb(null)).not.toThrow()
+    expect(() => closeDb(undefined)).not.toThrow()
+    const closed = openDb(dbPath)
+    closed.$client.close()
+    expect(() => closeDb(closed)).not.toThrow()
+    const memory = openDb(':memory:')
+    expect(() => closeDb(memory)).not.toThrow()
+    expect(memory.$client.open).toBe(false)
+  })
+})
+
+describe('legacy_alter_table', () => {
+  it('is off after openDb, so a rebuild rename keeps schema references', () => {
+    const db = openDb(dbPath)
+    expect(db.$client.pragma('legacy_alter_table', { simple: true })).toBe(0)
+    closeDb(db)
   })
 })
