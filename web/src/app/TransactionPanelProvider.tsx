@@ -30,7 +30,8 @@ export function TransactionPanelProvider({ children }: { children: ReactNode }) 
     setIsOpen(true)
   }, [])
 
-  const api = useMemo(() => ({ open }), [open])
+  const openId = isOpen && shown ? shown.txn.id : null
+  const api = useMemo(() => ({ open, openId }), [open, openId])
 
   return (
     <TransactionPanelContext.Provider value={api}>

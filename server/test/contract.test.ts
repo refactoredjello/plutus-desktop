@@ -204,7 +204,9 @@ const SAMPLES: Record<string, { query?: string; body?: unknown }> = {
   disconnect_simplefin: {},
   get_llm_status: {},
   get_config: {},
+  get_appearance: {},
   update_config: { body: { llm_model: 'claude-haiku-4-5', anthropic_api_key: null } },
+  update_appearance: { body: { theme: 'dark' } },
   list_transactions: {
     query:
       'q=coffee&start=2026-01-01&end=2026-01-31&account_id=1&account_id=2&category_id=3' +

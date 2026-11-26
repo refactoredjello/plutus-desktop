@@ -126,7 +126,27 @@
     }
   html {
     @apply font-sans;
+    color-scheme: light;
     }
+  /* Native controls (date inputs, scrollbars) follow the theme. */
+  .dark {
+    color-scheme: dark;
+    }
+  /*
+   * Before the bundle adds .dark (src/app/theme.ts), the canvas is already in the right theme:
+   * a chosen dark (data-theme, written by the server), or a dark system unless light was
+   * chosen. No flash on load. Same colour as the dark --background.
+   */
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    background-color: oklch(0.145 0 0);
+    }
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+      color-scheme: dark;
+      background-color: oklch(0.145 0 0);
+      }
+  }
 }
 
 /*

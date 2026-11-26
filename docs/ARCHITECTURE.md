@@ -234,13 +234,13 @@ Pages, in navigation order:
 5. **Recurring** — detected and confirmed recurrences by name (the merchant key under it), with how far away the next charge is (overdue in amber) and annual cost.
 6. **Goals** — a one-line summary (goals, saved of target, how many behind), goal card with percentage complete, a progress bar coloured by on-track status, suggestions list, Suggest button.
 7. **Planned** — manual expected income and expenses: a line with what is due and expected in the next 30 days (from `/api/manual-entries/upcoming`), simple form and list.
-8. **Settings** — SimpleFIN token, sync history, next scheduled sync and requests used, runtime config (LLM provider, model, key, owner name tokens, sync settings), category management, rules (create, edit, delete), and the app version at the foot (`GET /api/health` reports the desktop release, or the server package version headless).
+8. **Settings** — SimpleFIN token, sync history, next scheduled sync and requests used, runtime config (LLM provider, model, key, owner name tokens, sync settings), category management, rules (create, edit, delete), appearance (System, Light, Dark), and the app version at the foot (`GET /api/health` reports the desktop release, or the server package version headless).
 
-The **transaction panel** is one side sheet for every page (`web/src/app/TransactionPanelProvider.tsx`): a transaction's full details, its category and essentiality, and the rule that matches it, edited there, or a new one, with a live match count. Settings creates and edits rules with the same form in a dialog.
+The **transaction panel** is one side sheet for every page (`web/src/app/TransactionPanelProvider.tsx`): a transaction's full details (with its note and pending, one-time, and transfer badges), its category and essentiality, and the rule that matches it, edited there, or a new one, with a live match count. The row it shows stays highlighted behind a light dim. Settings creates and edits rules with the same form in a dialog.
 
 **Spending** (`/spending`) is a single-bucket essentiality breakdown reached from Overview and Month, not from the navigation.
 
-Design rules: one primary action per page, muted palette with a single accent, numbers right-aligned in tabular figures, charts follow the `dataviz` skill conventions when implemented.
+Design rules: one primary action per page, muted palette with a single accent, numbers right-aligned in tabular figures, charts follow the `dataviz` skill conventions when implemented. Appearance is System, Light, or Dark (Settings; `app_settings` key `theme` through `/api/settings/appearance`). The server writes a chosen theme on `<html data-theme>` in the page it serves, `index.css` paints the background from that attribute and the system media query before the bundle runs, and `web/src/app/theme.ts` keeps the root's `dark` class in step, live.
 
 ## Configuration
 

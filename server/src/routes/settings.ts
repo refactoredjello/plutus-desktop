@@ -1,11 +1,11 @@
 /**
- * SimpleFIN connection, LLM status, and the runtime config.
+ * SimpleFIN connection, LLM status, the runtime config, and the appearance.
  */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
 import { claimSetupToken } from '../providers/bank/simplefin.js'
-import { ConfigRead, ConfigUpdate } from '../schemas/settings.js'
+import { AppearanceRead, AppearanceUpdate, ConfigRead, ConfigUpdate } from '../schemas/settings.js'
 import { LLMStatus, SimpleFINConnect, SimpleFINStatus } from '../schemas/sync.js'
 import * as appSettings from '../services/app_settings.js'
 import * as config from '../services/config.js'
@@ -86,6 +86,26 @@ const updateConfig = createRoute({
   responses: { 200: json(ConfigRead) },
 })
 
+const getAppearance = createRoute({
+  method: 'get',
+  path: '/api/settings/appearance',
+  operationId: 'get_appearance',
+  summary: 'Get Appearance',
+  tags: ['settings'],
+  responses: { 200: json(AppearanceRead) },
+})
+
+const updateAppearance = createRoute({
+  method: 'put',
+  path: '/api/settings/appearance',
+  operationId: 'update_appearance',
+  summary: 'Update Appearance',
+  description: 'Choose the colour theme: follow the system, or always light or dark.',
+  tags: ['settings'],
+  request: { body: jsonBody(AppearanceUpdate) },
+  responses: { 200: json(AppearanceRead) },
+})
+
 export function registerSettings(app: App): void {
   app.openapi(getSimplefinStatus, (c) => {
     return c.json(appSettings.simplefinStatus(c.var.db, c.var.secrets), 200)
@@ -111,5 +131,12 @@ export function registerSettings(app: App): void {
     // The running scheduler follows the stored interval and on/off switch (backlog 31).
     c.var.scheduler?.reschedule()
     return c.json(read(updated), 200)
+  })
+  app.openapi(getAppearance, (c) => {
+    return c.json({ theme: appSettings.getTheme(c.var.db, c.var.secrets) }, 200)
+  })
+  app.openapi(updateAppearance, (c) => {
+    const { theme } = c.req.valid('json')
+    return c.json({ theme: appSettings.setTheme(c.var.db, c.var.secrets, theme) }, 200)
   })
 }

@@ -31,3 +31,13 @@ export const ConfigUpdate = requestModel('ConfigUpdate', {
   scheduler_enabled: z.boolean().optional(),
 })
 export type ConfigUpdate = z.infer<typeof ConfigUpdate>
+
+/** The window's colour theme: follow the system, or always light or dark. */
+export const THEMES = ['system', 'light', 'dark'] as const
+export type Theme = (typeof THEMES)[number]
+
+export const AppearanceRead = model('AppearanceRead', { theme: z.enum(THEMES) })
+export type AppearanceRead = z.infer<typeof AppearanceRead>
+
+export const AppearanceUpdate = requestModel('AppearanceUpdate', { theme: z.enum(THEMES) })
+export type AppearanceUpdate = z.infer<typeof AppearanceUpdate>

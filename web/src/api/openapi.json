@@ -110,6 +110,43 @@
         "title": "AccountType",
         "type": "string"
       },
+      "AppearanceRead": {
+        "properties": {
+          "theme": {
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme"
+        ],
+        "title": "AppearanceRead",
+        "type": "object"
+      },
+      "AppearanceUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "theme": {
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme"
+        ],
+        "title": "AppearanceUpdate",
+        "type": "object"
+      },
       "BalancePoint": {
         "properties": {
           "balance": {
@@ -3332,6 +3369,57 @@
         "summary": "Update Rule",
         "tags": [
           "categories"
+        ]
+      }
+    },
+    "/api/settings/appearance": {
+      "get": {
+        "operationId": "get_appearance",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppearanceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Appearance",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "Choose the colour theme: follow the system, or always light or dark.",
+        "operationId": "update_appearance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppearanceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppearanceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Update Appearance",
+        "tags": [
+          "settings"
         ]
       }
     },

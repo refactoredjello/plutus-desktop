@@ -16,7 +16,8 @@ export function TransactionList({ rows }: { rows: readonly Schemas['TransactionR
           <button
             type="button"
             onClick={() => panel.open(t)}
-            className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-md px-2 py-2.5 text-left text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+            aria-current={panel.openId === t.id || undefined}
+            className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-md px-2 py-2.5 text-left text-sm hover:bg-muted aria-[current=true]:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
           >
             <span className="min-w-0">
               <span className="block truncate">{t.payee ?? t.raw_description}</span>

@@ -1,5 +1,6 @@
 import { PageHeader } from '@/app/PageHeader'
 import { AccountsCard } from '@/features/settings/AccountsCard'
+import { AppearanceCard } from '@/features/settings/AppearanceCard'
 import { BankConnectionCard } from '@/features/settings/BankConnectionCard'
 import { ClearDismissalsCard } from '@/features/settings/ClearDismissalsCard'
 import { CategoriesCard } from '@/features/settings/CategoriesCard'
@@ -30,6 +31,7 @@ export function SettingsPage() {
       <CategoriesCard />
       <RulesCard />
       <ClearDismissalsCard />
+      <AppearanceCard />
       <VersionLine />
     </div>
   )

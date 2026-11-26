@@ -36,7 +36,9 @@ import { registerReports } from './routes/reports.js'
 import { registerSettings } from './routes/settings.js'
 import { registerSync } from './routes/sync.js'
 import { registerTransactions } from './routes/transactions.js'
+import type { Theme } from './schemas/settings.js'
 import type { SecretStore } from './secrets.js'
+import { getTheme } from './services/app_settings.js'
 
 export const API_PREFIX = '/api'
 export const OPENAPI_CONFIG = {
@@ -211,6 +213,18 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ')
 
+/**
+ * The chosen theme on <html data-theme>, so the first paint is already in it (index.css; no
+ * inline script under the CSP). 'system' leaves the page as built.
+ */
+async function withTheme(res: Response, theme: Theme): Promise<Response> {
+  if (theme === 'system') return res
+  const body = (await res.text()).replace(/<html(\s|>)/, `<html data-theme="${theme}"$1`)
+  const headers = new Headers(res.headers)
+  headers.delete('Content-Length')
+  return new Response(body, { status: res.status, headers })
+}
+
 /** web/dist with an index.html fallback for client routes, like web/nginx.conf. */
 function spa(webDist: string, guardToken: string | null): MiddlewareHandler<AppEnv> {
   // Built on first use: the web build may appear after the server starts (npm run dev).
@@ -231,8 +245,9 @@ function spa(webDist: string, guardToken: string | null): MiddlewareHandler<AppE
       if (found) return found
       if (isAsset) return next()
     }
-    const html = await index(c, noop)
-    if (!html) return next()
+    const served = await index(c, noop)
+    if (!served) return next()
+    const html = await withTheme(served, getTheme(c.var.db, c.var.secrets))
     html.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY)
     if (guardToken !== null) {
       html.headers.append('Set-Cookie', `${GUARD_COOKIE}=${guardToken}; Path=/; HttpOnly; SameSite=Strict`)
