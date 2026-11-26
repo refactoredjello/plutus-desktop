@@ -15,15 +15,12 @@ describe('Settings', () => {
     const user = userEvent.setup()
     renderAt('/settings')
 
-    const syncNow = await screen.findByRole('button', { name: 'Sync now' })
-    expect(syncNow).toBeDisabled()
-
     await user.type(await screen.findByLabelText('SimpleFIN setup token'), 'secret-token')
     await user.click(screen.getByRole('button', { name: 'Connect' }))
 
     expect(await screen.findByText(/Connected since/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Disconnect' })).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Sync now' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sync' })).toBeEnabled())
   })
 
   it('disconnects after confirming', async () => {
@@ -38,34 +35,12 @@ describe('Settings', () => {
     expect(await screen.findByLabelText('SimpleFIN setup token')).toBeInTheDocument()
   })
 
-  it('runs a sync, polls until it finishes, and updates history', async () => {
+  it('has no sync button; syncing lives in the header', async () => {
     connect()
-    const user = userEvent.setup()
     renderAt('/settings')
-
     await screen.findByText('Bank connection timed out')
-    await user.click(await screen.findByRole('button', { name: 'Sync now' }))
-
-    expect(await screen.findByRole('button', { name: 'Syncing…' })).toBeDisabled()
-    // Mock completes on the second poll, 2s after the first.
-    expect(await screen.findByRole('button', { name: 'Sync now' }, { timeout: 8000 })).toBeEnabled()
-    const rows = await screen.findAllByRole('row')
-    expect(within(rows[1]!).getByText('success')).toBeInTheDocument()
-    expect(within(rows[1]!).getByText('4')).toBeInTheDocument()
-  }, 15000)
-
-  it('shows the API detail when a sync is rejected', async () => {
-    connect()
-    server.use(
-      http.post('/api/sync', () =>
-        HttpResponse.json({ title: 'Conflict', status: 409, detail: 'A sync is already running' }, { status: 409 }),
-      ),
-    )
-    const user = userEvent.setup()
-    renderAt('/settings')
-
-    await user.click(await screen.findByRole('button', { name: 'Sync now' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('A sync is already running')
+    expect(screen.queryByRole('button', { name: /Sync now/ })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('main')).queryByRole('button', { name: /^Sync/ })).not.toBeInTheDocument()
   })
 
   it('lists accounts, the LLM status, and sync history', async () => {

@@ -7,10 +7,11 @@ import { routes } from '@/app/router'
 /** Render the real app at a path, with a fresh query client and MSW-backed API. */
 export function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
+  const queryClient = createQueryClient()
   const result = render(
-    <QueryClientProvider client={createQueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
-  return { ...result, router }
+  return { ...result, router, queryClient }
 }

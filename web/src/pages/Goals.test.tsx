@@ -7,6 +7,26 @@ import { renderAt } from '@/test/render'
 
 const card = async (name: string) => (await screen.findByText(name)).closest('[data-slot="card"]') as HTMLElement
 
+describe('Goals summary', () => {
+  it('counts goals, totals saved against targets, and says how many are behind', async () => {
+    renderAt('/goals')
+    expect(await screen.findByText('2 goals \u00b7 $7,000.00 saved of $14,000.00 \u00b7 1 behind')).toBeInTheDocument()
+  })
+
+  it('says all on track when none is behind', async () => {
+    goals.splice(0, 1)
+    renderAt('/goals')
+    expect(await screen.findByText('1 goal \u00b7 $4,000.00 saved of $5,000.00 \u00b7 all on track')).toBeInTheDocument()
+  })
+
+  it('is hidden when there are no goals', async () => {
+    goals.splice(0)
+    renderAt('/goals')
+    await screen.findByText(/No goals yet/)
+    expect(screen.queryByText(/saved of/)).not.toBeInTheDocument()
+  })
+})
+
 describe('Goals', () => {
   it('shows progress, plain-language monthly figures, and the on-track badge', async () => {
     renderAt('/goals')

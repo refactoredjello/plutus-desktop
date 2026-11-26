@@ -57,8 +57,8 @@ describe('Overview', () => {
       http.get('/api/reports/balances', () => HttpResponse.json([])),
     )
     renderAt('/')
-    await waitFor(() => expect(screen.getAllByText(/No data yet\. Run/).length).toBe(4))
-    expect(screen.getAllByRole('link', { name: 'Settings → Sync now' })[0]).toHaveAttribute('href', '/settings')
+    await waitFor(() => expect(screen.getAllByText(/No data yet\./).length).toBe(4))
+    expect(screen.getAllByText(/Sync in the header/).length).toBe(4)
   })
 
   it('an error in one card does not break the others', async () => {

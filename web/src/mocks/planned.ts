@@ -11,8 +11,18 @@ const initial = (): Entry[] => [
 
 export let plannedEntries: Entry[] = initial()
 
+/** What GET /api/manual-entries/upcoming answers; the server derives it from the schedule rules. */
+const initialUpcoming = (): Schemas['PlannedUpcomingRead'] => ({
+  from_date: '2026-11-01',
+  to_date: '2026-11-30',
+  due: '1200.00',
+  expected: '500.00',
+})
+export const plannedState = { upcoming: initialUpcoming() }
+
 export function resetPlanned() {
   plannedEntries = initial()
+  plannedState.upcoming = initialUpcoming()
 }
 
 const problem = (status: number, detail: string) =>
@@ -25,6 +35,7 @@ function validate(recurrence: string, due: string, end: string | null | undefine
 }
 
 export const plannedHandlers = [
+  http.get('/api/manual-entries/upcoming', () => HttpResponse.json(plannedState.upcoming)),
   http.get('/api/manual-entries', () => HttpResponse.json<Entry[]>(plannedEntries)),
   http.post('/api/manual-entries', async ({ request }) => {
     const body = (await request.json()) as Schemas['ManualEntryCreate']

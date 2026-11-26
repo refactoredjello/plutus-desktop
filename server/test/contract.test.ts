@@ -242,6 +242,7 @@ const SAMPLES: Record<string, { query?: string; body?: unknown }> = {
   mark_recurring: { body: { transaction_id: 1, cadence: 'monthly' } },
   update_recurring: { body: { status: 'dismissed', essentiality: null, amount: '-15.49', cadence: 'yearly' } },
   list_manual_entries: {},
+  upcoming_manual_entries: { query: 'days=30' },
   create_manual_entry: { body: { amount: '-1200.00', description: 'Rent', due_date: '2026-11-01', recurrence: 'monthly' } },
   update_manual_entry: { body: { end_date: '2027-11-01', fulfilled_transaction_id: null } },
   delete_manual_entry: {},

@@ -148,6 +148,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/manual-entries/upcoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Upcoming Manual Entries
+         * @description Totals of the open (unfulfilled) planned entries from today through days - 1 days ahead, counting every occurrence of a repeating entry. due sums outflows, expected inflows; both positive.
+         */
+        get: operations["upcoming_manual_entries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/manual-entries/{entry_id}": {
         parameters: {
             query?: never;
@@ -1135,6 +1155,23 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** PlannedUpcomingRead */
+        PlannedUpcomingRead: {
+            /** Due */
+            due: string;
+            /** Expected */
+            expected: string;
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+        };
         /** ProjectedMonth */
         ProjectedMonth: {
             /** Manual Expenses */
@@ -1769,6 +1806,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ManualEntryRead"];
+                };
+            };
+        };
+    };
+    upcoming_manual_entries: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlannedUpcomingRead"];
                 };
             };
         };

@@ -1,6 +1,6 @@
 /** Manual entries (planned income and expenses). */
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { categoryId, makeAccount, makeTx } from './factories.js'
 import { makeApp } from './setup.js'
 
@@ -97,5 +97,54 @@ describe('manual entries', () => {
   it('answers 404 for a missing id', async () => {
     expect((await patch('/api/manual-entries/999999', { description: 'x' })).status).toBe(404)
     expect((await call('DELETE', '/api/manual-entries/999999')).status).toBe(404)
+  })
+})
+
+describe('upcoming planned totals', () => {
+  const upcoming = async (query = '') => (await call('GET', `/api/manual-entries/upcoming${query}`)).json as Body
+
+  beforeEach(() => {
+    vi.stubEnv('PLUTUS_TODAY', '2026-11-10')
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('is zero with nothing planned', async () => {
+    expect(await upcoming()).toEqual({ from_date: '2026-11-10', to_date: '2026-12-09', due: '0.00', expected: '0.00' })
+  })
+
+  it('sums open entries due in the next 30 days, today included', async () => {
+    await post(body({ amount: '-100.00', due_date: '2026-11-10' }))
+    await post(body({ amount: '-50.25', due_date: '2026-12-09' }))
+    await post(body({ amount: '500.00', due_date: '2026-11-20' }))
+    await post(body({ amount: '-999.00', due_date: '2026-12-10' })) // past the window
+    await post(body({ amount: '-999.00', due_date: '2026-11-09' })) // overdue, not upcoming
+    expect(await upcoming()).toMatchObject({ due: '150.25', expected: '500.00' })
+  })
+
+  it('counts every occurrence of a repeating entry until its end date', async () => {
+    // Weekly from Nov 3: Nov 10, 17, 24, Dec 1, 8 are in the window.
+    await post(body({ amount: '-10.00', due_date: '2026-11-03', recurrence: 'weekly' }))
+    // Monthly from Aug 31 clamps to month end: Nov 30 (Dec 31 is past the window).
+    await post(body({ amount: '1000.00', due_date: '2026-08-31', recurrence: 'monthly' }))
+    // Biweekly from Nov 1: Nov 15 and Nov 29.
+    await post(body({ amount: '250.00', due_date: '2026-11-01', recurrence: 'biweekly' }))
+    // Monthly from Oct 12, ending Nov 30: only Nov 12.
+    await post(body({ amount: '-7.00', due_date: '2026-10-12', recurrence: 'monthly', end_date: '2026-11-30' }))
+    expect(await upcoming()).toMatchObject({ due: '57.00', expected: '1500.00' })
+  })
+
+  it('leaves fulfilled entries out', async () => {
+    const account = makeAccount(ctx.db)
+    const tx = makeTx(ctx.db, account, '-100.00', undefined, '2026-11-12')
+    const created = (await post(body({ amount: '-100.00', due_date: '2026-11-12' }))).json as Entry
+    await patch(`/api/manual-entries/${created.id}`, { fulfilled_transaction_id: tx.id })
+    expect(await upcoming()).toMatchObject({ due: '0.00', expected: '0.00' })
+  })
+
+  it('takes a window length', async () => {
+    await post(body({ amount: '-100.00', due_date: '2026-11-20' }))
+    expect(await upcoming('?days=7')).toMatchObject({ to_date: '2026-11-16', due: '0.00' })
   })
 })

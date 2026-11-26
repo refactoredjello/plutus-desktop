@@ -8,13 +8,23 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EntryDialog } from '@/features/planned/EntryDialog'
-import { usePlanned, usePlannedMutations } from '@/features/planned/queries'
+import { UPCOMING_DAYS, usePlanned, usePlannedMutations, usePlannedUpcoming } from '@/features/planned/queries'
 import { useCategories } from '@/features/transactions/queries'
 import { formatDate, humanizeEnum } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 
 type Entry = Schemas['ManualEntryRead']
+
+/** "$1,200.00 due and $500.00 expected in the next 30 days", naming only the sides with money. */
+function upcomingLine(u: Schemas['PlannedUpcomingRead']): string {
+  const parts = [
+    Number(u.due) !== 0 && `${formatMoney(u.due)} due`,
+    Number(u.expected) !== 0 && `${formatMoney(u.expected)} expected`,
+  ].filter(Boolean)
+  const window = `in the next ${UPCOMING_DAYS} days`
+  return parts.length ? `${parts.join(' and ')} ${window}` : `Nothing due or expected ${window}`
+}
 
 export function ManualEntriesPage() {
   const planned = usePlanned()
@@ -23,6 +33,8 @@ export function ManualEntriesPage() {
   const [editing, setEditing] = useState<Entry | null>(null)
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<Entry | null>(null)
+  const anyOpen = planned.data?.some((e) => e.fulfilled_transaction_id === null) ?? false
+  const upcoming = usePlannedUpcoming(anyOpen)
   const categoryLabel = new Map((categories.data ?? []).map((c) => [c.id, c.label]))
 
   return (
@@ -36,6 +48,9 @@ export function ManualEntriesPage() {
           </Button>
         }
       />
+      {anyOpen && upcoming.data && (
+        <p className="-mt-3 mb-6 text-sm text-muted-foreground tabular-nums">{upcomingLine(upcoming.data)}</p>
+      )}
       {planned.isPending ? (
         <Skeleton className="h-32 w-full" />
       ) : planned.isError ? (

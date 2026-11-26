@@ -8,11 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 export function EmptyLine() {
   return (
     <p className="py-10 text-center text-sm text-muted-foreground">
-      No data yet. Run{' '}
+      No data yet. Connect a bank in{' '}
       <Link to="/settings" className="underline underline-offset-2 hover:text-foreground">
-        Settings → Sync now
-      </Link>{' '}
-      to pull in your transactions.
+        Settings
+      </Link>
+      , then press Sync in the header to pull in your transactions.
     </p>
   )
 }

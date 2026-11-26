@@ -2,9 +2,35 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { plannedEntries } from '@/mocks/planned'
+import { plannedEntries, plannedState } from '@/mocks/planned'
 import { server } from '@/mocks/server'
 import { renderAt } from '@/test/render'
+
+describe('Planned summary', () => {
+  it('says what is due and expected in the next 30 days', async () => {
+    renderAt('/planned')
+    expect(await screen.findByText('$1,200.00 due and $500.00 expected in the next 30 days')).toBeInTheDocument()
+  })
+
+  it('names only the side that has money', async () => {
+    plannedState.upcoming = { ...plannedState.upcoming, expected: '0.00' }
+    renderAt('/planned')
+    expect(await screen.findByText('$1,200.00 due in the next 30 days')).toBeInTheDocument()
+  })
+
+  it('says when nothing falls in the next 30 days', async () => {
+    plannedState.upcoming = { ...plannedState.upcoming, due: '0.00', expected: '0.00' }
+    renderAt('/planned')
+    expect(await screen.findByText('Nothing due or expected in the next 30 days')).toBeInTheDocument()
+  })
+
+  it('is hidden when no planned item is open', async () => {
+    server.use(http.get('/api/manual-entries', () => HttpResponse.json(plannedEntries.filter((e) => e.fulfilled_transaction_id !== null))))
+    renderAt('/planned')
+    await screen.findByText('Dentist')
+    expect(screen.queryByText(/next 30 days/)).not.toBeInTheDocument()
+  })
+})
 
 describe('Planned', () => {
   it('lists planned items with signed amounts and status', async () => {

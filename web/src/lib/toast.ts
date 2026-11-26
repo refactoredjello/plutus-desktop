@@ -1,7 +1,7 @@
 import { toast } from 'sonner'
 
 /**
- * Confirmations and errors. Toast an action whose result is not already on screen (Refresh,
+ * Confirmations and errors. Toast an action whose result is not already on screen (Sync, Recalc,
  * rules, "Looks right", marking recurring); a control that shows its new value needs none.
  * Errors stay until dismissed. Mutation errors are toasted for every mutation by the query
  * client (app/queryClient.ts), so call `notifyError` only for failures outside a mutation.

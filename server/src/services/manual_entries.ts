@@ -2,12 +2,13 @@
  * Manual entries: expected income (positive) or expenses (negative) not yet in bank data.
  */
 
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, isNull } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import { type Recurrence, categories, manualEntries, transactions } from '../db/schema.js'
-import type { PlainDate } from '../lib/dates.js'
+import { type PlainDate, addDays } from '../lib/dates.js'
 import { DomainError, NotFoundError } from '../lib/errors.js'
-import type { Cents } from '../lib/money.js'
+import { type Cents, cents } from '../lib/money.js'
+import { occurrences, today as scheduleToday } from './schedule.js'
 
 export type ManualEntry = typeof manualEntries.$inferSelect
 
@@ -116,4 +117,32 @@ export function updateManualEntry(db: Db, entryId: number, changes: ManualEntryC
 export function deleteManualEntry(db: Db, entryId: number): void {
   getManualEntry(db, entryId)
   db.delete(manualEntries).where(eq(manualEntries.id, entryId)).run()
+}
+
+/** Open planned money in a window: `due` is outflows (positive cents), `expected` inflows. */
+export interface PlannedUpcoming {
+  from_date: PlainDate
+  to_date: PlainDate
+  due: Cents
+  expected: Cents
+}
+
+/**
+ * What the open planned entries add up to from today through `days - 1` days ahead, counting
+ * every occurrence of a repeating entry (schedule rules, up to its end date). Fulfilled
+ * entries are left out.
+ */
+export function upcomingTotals(db: Db, days: number, today: PlainDate = scheduleToday()): PlannedUpcoming {
+  const last = addDays(today, days - 1)
+  let due = 0
+  let expected = 0
+  const open = db.select().from(manualEntries).where(isNull(manualEntries.fulfilled_transaction_id)).all()
+  for (const e of open) {
+    for (const day of occurrences(e.due_date, e.recurrence, addDays(today, -1), last)) {
+      if (e.end_date !== null && day > e.end_date) break
+      if (e.amount > 0) expected += e.amount
+      else due -= e.amount
+    }
+  }
+  return { from_date: today, to_date: last, due: cents(due), expected: cents(expected) }
 }
