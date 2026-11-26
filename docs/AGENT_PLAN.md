@@ -43,12 +43,11 @@ Role definitions live in `.claude/agents/`. Review uses the built-in `/code-revi
 
 ## The orchestrator's loop for every brief
 
-1. Write the brief: requirement IDs, files owned, done-when check, and what not to touch.
+1. Write the brief: what to build, files owned, done-when check, and what not to touch.
 2. Spawn the agent in the background in a worktree.
 3. When it reports, read the diff, check the branch log (a failing-test commit before each implementation commit), and run `/code-review` on the branch.
 4. Send fixes back to the same agent via SendMessage until clean.
 5. Merge into the orchestrator's branch (never `main`) with `git merge --no-ff`, run `make check`, regenerate the API client if schemas changed (`make openapi`), then push and open a pull request against `main`.
-6. Log anything that changed a requirement in the decisions table in REQUIREMENTS.md.
 
 ## Rules that keep parallel work safe
 

@@ -1,5 +1,5 @@
 /**
- * Category and rule management (R3.1, R2.3).
+ * Category and rule management.
  *
  * Rows are returned as stored; their columns are exactly CategoryRead's and RuleRead's.
  * ORDER BY on text uses SQLite's default BINARY (bytewise) collation.

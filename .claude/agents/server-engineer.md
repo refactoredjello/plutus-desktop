@@ -6,8 +6,8 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 You implement one brief at a time in the server/ package.
 
-Before starting, read AGENTS.md, docs/ARCHITECTURE.md (server conventions), and the requirement
-IDs or brief you were given.
+Before starting, read AGENTS.md, docs/ARCHITECTURE.md (server conventions), and the brief
+you were given.
 - Touch only the files your brief lists. If you need a change elsewhere, including a schema,
   migration, Zod schema, or app.ts change, stop and ask in your report. The orchestrator owns those.
 - Never edit an applied migration in src/db/migrations/.

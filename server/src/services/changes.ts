@@ -1,5 +1,5 @@
 /**
- * What changed (R12): deterministic signals about the current month. No LLM involvement.
+ * What changed: deterministic signals about the current month. No LLM involvement.
  *
  * Each signal is a rule over the shared aggregates (services/aggregates.ts), so figures match
  * the Month page. Thresholds are module constants; there is no UI to tune them in v1.
@@ -47,7 +47,7 @@ import { listTransactions } from './transactions.js'
 
 type Transaction = typeof transactions.$inferSelect
 
-// Thresholds (R12.2). Changing a number here changes the product; keep the PRD in sync.
+// Thresholds. Changing a number here changes what "What changed" reports.
 // Percentages are [numerator, denominator]; dollar amounts are cents.
 export const RECURRING_CHANGE_PCT = [10, 100] as const // S1
 export const RECURRING_CHANGE_MIN = cents(500) // S1
@@ -62,8 +62,8 @@ export const REVIEW_COUNT_MIN = 10 // S7
 export const REVIEW_SINGLE_MIN = cents(10000) // S7
 export const REVIEW_SCAN_LIMIT = 500 // S7: the queue is small; cap the scan
 export const DISCRETIONARY_PACE_PCT = [25, 100] as const // S8
-export const MAX_ITEMS = 7 // R12.3
-export const DISMISSAL_RETENTION_DAYS = 90 // R12.6
+export const MAX_ITEMS = 7
+export const DISMISSAL_RETENTION_DAYS = 90
 export const SIMILAR_AMOUNT_PCT = [15, 100] as const // S6: a recent charge this close means it's regular
 export const SIMILAR_LOOKBACK_DAYS = 100 // S6
 

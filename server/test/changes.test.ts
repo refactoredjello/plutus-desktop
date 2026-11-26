@@ -1,5 +1,5 @@
 /**
- * What changed (R12): one positive and one negative case per signal, plus dismissal.
+ * What changed: one positive and one negative case per signal, plus dismissal.
  *
  * Pinned values besides: money() and shortDate() formatting, threshold equality for S1, S4, S8, the half-even
  * percentage at a tie, S6's half-cent median threshold, label fallbacks, and the href encoding.
@@ -225,7 +225,7 @@ describe('S4 category well above usual', () => {
     const acct = account()
     coffee(acct, '-200.00', '2026-10-05')
     confident()
-    expect(items('S4')).toEqual([]) // no prior months: S4 is skipped (R12.7)
+    expect(items('S4')).toEqual([]) // no prior months: S4 is skipped
   })
 
   it('S4 under dollar floor ignored', () => {

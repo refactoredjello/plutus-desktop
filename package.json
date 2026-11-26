@@ -1,6 +1,7 @@
 {
   "name": "plutus",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": [
     "web",

@@ -42,7 +42,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - `desktop/` is the Electron shell: it runs `plutus-server/dist` in-process (build server first), testable parts in `desktop/src/lib/`. `npm run smoke` in desktop/ opens the real window on a throwaway data dir and checks the SPA reaches `/api/health` through the cookie guard; `smoke:dist` does the same for the packaged app.
 - `web/src/api` is generated; never edit it. `src/pages` one file per route; `src/features/<area>` components and queries; `src/mocks` MSW handlers for tests.
 - `npm run dev` in `web/` proxies `/api` to `127.0.0.1:8000`, where `npm run dev` in `server/` listens (override with `VITE_API_PROXY`); `npm run dev:mock` needs no server.
-- `docs/` requirements (with a decisions log and known limitations), architecture, plans, and PRDs.
+- `docs/` architecture, the backlog, and the multi-agent plan.
 
 ## Working on the desktop app
 
@@ -70,7 +70,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 
 - Only `services/scrub.ts` (merchant keys) and `services/suggestions.ts` (category aggregates) may build LLM input. Never send balances, account names, raw descriptions, notes, or names.
 - Rules may match raw descriptions (`contains`) because rules never leave the machine.
-- New features must not call an LLM unless the requirements say so; add a test that proves it.
+- New features must not call an LLM unless the owner asks for it; add a test that proves it.
 
 ## Testing
 
@@ -81,7 +81,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 ## Gotchas that cost time
 
 - SimpleFIN: request at most 45 days per call (the live bridge warns above that) and at most 24 requests a day; runs record `requests` and the guard sums them.
-- Bank merchant names vary (e.g. `SEAMLESS` vs `SEAMLSS`); prefer prefix or contains rules, and check variants in the data before writing one.
+- Bank merchant names vary (e.g. `AMAZON MKTPLACE` vs `AMZN MKTP`); prefer prefix or contains rules, and check variants in the data before writing one.
 - Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
 - Agent file writes can turn `\uXXXX` escapes in source into literal characters (a literal U+2028 broke a regex class). Keep sources ASCII: `LC_ALL=C grep -nP '[^\x00-\x7F]' <file>` finds strays.
 - JS `RegExp` word boundaries and classes (`\b`, `\d`, `\w`) are ASCII-only; `services/scrub.ts` spells out the Unicode-aware patterns bank text needs, and the scrub golden test catches a regression.

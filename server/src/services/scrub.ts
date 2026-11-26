@@ -1,5 +1,5 @@
 /**
- * Privacy boundary for categorization (R3.4).
+ * Privacy boundary for categorization.
  *
  * Everything that may reach an LLM about a transaction is produced here: a normalized,
  * scrubbed merchant key, a coarse amount bucket, a direction, and an account kind.

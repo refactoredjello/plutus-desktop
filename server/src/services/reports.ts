@@ -1,5 +1,5 @@
 /**
- * Report data for the dashboard (R4).
+ * Report data for the dashboard.
  *
  * Functions return the response schemas, so money leaves here as the
  * wire string (formatMoney) and routes stay thin.

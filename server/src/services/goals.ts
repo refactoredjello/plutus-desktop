@@ -1,5 +1,5 @@
 /**
- * Savings goals and their progress (R8).
+ * Savings goals and their progress.
  *
  * Divisions to cents round half to even once, on the exact quotient. The divisors are 3 and a
  * month count.

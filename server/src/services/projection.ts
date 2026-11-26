@@ -1,5 +1,5 @@
 /**
- * Cash projection (R7): current balance plus planned flows minus variable spending.
+ * Cash projection: current balance plus planned flows minus variable spending.
  *
  * A trailing average is the daily rate `total / days` rounded half to even to 28 significant
  * digits, multiplied by a day count, rounded to 28 digits again, and only then rounded to

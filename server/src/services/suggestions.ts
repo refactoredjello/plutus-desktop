@@ -1,5 +1,5 @@
 /**
- * Savings suggestions (R8).
+ * Savings suggestions.
  *
  * Privacy boundary: the LLM sees only what this module builds. The SavingsContext holds
  * category labels, rounded-to-cent monthly totals, cadences, and goal numbers. Never merchant

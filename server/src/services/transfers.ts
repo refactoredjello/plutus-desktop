@@ -1,5 +1,5 @@
 /**
- * Internal transfer matching (R2.4) and unpairing (backlog 36).
+ * Internal transfer matching and unpairing (backlog 36).
  *
  * Called by services/sync.ts after new transactions are stored, with the ids of the new and
  * newly posted rows: a pair needs one of them, so older rows the owner unpaired stay unpaired.

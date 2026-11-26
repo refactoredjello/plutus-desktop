@@ -258,7 +258,7 @@ export const appSettings = sqliteTable('app_settings', {
     .$onUpdate(() => utcNow()),
 })
 
-/** A dismissed "What changed" item (R12.6). Keyed by the fact, so a new fact reappears. */
+/** A dismissed "What changed" item. Keyed by the fact, so a new fact reappears. */
 export const changeDismissals = sqliteTable('change_dismissals', {
   key: text('key').primaryKey(),
   signal: text('signal').notNull(),

@@ -1,5 +1,5 @@
 /**
- * Recurring charge detection and management (R6).
+ * Recurring charge detection and management.
  *
  * detectRecurring is called by services/sync.ts after categorization. Keep its signature stable.
  */

@@ -1,5 +1,5 @@
 /**
- * Shared monthly totals (R4, R7, R8).
+ * Shared monthly totals.
  *
  * Orchestrator-owned: reports, projection, and goals all build on these definitions.
  *

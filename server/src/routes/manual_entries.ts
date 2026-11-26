@@ -1,4 +1,4 @@
-/** Manual entries (R5). */
+/** Manual entries. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'

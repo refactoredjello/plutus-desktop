@@ -1,5 +1,16 @@
 .env
+.env.*
+!.env.example
 node_modules/
 dist/
+release/
 .DS_Store
+.idea/
+.vscode/
+*.sqlite
+*.sqlite-*
+*.log
+logs/
+backups/
 .claude/worktrees/
+.claude/settings.local.json

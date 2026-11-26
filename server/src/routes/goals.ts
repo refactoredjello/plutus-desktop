@@ -1,4 +1,4 @@
-/** Goals and savings suggestions (R8). */
+/** Goals and savings suggestions. */
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App, AppEnv } from '../app.js'

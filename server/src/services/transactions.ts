@@ -1,5 +1,5 @@
 /**
- * Transaction queries and manual overrides (R2.1-R2.3).
+ * Transaction queries and manual overrides.
  *
  * - `fields` holds the fields the client sent; the route takes it from the request body's keys.
  *   The rule options (save_as_rule, rule_match_type, rule_pattern) count only when save_as_rule

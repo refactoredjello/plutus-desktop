@@ -19,8 +19,7 @@ Before starting, read AGENTS.md, README.md, docs/ARCHITECTURE.md, and your brief
 - Keep each doc's purpose and voice. Cut lines that stopped being true instead of adding history.
   Plain, short sentences; no marketing.
 - Docs describe the current app only (owner decision 2026-10-17): no earlier stacks, no
-  "ported from". The decisions log in docs/REQUIREMENTS.md keeps decisions that still hold,
-  worded for the current app. Keep docs/BACKLOG.md's rule that nothing on it is fixed without
+  "ported from". Keep docs/BACKLOG.md's rule that nothing on it is fixed without
   asking the owner.
 - Never real credentials or real bank data in examples.
 - Commit per document or tightly related group on your branch only, as

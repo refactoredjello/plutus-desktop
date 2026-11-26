@@ -1,5 +1,5 @@
 /**
- * SimpleFIN sync (R1). One run = one pass over the provider; never retried within a run.
+ * SimpleFIN sync. One run = one pass over the provider; never retried within a run.
  * Also the background half of the manual run and the run queries (routes stay thin).
  *
  * - A transaction cannot stay open across an await (the LLM call in categorization), so a
@@ -138,7 +138,7 @@ export function startRun(
   recoverStaleRuns(db, log)
   const { syncFirstHistoryDays } = runtimeConfig(db, secrets, defaults)
   return db.transaction(() => {
-    pruneDismissals(db) // R12.6: housekeeping at the start of each run
+    pruneDismissals(db) // housekeeping at the start of each run
     const running = db.select({ id: syncRuns.id }).from(syncRuns).where(eq(syncRuns.status, 'running')).limit(1).get()
     if (running !== undefined) throw new ConflictError('A sync is already running.')
     const now = syncClock.now()

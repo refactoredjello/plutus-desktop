@@ -1,5 +1,5 @@
 /**
- * Manual entries: expected income (positive) or expenses (negative) not yet in bank data (R5).
+ * Manual entries: expected income (positive) or expenses (negative) not yet in bank data.
  */
 
 import { asc, eq } from 'drizzle-orm'

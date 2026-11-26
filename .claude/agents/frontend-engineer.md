@@ -6,7 +6,7 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 You implement one brief at a time in the web/ package.
 
-Before starting, read AGENTS.md and the requirement IDs named in your brief.
+Before starting, read AGENTS.md and your brief.
 - Use the generated API client in src/api/client.ts and MSW mocks. Never hand-write fetch calls.
 - Never edit src/api/openapi.json or src/api/schema.d.ts. They are generated from the server
   (`make openapi`).

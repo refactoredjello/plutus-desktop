@@ -1,5 +1,5 @@
 /**
- * Categorization pipeline (R3): rules, then cache, then LLM.
+ * Categorization pipeline: rules, then cache, then LLM.
  *
  * Called by services/sync.ts after transfer matching. Keep the signature stable.
  *

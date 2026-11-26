@@ -1,5 +1,5 @@
 /**
- * What changed (R12): signals about the current month, and their dismissals.
+ * What changed: signals about the current month, and their dismissals.
  */
 
 import { createRoute } from '@hono/zod-openapi'

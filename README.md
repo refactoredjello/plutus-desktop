@@ -149,14 +149,13 @@ Run `make help` for the full list.
 server/   HTTP API: routes, schemas, services, providers, migrations, tests
 web/      React app: pages, features, generated API client, mocks, tests
 desktop/  Electron shell that runs the server in-process
-docs/     Requirements, architecture, plans, and PRDs
+docs/     Architecture, backlog, and the agent plan
 ```
 
 Income, spending, and averages are defined once in `server/src/services/aggregates.ts`, so every page agrees. The frontend's API types are generated from the server's OpenAPI spec, and a test fails if they drift.
 
 ## Documentation
 
-- [Requirements](docs/REQUIREMENTS.md): what Plutus does, the decisions log, and known limitations
 - [Architecture](docs/ARCHITECTURE.md): system design and conventions
 - [Desktop app](desktop/README.md): building, signing, profiles, and where data and logs live
 - [Backlog](docs/BACKLOG.md): open bugs and wanted changes
@@ -165,3 +164,7 @@ Income, spending, and averages are defined once in `server/src/services/aggregat
 ## Status
 
 Personal project, refined over time.
+
+## License
+
+[MIT](LICENSE).

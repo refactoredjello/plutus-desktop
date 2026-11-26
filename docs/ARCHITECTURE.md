@@ -1,6 +1,6 @@
 # Plutus — Architecture
 
-Companion to REQUIREMENTS.md. Describes how Plutus is built. Principles from the requirements apply: simplest thing that works, reuse established tools, clean interface.
+Describes how Plutus is built. The principles in AGENTS.md apply: simplest thing that works, reuse established tools, clean interface.
 
 ## System overview
 
@@ -219,7 +219,7 @@ React 19, TypeScript 6, Vite 8. Libraries: TanStack Query (server state), React 
 Pages, in navigation order:
 
 1. **Overview** — "What changed", current-month summary, income vs expenses (12 mo), balances over time, projection chart.
-2. **Month** — one month against the three complete months before it (R11).
+2. **Month** — one month against the three complete months before it.
 3. **Transactions** — table with filters and inline category/essentiality editing.
 4. **Review** — uncategorized and low-confidence transactions to confirm or fix.
 5. **Recurring** — detected and confirmed recurrences with annual cost.
