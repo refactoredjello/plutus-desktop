@@ -72,7 +72,7 @@ export function registerRecurring(app: App): void {
   })
   app.openapi(markRecurring, (c) => {
     const body = c.req.valid('json')
-    return c.json(one(c.var.db, service.markRecurring(c.var.db, body.transaction_id, body.cadence)), 201)
+    return c.json(one(c.var.db, service.markRecurring(c.var.db, body.transaction_id, body.cadence, body.amount_varies)), 201)
   })
   app.openapi(updateRecurring, (c) => {
     const { recurring_id } = c.req.valid('param')

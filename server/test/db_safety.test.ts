@@ -122,6 +122,11 @@ function count(path: string, table: string): number {
   }
 }
 
+/** How many migrations the app ships; the test ones (tagged 9001_*) come after them. */
+const BUNDLED = (
+  JSON.parse(readFileSync(join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8')) as { entries: unknown[] }
+).entries.length
+
 function appliedMigrations(path: string): number {
   return count(path, '__drizzle_migrations')
 }
@@ -155,7 +160,7 @@ function openError(fn: () => unknown): DatabaseOpenError {
 describe('migrations run with foreign keys off', () => {
   it('keeps child rows when a migration rebuilds their parent table', () => {
     seedDatabase()
-    const folder = migrationsWith('rebuild', [{ tag: '0001_rebuild_accounts', sql: REBUILD_ACCOUNTS }])
+    const folder = migrationsWith('rebuild', [{ tag: '9001_rebuild_accounts', sql: REBUILD_ACCOUNTS }])
     const db = openDb(dbPath, { migrationsFolder: folder })
     const c = db.$client
     expect(c.prepare('SELECT count(*) FROM transactions').pluck().get()).toBe(2)
@@ -166,7 +171,7 @@ describe('migrations run with foreign keys off', () => {
 
   it('turns foreign keys on once the database is open', () => {
     seedDatabase()
-    const db = openDb(dbPath, { migrationsFolder: migrationsWith('fk', [{ tag: '0001_marker', sql: ADD_MARKER }]) })
+    const db = openDb(dbPath, { migrationsFolder: migrationsWith('fk', [{ tag: '9001_marker', sql: ADD_MARKER }]) })
     expect(db.$client.pragma('foreign_keys', { simple: true })).toBe(1)
     expect(() =>
       db.$client
@@ -182,20 +187,20 @@ describe('pre-migration backup', () => {
   it('writes a verified copy named for the next migration before migrating', () => {
     seedDatabase()
     const folder = migrationsWith('next', [
-      { tag: '0001_marker', sql: ADD_MARKER },
+      { tag: '9001_marker', sql: ADD_MARKER },
       { tag: '0002_more', sql: 'CREATE TABLE `more` (`id` integer PRIMARY KEY);' },
     ])
     openDb(dbPath, { migrationsFolder: folder }).$client.close()
 
     const files = backups()
     expect(files).toHaveLength(1)
-    expect(files[0]).toMatch(/^plutus-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-before-0001_marker\.sqlite$/)
+    expect(files[0]).toMatch(/^plutus-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-before-9001_marker\.sqlite$/)
     const backup = join(dir, 'data', 'backups', files[0] ?? '')
     const c = new Database(backup, { readonly: true })
     expect(c.pragma('integrity_check', { simple: true })).toBe('ok')
     c.close()
     expect(count(backup, 'transactions')).toBe(2)
-    expect(appliedMigrations(backup)).toBe(1)
+    expect(appliedMigrations(backup)).toBe(BUNDLED)
     expect(tableExists(backup, 'marker')).toBe(false)
     expect(tableExists(dbPath, 'more')).toBe(true)
   })
@@ -214,7 +219,7 @@ describe('pre-migration backup', () => {
   it('writes to the backup folder it is given', () => {
     seedDatabase()
     const backupDir = join(dir, 'elsewhere')
-    const folder = migrationsWith('next', [{ tag: '0001_marker', sql: ADD_MARKER }])
+    const folder = migrationsWith('next', [{ tag: '9001_marker', sql: ADD_MARKER }])
     openDb(dbPath, { migrationsFolder: folder, backupDir }).$client.close()
     expect(backups(backupDir)).toHaveLength(1)
     expect(backups()).toEqual([])
@@ -234,7 +239,7 @@ describe('pre-migration backup', () => {
     copyFileSync(dbPath, plain)
     expect(count(plain, 'transactions')).toBe(2)
 
-    const folder = migrationsWith('next', [{ tag: '0001_marker', sql: ADD_MARKER }])
+    const folder = migrationsWith('next', [{ tag: '9001_marker', sql: ADD_MARKER }])
     openDb(dbPath, { migrationsFolder: folder }).$client.close()
     writer.close()
     const [file] = backups()
@@ -249,12 +254,12 @@ describe('pre-migration backup', () => {
     for (const f of old) writeFileSync(join(backupDir, f), 'old')
     writeFileSync(join(backupDir, 'notes.txt'), 'keep me')
 
-    openDb(dbPath, { migrationsFolder: migrationsWith('next', [{ tag: '0001_marker', sql: ADD_MARKER }]) }).$client.close()
+    openDb(dbPath, { migrationsFolder: migrationsWith('next', [{ tag: '9001_marker', sql: ADD_MARKER }]) }).$client.close()
 
     const files = backups()
     expect(files).toHaveLength(KEEP_BACKUPS)
     expect(files.slice(0, 4)).toEqual(old.slice(2))
-    expect(files[4]).toMatch(/-before-0001_marker\.sqlite$/)
+    expect(files[4]).toMatch(/-before-9001_marker\.sqlite$/)
     expect(existsSync(join(backupDir, 'notes.txt'))).toBe(true)
   })
 
@@ -262,11 +267,11 @@ describe('pre-migration backup', () => {
     seedDatabase()
     const backupDir = join(dir, 'not-a-folder')
     writeFileSync(backupDir, 'a file where the backup folder should be')
-    const folder = migrationsWith('next', [{ tag: '0001_marker', sql: ADD_MARKER }])
+    const folder = migrationsWith('next', [{ tag: '9001_marker', sql: ADD_MARKER }])
     const err = openError(() => openDb(dbPath, { migrationsFolder: folder, backupDir }))
     expect(err.kind).toBe('backup_failed')
     expect(err.message).toMatch(/not been changed/)
-    expect(appliedMigrations(dbPath)).toBe(1)
+    expect(appliedMigrations(dbPath)).toBe(BUNDLED)
     expect(tableExists(dbPath, 'marker')).toBe(false)
   })
 })
@@ -274,7 +279,7 @@ describe('pre-migration backup', () => {
 describe('checks after migrating', () => {
   it('restores the backup when the migration leaves a foreign key violation', () => {
     seedDatabase()
-    const folder = migrationsWith('orphan', [{ tag: '0001_orphan', sql: ORPHAN_ROW }])
+    const folder = migrationsWith('orphan', [{ tag: '9001_orphan', sql: ORPHAN_ROW }])
     const err = openError(() => openDb(dbPath, { migrationsFolder: folder }))
     expect(err.kind).toBe('restored')
     const [file] = backups()
@@ -285,7 +290,7 @@ describe('checks after migrating', () => {
 
     expect(existsSync(`${dbPath}-wal`)).toBe(false)
     expect(existsSync(`${dbPath}-shm`)).toBe(false)
-    expect(appliedMigrations(dbPath)).toBe(1)
+    expect(appliedMigrations(dbPath)).toBe(BUNDLED)
     expect(count(dbPath, 'balance_snapshots')).toBe(1)
     expect(count(dbPath, 'transactions')).toBe(2)
     // The rejected database is set aside, not deleted.
@@ -295,12 +300,12 @@ describe('checks after migrating', () => {
   it('reports a failed migration as nothing changed', () => {
     seedDatabase()
     const folder = migrationsWith('broken', [
-      { tag: '0001_broken', sql: `${ADD_MARKER}--> statement-breakpoint\nINSERT INTO no_such_table VALUES (1);` },
+      { tag: '9001_broken', sql: `${ADD_MARKER}--> statement-breakpoint\nINSERT INTO no_such_table VALUES (1);` },
     ])
     const err = openError(() => openDb(dbPath, { migrationsFolder: folder }))
     expect(err.kind).toBe('migration_failed')
     expect(err.message).toMatch(/not been changed/)
-    expect(appliedMigrations(dbPath)).toBe(1)
+    expect(appliedMigrations(dbPath)).toBe(BUNDLED)
     expect(tableExists(dbPath, 'marker')).toBe(false)
     expect(count(dbPath, 'transactions')).toBe(2)
   })
@@ -308,7 +313,7 @@ describe('checks after migrating', () => {
 
 describe('schema guard', () => {
   it('refuses a database migrated by a newer app, without touching it', () => {
-    const newer = migrationsWith('newer', [{ tag: '0001_marker', sql: ADD_MARKER }])
+    const newer = migrationsWith('newer', [{ tag: '9001_marker', sql: ADD_MARKER }])
     const db = openDb(dbPath, { migrationsFolder: newer })
     db.$client.prepare('UPDATE app_settings SET value = ? WHERE key = ?').run('9.9.9', LAST_APP_VERSION_KEY)
     db.$client.close()
@@ -320,7 +325,7 @@ describe('schema guard', () => {
     expect(err.message).toMatch(/newer version of Plutus/)
     expect(err.message).toMatch(/not been changed/)
     expect(readFileSync(dbPath).equals(before)).toBe(true)
-    expect(appliedMigrations(dbPath)).toBe(2)
+    expect(appliedMigrations(dbPath)).toBe(BUNDLED + 1)
     expect(backups()).toEqual([])
   })
 
@@ -337,7 +342,7 @@ describe('schema guard', () => {
   })
 
   it('records and names the app version it is given', () => {
-    const newer = migrationsWith('newer', [{ tag: '0001_marker', sql: ADD_MARKER }])
+    const newer = migrationsWith('newer', [{ tag: '9001_marker', sql: ADD_MARKER }])
     openDb(dbPath, { migrationsFolder: newer, appVersion: '0.3.0' }).$client.close()
     const c = new Database(dbPath, { readonly: true })
     expect(c.prepare('SELECT value FROM app_settings WHERE key = ?').pluck().get(LAST_APP_VERSION_KEY)).toBe('0.3.0')
@@ -356,17 +361,17 @@ describe('a new database that fails to migrate', () => {
   }
 
   it('is deleted when the checks after migrating fail, so the next start retries', () => {
-    const folder = migrationsWith('orphan', [{ tag: '0001_orphan', sql: ORPHAN_ROW }])
+    const folder = migrationsWith('orphan', [{ tag: '9001_orphan', sql: ORPHAN_ROW }])
     const err = openError(() => openDb(dbPath, { migrationsFolder: folder }))
     expect(err.kind).toBe('migration_failed')
     expectNoDatabaseFiles()
     expect(backups()).toEqual([])
     openDb(dbPath).$client.close()
-    expect(appliedMigrations(dbPath)).toBe(1)
+    expect(appliedMigrations(dbPath)).toBe(BUNDLED)
   })
 
   it('is deleted when the migration throws', () => {
-    const folder = migrationsWith('broken', [{ tag: '0001_broken', sql: 'INSERT INTO no_such_table VALUES (1);' }])
+    const folder = migrationsWith('broken', [{ tag: '9001_broken', sql: 'INSERT INTO no_such_table VALUES (1);' }])
     const err = openError(() => openDb(dbPath, { migrationsFolder: folder }))
     expect(err.kind).toBe('migration_failed')
     expectNoDatabaseFiles()

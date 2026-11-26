@@ -22,6 +22,9 @@ import { MONTH_END_FROM, addMonths, nextAfter, today } from './schedule.js'
 export type RecurringCharge = typeof recurrences.$inferSelect
 
 export const MIN_OCCURRENCES = 3
+/** Occurrences whose median is a fixed charge's amount, and an amount-varies estimate. */
+const FIXED_WINDOW = 3
+const VARIES_WINDOW = 6
 export const LOOKBACK_MONTHS = 18
 /** Amount tolerance 0.15, as a ratio of integers for cross-multiplication. */
 const TOLERANCE_NUMERATOR = 15
@@ -141,6 +144,36 @@ function dominantDirection(items: readonly Item[]): Item[] {
   return inflows.length > outflows.length ? inflows : outflows
 }
 
+/** The median of the last `n` amounts, or null when there are none. */
+function medianOfLast(amounts: readonly Cents[], n: number): Cents | null {
+  return amounts.length === 0 ? null : median(amounts.slice(-n))
+}
+
+/**
+ * The median of the last `n` occurrences of a merchant on an account: non-transfer, posted,
+ * majority sign only. Null when there is no history.
+ */
+function historyMedian(db: Db, merchantKey: string, accountId: number, n: number): Cents | null {
+  const rows = db
+    .select({ posted_on: transactions.posted_on, amount: transactions.amount })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.merchant_key, merchantKey),
+        eq(transactions.account_id, accountId),
+        eq(transactions.is_transfer, false),
+        eq(transactions.pending, false),
+      ),
+    )
+    .orderBy(asc(transactions.posted_on), asc(transactions.id))
+    .all()
+  const items = dominantDirection(rows.map((r): Item => [r.posted_on, r.amount]))
+  return medianOfLast(
+    items.map(([, a]) => a),
+    n,
+  )
+}
+
 const groupKey = (merchantKey: string, accountId: number): string => JSON.stringify([merchantKey, accountId])
 
 /**
@@ -195,11 +228,11 @@ export function detectRecurring(db: Db): number {
       // Too few or irregular to detect, e.g. a yearly fee the owner marked by hand.
       // Still keep an existing recurrence's dates and amount current (backlog 5).
       const lastDate = dates.at(-1)
-      const lastAmount = amounts.at(-1)
+      const lastAmount = found?.amount_varies === true ? medianOfLast(amounts, VARIES_WINDOW) : amounts.at(-1)
       if (
         found !== undefined &&
         lastDate !== undefined &&
-        lastAmount !== undefined &&
+        lastAmount != null &&
         (found.last_seen_on === null || lastDate > found.last_seen_on)
       ) {
         db.update(recurrences)
@@ -210,7 +243,7 @@ export function detectRecurring(db: Db): number {
       }
       continue
     }
-    const amount = median(amounts.slice(-3))
+    const amount = median(amounts.slice(found?.amount_varies === true ? -VARIES_WINDOW : -FIXED_WINDOW))
     const last = dates.at(-1) as PlainDate
     if (found === undefined) {
       db.insert(recurrences)
@@ -266,8 +299,16 @@ function latestEssentiality(db: Db): Map<string, Essentiality> {
  *
  * For charges detection can't find on its own: yearly fees, or too little history.
  * Re-marking an existing (even dismissed) recurrence updates and confirms it.
+ *
+ * `amountVaries` undefined keeps an existing recurrence's setting (off for a new one). When
+ * the setting is on, the amount is the median of the last six occurrences, not this one's.
  */
-export function markRecurring(db: Db, transactionId: number, cadence: Cadence): RecurringCharge {
+export function markRecurring(
+  db: Db,
+  transactionId: number,
+  cadence: Cadence,
+  amountVaries?: boolean,
+): RecurringCharge {
   const tx = db.select().from(transactions).where(eq(transactions.id, transactionId)).get()
   if (tx === undefined) throw new NotFoundError(`Transaction ${transactionId} not found`)
   if (tx.is_transfer) throw new DomainError("Transfers between your accounts can't be recurring charges.")
@@ -280,8 +321,7 @@ export function markRecurring(db: Db, transactionId: number, cadence: Cadence): 
     .from(categorizations)
     .where(eq(categorizations.transaction_id, tx.id))
     .get()
-  const values = {
-    amount: tx.amount,
+  const base = {
     cadence,
     last_seen_on: tx.posted_on,
     next_expected_date: nxt,
@@ -290,10 +330,14 @@ export function markRecurring(db: Db, transactionId: number, cadence: Cadence): 
   }
   return db.transaction((t) => {
     const charge = t
-      .select({ id: recurrences.id })
+      .select({ id: recurrences.id, amount_varies: recurrences.amount_varies })
       .from(recurrences)
       .where(and(eq(recurrences.merchant_key, merchantKey), eq(recurrences.account_id, tx.account_id)))
       .get()
+    const varies = amountVaries ?? charge?.amount_varies ?? false
+    // `db` here reads on the same connection, inside this transaction (better-sqlite3 is synchronous).
+    const amount = varies ? (historyMedian(db, merchantKey, tx.account_id, VARIES_WINDOW) ?? tx.amount) : tx.amount
+    const values = { ...base, amount, amount_varies: varies }
     if (charge === undefined) {
       return t
         .insert(recurrences)
@@ -345,14 +389,27 @@ export interface RecurringChanges {
   essentiality?: Essentiality | null
   amount?: Cents | null
   cadence?: Cadence | null
+  amount_varies?: boolean | null
 }
 
-/** Apply a partial update. Changing the cadence recomputes the next expected date. */
+/**
+ * Apply a partial update. Changing the cadence recomputes the next expected date.
+ *
+ * Turning `amount_varies` on re-estimates the amount as the median of the last six
+ * occurrences; turning it off, as the median of the last three (as detection does). With no
+ * history the amount stays, and an `amount` sent with the change wins.
+ */
 export function updateRecurring(db: Db, recurringId: number, changes: RecurringChanges): RecurringCharge {
   const charge = db.select().from(recurrences).where(eq(recurrences.id, recurringId)).get()
   if (charge === undefined) throw new NotFoundError(`Recurring charge ${recurringId} not found`)
   const patch: Partial<typeof recurrences.$inferInsert> = {}
   if (changes.status != null) patch.status = changes.status
+  if (changes.amount_varies != null && changes.amount_varies !== charge.amount_varies) {
+    patch.amount_varies = changes.amount_varies
+    const window = changes.amount_varies ? VARIES_WINDOW : FIXED_WINDOW
+    const estimate = historyMedian(db, charge.merchant_key, charge.account_id, window)
+    if (estimate !== null) patch.amount = estimate
+  }
   if (changes.amount != null) patch.amount = changes.amount
   if (changes.cadence != null) patch.cadence = changes.cadence
   // `"essentiality" in changes`: JSON has no undefined, so a sent key is never undefined.

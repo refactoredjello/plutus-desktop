@@ -116,6 +116,7 @@ const TABLES: Record<string, { pk: string[]; columns: Col[] }> = {
       ['essentiality', false],
       ['created_at', true],
       ['updated_at', true],
+      ['amount_varies', true], // added by migration 0001, so it comes last
     ],
   },
   rules: {
