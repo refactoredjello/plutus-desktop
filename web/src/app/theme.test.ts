@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { followSystemTheme } from './theme'
+import { followSystemTheme, setThemePreference } from './theme'
 
 /** A media query list whose answer the test flips, notifying listeners like a browser. */
 function fakeQuery(matches: boolean) {
@@ -21,7 +21,10 @@ function fakeQuery(matches: boolean) {
 
 describe('followSystemTheme', () => {
   const root = document.documentElement
-  afterEach(() => root.classList.remove('dark'))
+  afterEach(() => {
+    root.classList.remove('dark')
+    delete root.dataset.theme
+  })
 
   it('adds dark when the system is dark and follows changes live', () => {
     const query = fakeQuery(true)
@@ -38,5 +41,29 @@ describe('followSystemTheme', () => {
   it('stays light when the system is light', () => {
     followSystemTheme(root, fakeQuery(false) as unknown as MediaQueryList)
     expect(root).not.toHaveClass('dark')
+  })
+
+  it('keeps a chosen light or dark whatever the system does, and follows it again on system', () => {
+    const query = fakeQuery(true)
+    followSystemTheme(root, query as unknown as MediaQueryList)
+    setThemePreference('light', root, query as unknown as MediaQueryList)
+    expect(root).not.toHaveClass('dark')
+    expect(root.dataset.theme).toBe('light')
+    query.flip(true)
+    expect(root).not.toHaveClass('dark')
+    setThemePreference('dark', root, query as unknown as MediaQueryList)
+    query.flip(false)
+    expect(root).toHaveClass('dark')
+    setThemePreference('system', root, query as unknown as MediaQueryList)
+    expect(root).not.toHaveClass('dark')
+    expect(root.dataset.theme).toBeUndefined()
+    query.flip(true)
+    expect(root).toHaveClass('dark')
+  })
+
+  it('starts from the theme the server wrote on the page', () => {
+    root.dataset.theme = 'dark'
+    followSystemTheme(root, fakeQuery(false) as unknown as MediaQueryList)
+    expect(root).toHaveClass('dark')
   })
 })

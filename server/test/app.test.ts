@@ -166,6 +166,27 @@ describe('SPA static handler (web/nginx.conf)', () => {
     }
   })
 
+  it('marks the HTML with the chosen theme, so the first paint is in it', async () => {
+    const themed = mkdtempSync(join(tmpdir(), 'plutus-web-'))
+    try {
+      writeFileSync(join(themed, 'index.html'), '<!doctype html><html lang="en"><title>Plutus</title></html>')
+      const { app } = makeApp({ config: testConfig({ webDist: themed }) })
+      expect(await (await app.request('/')).text()).toContain('<html lang="en">')
+      await app.request('/api/settings/appearance', {
+        method: 'PUT',
+        body: JSON.stringify({ theme: 'light' }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      for (const path of ['/', '/goals/3']) {
+        const res = await app.request(path)
+        expect(await res.text()).toContain('<html lang="en" data-theme="light">')
+        expect(res.headers.get('content-security-policy')).toContain("script-src 'self'")
+      }
+    } finally {
+      rmSync(themed, { recursive: true, force: true })
+    }
+  })
+
   it('answers 404 when there is no build', async () => {
     const res = await makeApp().app.request('/')
     expect(res.status).toBe(404)

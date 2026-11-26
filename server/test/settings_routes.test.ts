@@ -330,3 +330,21 @@ describe('PUT /api/settings/config reschedules (backlog 31)', () => {
     }
   })
 })
+
+describe('/api/settings/appearance', () => {
+  it('follows the system until a theme is chosen, then keeps the choice', async () => {
+    const { app } = makeApp()
+    expect(await (await app.request('/api/settings/appearance')).json()).toEqual({ theme: 'system' })
+    const put = await app.request('/api/settings/appearance', send('PUT', { theme: 'dark' }))
+    expect(put.status).toBe(200)
+    expect(await put.json()).toEqual({ theme: 'dark' })
+    expect(await (await app.request('/api/settings/appearance')).json()).toEqual({ theme: 'dark' })
+  })
+
+  it('rejects an unknown theme', async () => {
+    const { app } = makeApp()
+    const r = await app.request('/api/settings/appearance', send('PUT', { theme: 'sepia' }))
+    expect(r.status).toBeGreaterThanOrEqual(400)
+    expect(r.status).toBeLessThan(500)
+  })
+})
