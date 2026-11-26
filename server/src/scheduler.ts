@@ -1,12 +1,17 @@
 /**
- * Background scheduler: one periodic sync job on a setTimeout chain.
+ * Background scheduler: one periodic sync job on a chain of short timers.
  *
  * - The first run is `firstRunAt(...)`, without jitter. Each later run is the previous
  *   (jittered) run time plus the interval plus up to JITTER_SECONDS, so jitter accumulates.
  * - Coalesce: when several run times have passed, only the last one is considered.
  * - One at a time: a run that comes due while the previous one is still going is skipped.
- * - Misfire grace (one second): a run that fires later than that (a sleeping machine, a
- *   blocked event loop) is skipped, and the next one is scheduled.
+ * - Sleep: the wait is a chain of timers of at most CHECK_MS, each checking the wall clock, so
+ *   a sleeping laptop (whose timers don't count the sleep) notices the time within a minute
+ *   of waking instead of a whole wait late.
+ * - Late runs (backlog 29): a run that fires up to LATE_GRACE_MS late (App Nap, a busy loop)
+ *   runs at once. One that is later than that (the due time passed during a sleep) runs once,
+ *   OVERDUE_DELAY_MS after the scheduler notices, as after a launch, so the network is back.
+ *   It is never skipped, and several missed run times give a single run.
  * - The next run time moves on when a run is submitted, before it finishes.
  * - `stop()` does not wait for a running sync.
  *
@@ -24,8 +29,8 @@
  *   an unrelated setting doesn't move the schedule.
  * - A reschedule never interrupts a running sync. During one it clears the timer and shows a
  *   provisional next run; the real one is computed the same way when the run ends.
- * - The jitter, the misfire grace (backlog 29), the accumulating jitter (backlog 30), and the
- *   one-second interval clamp (backlog 33) are unchanged.
+ * - The jitter, the accumulating jitter (backlog 30), and the one-second interval clamp
+ *   (backlog 33) are unchanged.
  * The caller owns the handle and passes it to the app for GET /api/sync/schedule and the
  * config route.
  */
@@ -43,12 +48,12 @@ import { buildProvider, isConnected, runSync } from './services/sync.js'
 export const JOB_ID = 'simplefin_sync'
 export const JITTER_SECONDS = 120
 export const OVERDUE_DELAY_MS = 2 * 60_000
-/** A run that fires later than this after its time is skipped (backlog 29). */
-export const MISFIRE_GRACE_SECONDS = 1
+/** A run up to this late runs at once; a later one is held to OVERDUE_DELAY_MS (backlog 29). */
+export const LATE_GRACE_MS = 60_000
+/** The longest single timer, so a sleep can't stretch the wait by more than this. */
+export const CHECK_MS = 60_000
 
 const HOUR_MS = 3_600_000
-/** setTimeout fires at once for longer delays, so a longer wait is chained. */
-const MAX_TIMEOUT_MS = 2 ** 31 - 1
 
 /** Job body. Skips quietly when SimpleFIN is not connected or a guard refuses. */
 export async function runScheduledSync(
@@ -160,7 +165,20 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
   function arm(): void {
     if (nextRun === null) return
     const delay = Math.max(0, nextRun - now().getTime())
-    timer = setTimeout(wake, Math.min(delay, MAX_TIMEOUT_MS))
+    timer = setTimeout(wake, Math.min(delay, CHECK_MS))
+  }
+
+  /** A run time that passed more than LATE_GRACE_MS ago (a sleep) moves to OVERDUE_DELAY_MS
+   * from now: one catch-up run, never a stack of them. True when it moved. */
+  function catchUpIfLate(current: number): boolean {
+    if (nextRun === null || current - nextRun <= LATE_GRACE_MS) return false
+    log.info({ job: JOB_ID, late_ms: current - nextRun }, 'scheduled_sync_late')
+    nextRun = current + OVERDUE_DELAY_MS
+    if (running === null) {
+      cancel()
+      arm()
+    }
+    return true
   }
 
   function wake(): void {
@@ -179,21 +197,18 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
       return
     }
     if (config !== null) intervalMs = clampedInterval(config)
+    if (catchUpIfLate(current)) return
     // The run times that have passed, coalesced to the last one not after now.
     let runTime = nextRun
     for (let t = nextFireTime(runTime); t <= current; t = nextFireTime(runTime)) runTime = t
     nextRun = nextFireTime(runTime)
     arm()
-    submit(runTime, current)
+    submit()
   }
 
-  function submit(runTime: number, current: number): void {
+  function submit(): void {
     if (running !== null) {
       log.warn({ job: JOB_ID }, 'scheduled_sync_max_instances')
-      return
-    }
-    if (current - runTime > MISFIRE_GRACE_SECONDS * 1000) {
-      log.warn({ job: JOB_ID, late_ms: current - runTime }, 'scheduled_sync_missed')
       return
     }
     running = (async () => {
@@ -253,7 +268,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
       nextRun = null
     },
     nextRunAt() {
-      return nextRun === null ? null : new Date(nextRun).toISOString()
+      // The loop may only just have woken from a sleep, before the timer noticed: apply the
+      // catch-up now, and never report a time in the past.
+      const current = now().getTime()
+      catchUpIfLate(current)
+      return nextRun === null ? null : new Date(Math.max(nextRun, current)).toISOString()
     },
     async idle() {
       while (running !== null) await running

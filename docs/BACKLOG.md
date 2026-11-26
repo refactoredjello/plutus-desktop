@@ -44,7 +44,6 @@ Numbers are stable: code and tests cite them (for example "backlog 29"). New ent
 
 ## Sync and scheduler
 
-29. A scheduled sync that fires more than a second late is skipped and pushed a full interval later (`MISFIRE_GRACE_SECONDS` in `server/src/scheduler.ts`). On a laptop that sleeps this skips due syncs.
 30. Jitter is added to the previous jittered run time (`server/src/scheduler.ts`), so the schedule drifts by about a minute per interval.
 
 ## Closed without a change
@@ -60,6 +59,7 @@ Entries that today's code does not have, or that the owner closed, kept so their
 
 ## Fixed
 
+29. A scheduled sync that fires more than a second late is skipped and pushed a full interval later (`MISFIRE_GRACE_SECONDS` in `server/src/scheduler.ts`). On a laptop that sleeps this skips due syncs. Fixed 2026-11-25, owner approved: the wait is a chain of timers of at most a minute that check the wall clock; a run up to a minute late runs at once, a later one (a sleep over the due time) runs once two minutes after the scheduler notices, and `GET /api/sync/schedule` never reports a time in the past.
 31. The scheduler read its interval and on/off setting once at start, so Settings changes waited for a restart while `GET /api/sync/schedule` showed the stored values. Fixed in aebc9b3, owner approved 2026-10-17: the timer reads the stored config each time it arms, and `PUT /api/settings/config` reschedules.
 38. The server's "today" is the UTC date. `today()` in `server/src/lib/dates.ts` rolls over at UTC midnight, so on the last evening of a month in US time zones the server's reports, projection, and "What changed" treat the next month as current and the current one as complete. The web app's helpers (`web/src/lib/dates.ts`) already use local time, so for those hours the two disagree. Wanted: the server's "today" in the machine's local zone (or a time zone setting). Fixed 2026-10-18, owner approved: the server's today is the machine's local date (lib/dates.ts), tests pin TZ.
 24. S9 in `services/changes.ts` uses `project`, which reads the real "today", not the `today` passed to `compute`, so computing for another day gives an S9 for the wrong day. Fixed 2026-10-18, owner approved: S9 projects from the day passed to compute.

@@ -1,6 +1,6 @@
 /**
  * The scheduler: firstRunAt, then the setTimeout chain (an interval job with 120 s of jitter,
- * coalesce, one instance at a time, a one-second misfire grace, and jitter added to the
+ * one instance at a time, a late run caught up once after a sleep, and jitter added to the
  * previous jittered run time).
  *
  * Fake timers fake Date too, so the scheduler's default clock follows them.
@@ -15,7 +15,6 @@ import { syncRuns } from '../src/db/schema.js'
 import { createLogger, silentLogger } from '../src/lib/log.js'
 import {
   JITTER_SECONDS,
-  MISFIRE_GRACE_SECONDS,
   OVERDUE_DELAY_MS,
   type Scheduler,
   createScheduler,
@@ -217,40 +216,81 @@ describe('scheduler timer', () => {
     expect(job).toHaveBeenCalledTimes(2)
   })
 
-  it('skips a run that fires more than the misfire grace late', async () => {
+  /** A sleeping laptop: the wall clock jumps while the pending timer does not move on. */
+  const sleep = (ms: number) => vi.setSystemTime(Date.now() + ms)
+
+  it('runs a run that fires a little late (App Nap, a busy loop) at once', async () => {
     const job = vi.fn(async () => {})
     const s = make(job)
     s.start()
-    const due = NOW.getTime() + OVERDUE_DELAY_MS
-    // The clock jumps (a sleeping laptop) without the timer firing early.
-    vi.setSystemTime(NOW.getTime() + (MISFIRE_GRACE_SECONDS + 9) * 1000)
+    sleep(10_000)
     await vi.advanceTimersByTimeAsync(OVERDUE_DELAY_MS)
-    expect(job).not.toHaveBeenCalled()
-    expect(logged('scheduled_sync_missed')).toHaveLength(1)
-    expect(s.nextRunAt()).toBe(at(due + SIX_HOURS + 60_000))
+    expect(job).toHaveBeenCalledTimes(1)
+    expect(logged('scheduled_sync_missed')).toHaveLength(0)
   })
 
-  it('runs a run that fires within the misfire grace', async () => {
+  it('a sleep in the middle of the wait still runs the sync on time', async () => {
     const job = vi.fn(async () => {})
     const s = make(job)
     s.start()
-    vi.setSystemTime(NOW.getTime() + MISFIRE_GRACE_SECONDS * 1000)
     await vi.advanceTimersByTimeAsync(OVERDUE_DELAY_MS)
+    expect(job).toHaveBeenCalledTimes(1)
+    const second = Date.parse(s.nextRunAt() as string)
+    await vi.advanceTimersByTimeAsync(HOUR)
+    sleep(30 * MINUTE)
+    await vi.advanceTimersByTimeAsync(second - Date.now() - 1)
+    expect(job).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(job).toHaveBeenCalledTimes(2)
+    expect(s.nextRunAt()).toBe(at(second + SIX_HOURS + 60_000))
+  })
+
+  it('a sleep over the due time runs the sync once shortly after wake', async () => {
+    const job = vi.fn(async () => {})
+    const s = make(job)
+    s.start()
+    await vi.advanceTimersByTimeAsync(OVERDUE_DELAY_MS)
+    const second = Date.parse(s.nextRunAt() as string)
+    await vi.advanceTimersByTimeAsync(second - Date.now() - HOUR)
+    sleep(3 * HOUR)
+    const woke = Date.now()
+    // The scheduler notices within a minute and holds the run to OVERDUE_DELAY_MS after that.
+    await vi.advanceTimersByTimeAsync(MINUTE)
+    expect(job).toHaveBeenCalledTimes(1)
+    const caughtUp = Date.parse(s.nextRunAt() as string)
+    expect(caughtUp).toBeGreaterThan(woke)
+    expect(caughtUp).toBeLessThanOrEqual(woke + MINUTE + OVERDUE_DELAY_MS)
+    await vi.advanceTimersByTimeAsync(caughtUp - Date.now())
+    expect(job).toHaveBeenCalledTimes(2)
+    expect(logged('scheduled_sync_missed')).toHaveLength(0)
+    expect(logged('scheduled_sync_late')).toHaveLength(1)
+    // The next one is an interval after the catch-up, not another catch-up.
+    expect(s.nextRunAt()).toBe(at(caughtUp + SIX_HOURS + 60_000))
+    await vi.advanceTimersByTimeAsync(SIX_HOURS)
+    expect(job).toHaveBeenCalledTimes(2)
+  })
+
+  it('a long sleep over several due times runs the sync once, not once per missed run', async () => {
+    const job = vi.fn(async () => {})
+    const s = make(job)
+    s.start()
+    sleep(13 * HOUR)
+    await vi.advanceTimersByTimeAsync(MINUTE + OVERDUE_DELAY_MS)
+    expect(job).toHaveBeenCalledTimes(1)
+    const next = Date.parse(s.nextRunAt() as string)
+    expect(next - Date.now()).toBeGreaterThan(SIX_HOURS - OVERDUE_DELAY_MS)
+    await vi.advanceTimersByTimeAsync(next - Date.now() - 1)
     expect(job).toHaveBeenCalledTimes(1)
   })
 
-  it('coalesces missed runs into the last one before now', async () => {
-    const job = vi.fn(async () => {})
-    const s = make(job)
+  it('never shows a next run in the past after a sleep', () => {
+    const s = make(vi.fn(async () => {}))
     s.start()
-    const due = NOW.getTime() + OVERDUE_DELAY_MS
-    const step = SIX_HOURS + 60_000
-    vi.setSystemTime(NOW.getTime() + 13 * HOUR)
-    await vi.advanceTimersByTimeAsync(OVERDUE_DELAY_MS)
-    // due, due + step, and due + 2 steps are past; the last is too late to run, so the next
-    // run is one step after it.
-    expect(job).not.toHaveBeenCalled()
-    expect(s.nextRunAt()).toBe(at(due + 3 * step))
+    sleep(HOUR)
+    // No timer has fired yet (the loop only just woke), but the reported time is ahead.
+    expect(Date.parse(s.nextRunAt() as string)).toBe(Date.now() + OVERDUE_DELAY_MS)
+    sleep(30_000)
+    expect(Date.parse(s.nextRunAt() as string)).toBeGreaterThanOrEqual(Date.now())
   })
 
   it('handles intervals longer than setTimeout can wait', async () => {
