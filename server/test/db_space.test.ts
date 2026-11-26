@@ -35,9 +35,10 @@ it('does not migrate when there is not enough free space for the backup', () => 
   const journalPath = join(folder, 'meta', '_journal.json')
   const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as { entries: Record<string, unknown>[] }
   const when = (journal.entries.at(-1)?.when as number) + 60_000
-  journal.entries.push({ idx: 1, version: '6', when, tag: '0001_marker', breakpoints: true })
+  const bundled = journal.entries.length
+  journal.entries.push({ idx: bundled, version: '6', when, tag: '9001_marker', breakpoints: true })
   writeFileSync(journalPath, JSON.stringify(journal))
-  writeFileSync(join(folder, '0001_marker.sql'), 'CREATE TABLE `marker` (`id` integer PRIMARY KEY);')
+  writeFileSync(join(folder, '9001_marker.sql'), 'CREATE TABLE `marker` (`id` integer PRIMARY KEY);')
 
   space.freeBytes = 1024
   let error: unknown
@@ -52,6 +53,6 @@ it('does not migrate when there is not enough free space for the backup', () => 
   expect((error as Error).message).toMatch(/not been changed/)
 
   const c = new Database(dbPath, { readonly: true })
-  expect(c.prepare('SELECT count(*) FROM __drizzle_migrations').pluck().get()).toBe(1)
+  expect(c.prepare('SELECT count(*) FROM __drizzle_migrations').pluck().get()).toBe(bundled)
   c.close()
 })

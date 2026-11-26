@@ -19,7 +19,12 @@ export function useUpdateRecurring() {
       qc.setQueryData<Charge[]>(['recurring'], (list) =>
         list?.map((c) =>
           c.id === id
-            ? { ...c, ...(body.status ? { status: body.status } : {}), ...(body.essentiality ? { essentiality: body.essentiality } : {}) }
+            ? {
+                ...c,
+                ...(body.status ? { status: body.status } : {}),
+                ...(body.essentiality ? { essentiality: body.essentiality } : {}),
+                ...(body.amount_varies != null ? { amount_varies: body.amount_varies } : {}),
+              }
             : c,
         ),
       )
@@ -31,17 +36,26 @@ export function useUpdateRecurring() {
   })
 }
 
-/** Annual totals over confirmed outflows (amounts are signed; outflows are negative), as positive numbers. */
+/**
+ * Annual totals over confirmed items (amounts are signed; outflows are negative), as positive numbers:
+ * bills (`total`), the flexible or discretionary part of them, and income.
+ */
 export function annualSummary(charges: Charge[]) {
   let total = 0
   let flexible = 0
+  let income = 0
   for (const c of charges) {
     const annual = Number(c.annual_cost)
-    if (c.status !== 'confirmed' || annual >= 0) continue
+    if (c.status !== 'confirmed') continue
+    if (annual > 0) {
+      income += annual
+      continue
+    }
+    if (annual === 0) continue
     total += -annual
     if (c.essentiality === 'discretionary' || c.essentiality === 'flexible') flexible += -annual
   }
-  return { total: total.toFixed(2), flexible: flexible.toFixed(2) }
+  return { total: total.toFixed(2), flexible: flexible.toFixed(2), income: income.toFixed(2) }
 }
 
 type Cadence = Schemas['Cadence']
@@ -67,7 +81,6 @@ export function useMarkRecurring() {
   })
 }
 
-/** The confirmed recurring charge for a merchant and account, read from the cache only (never fetches). */
 /** The confirmed recurring item for this merchant and account. Fetches only while `enabled` (e.g. a popover is open). */
 export function useConfirmedRecurring(merchantKey: string | null, accountId: number, enabled: boolean) {
   const { data } = useQuery({

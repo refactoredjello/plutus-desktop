@@ -16,6 +16,7 @@ export const RecurringChargeRead = model('RecurringChargeRead', {
   last_seen_on: orNull(PlainDate),
   status: RecurrenceStatus,
   essentiality: orNull(Essentiality),
+  amount_varies: z.boolean(), // true: `amount` is an estimate, the median of the last six bills
   annual_cost: Money,
 })
 export type RecurringChargeRead = z.infer<typeof RecurringChargeRead>
@@ -25,6 +26,7 @@ export const RecurringChargeCreate = requestModel(
   {
     transaction_id: z.int(),
     cadence: Cadence,
+    amount_varies: z.boolean().optional(), // absent keeps the item's setting (off for a new one)
   },
   "Mark a transaction's merchant as recurring (confirmed) at the given cadence.",
 )
@@ -35,5 +37,6 @@ export const RecurringChargeUpdate = requestModel('RecurringChargeUpdate', {
   essentiality: orNull(Essentiality).optional(),
   amount: MoneyInput.nullable().optional(),
   cadence: orNull(Cadence).optional(),
+  amount_varies: z.boolean().nullable().optional(),
 })
 export type RecurringChargeUpdate = z.infer<typeof RecurringChargeUpdate>

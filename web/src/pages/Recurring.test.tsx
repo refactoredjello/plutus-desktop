@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http } from 'msw'
 import { describe, expect, it } from 'vitest'
+import type { Schemas } from '@/api/client'
 import { recurring } from '@/mocks/recurring'
+import { server } from '@/mocks/server'
 import { renderAt } from '@/test/render'
 
 describe('Recurring', () => {
@@ -52,6 +55,58 @@ describe('Recurring', () => {
     await waitFor(() => expect(recurring.find((c) => c.id === 1)?.essentiality).toBe('essential'))
     // Netflix no longer counts as flexible: only the gym (480) remains.
     await waitFor(() => expect(screen.getByText(/recurring bills cost/)).toHaveTextContent('$480.00 of that'))
+  })
+})
+
+describe('Recurring income and bills', () => {
+  const section = async (name: string) => (await screen.findByRole('heading', { level: 2, name })).closest('section')!
+
+  it('lists confirmed income and bills in their own sections', async () => {
+    renderAt('/recurring')
+    const income = await section('Income')
+    const bills = await section('Bills')
+    expect(within(income).getByText('Acme Corp')).toBeInTheDocument()
+    expect(within(income).queryByText('Netflix')).not.toBeInTheDocument()
+    expect(within(bills).getByText('Netflix')).toBeInTheDocument()
+    expect(within(bills).queryByText('Acme Corp')).not.toBeInTheDocument()
+  })
+
+  it('gives income a per-year column and no essentiality column', async () => {
+    renderAt('/recurring')
+    const income = await section('Income')
+    expect(within(income).queryByRole('columnheader', { name: 'Essentiality' })).not.toBeInTheDocument()
+    expect(within(income).getByRole('columnheader', { name: 'Per year' })).toBeInTheDocument()
+    const bills = await section('Bills')
+    expect(within(bills).getByRole('columnheader', { name: 'Essentiality' })).toBeInTheDocument()
+    expect(within(bills).getByRole('columnheader', { name: 'Annual cost' })).toBeInTheDocument()
+  })
+
+  it('summarises recurring income before the bills', async () => {
+    renderAt('/recurring')
+    const summary = await screen.findByText(/recurring bills cost/)
+    expect(summary).toHaveTextContent('Your recurring income is $81,900.00 a year. Your recurring bills cost $25,865.88 a year')
+  })
+
+  it('marks an amount as varying, shown as an estimate', async () => {
+    const bodies: Schemas['RecurringChargeUpdate'][] = []
+    server.use(
+      http.patch('/api/recurring/:id', async ({ request }) => {
+        bodies.push((await request.clone().json()) as Schemas['RecurringChargeUpdate'])
+        return undefined
+      }),
+    )
+    const user = userEvent.setup()
+    renderAt('/recurring')
+    const toggle = await screen.findByRole('switch', { name: 'Amount varies for Netflix' })
+    expect(toggle).not.toBeChecked()
+    await user.click(toggle)
+    await waitFor(() => expect(bodies).toEqual([{ amount_varies: true }]))
+    const row = screen.getByText('Netflix').closest('tr')!
+    const amount = await within(row).findByText('~-$15.49')
+    expect(amount).toHaveAttribute('title', 'Estimate: the median of the last six')
+    expect(within(row).getByText('~-$185.88')).toBeInTheDocument()
+    expect(within(row).getByRole('switch', { name: 'Amount varies for Netflix' })).toBeChecked()
+    expect(recurring.find((c) => c.id === 1)?.amount_varies).toBe(true)
   })
 })
 

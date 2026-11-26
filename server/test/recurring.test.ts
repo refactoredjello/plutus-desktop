@@ -506,3 +506,67 @@ describe('recurring names', () => {
     expect(body.name).toBe('Spotify')
   })
 })
+
+describe('amount varies', () => {
+  const BILLS = [
+    ['-80.00', '2026-04-05'],
+    ['-95.00', '2026-05-05'],
+    ['-120.00', '2026-06-05'],
+    ['-210.00', '2026-07-05'],
+    ['-180.00', '2026-08-05'],
+    ['-140.00', '2026-09-05'],
+    ['-100.00', '2026-10-05'],
+  ] as const
+
+  /** Seven uneven monthly utility bills; returns the account and the latest one. */
+  function utility() {
+    const acct = makeAccount(db)
+    const txs = BILLS.map(([amount, day]) => makeTx(db, acct, amount, 'CON EDISON', day, { merchant_key: 'con edison' }))
+    return { acct, last: txs.at(-1) as (typeof txs)[number] }
+  }
+
+  it('is never proposed by detection and is off by default', async () => {
+    const { last } = utility()
+    expect(detectRecurring(db)).toBe(0)
+    const body = (await (await client().post('/api/recurring', { transaction_id: last.id, cadence: 'monthly' })).json()) as Row
+    expect([body.amount, body.amount_varies]).toEqual(['-100.00', false])
+  })
+
+  it('marking with amount_varies estimates the median of the last six bills', async () => {
+    const { last } = utility()
+    const res = await client().post('/api/recurring', { transaction_id: last.id, cadence: 'monthly', amount_varies: true })
+    expect(res.status).toBe(201)
+    const body = (await res.json()) as Row
+    // Last six: 95, 120, 210, 180, 140, 100; the middle two are 120 and 140.
+    expect([body.amount, body.amount_varies, body.annual_cost]).toEqual(['-130.00', true, '-1560.00'])
+  })
+
+  it('keeps the estimate current as bills arrive', async () => {
+    const { acct, last } = utility()
+    await client().post('/api/recurring', { transaction_id: last.id, cadence: 'monthly', amount_varies: true })
+    makeTx(db, acct, '-300.00', 'CON EDISON', '2026-11-05', { merchant_key: 'con edison' })
+    detectRecurring(db)
+    const row = only(db)
+    // Last six: 120, 210, 180, 140, 100, 300; the middle two are 140 and 180.
+    expect(row.amount).toBe(money('-160.00'))
+    expect([row.last_seen_on, row.next_expected_date, row.amount_varies]).toEqual(['2026-11-05', '2026-12-05', true])
+  })
+
+  it('patching amount_varies re-estimates; off goes back to the last three', async () => {
+    const { last } = utility()
+    const c = client()
+    const marked = (await (await c.post('/api/recurring', { transaction_id: last.id, cadence: 'monthly' })).json()) as Row
+    const on = (await (await c.patch(`/api/recurring/${String(marked.id)}`, { amount_varies: true })).json()) as Row
+    expect([on.amount, on.amount_varies]).toEqual(['-130.00', true])
+    const off = (await (await c.patch(`/api/recurring/${String(marked.id)}`, { amount_varies: false })).json()) as Row
+    expect([off.amount, off.amount_varies]).toEqual(['-140.00', false]) // median of 180, 140, 100
+  })
+
+  it('marking again without amount_varies keeps the setting', async () => {
+    const { last } = utility()
+    const c = client()
+    await c.post('/api/recurring', { transaction_id: last.id, cadence: 'monthly', amount_varies: true })
+    const again = (await (await c.post('/api/recurring', { transaction_id: last.id, cadence: 'monthly' })).json()) as Row
+    expect([again.amount, again.amount_varies]).toEqual(['-130.00', true])
+  })
+})

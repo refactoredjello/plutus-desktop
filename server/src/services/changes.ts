@@ -336,6 +336,7 @@ function transactionsByIds(db: Db, ids: readonly number[]): Transaction[] {
 function s1RecurringChanged(db: Db, charges: readonly RecurringCharge[]): Item[] {
   const items: Item[] = []
   for (const c of charges) {
+    if (c.amount_varies) continue // the amount is an estimate; a bill off it is not news
     const latest = db
       .select()
       .from(transactions)

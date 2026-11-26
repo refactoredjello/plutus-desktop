@@ -1,5 +1,6 @@
 import type { Schemas } from '@/api/client'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EssentialitySelect } from '@/features/transactions/selects'
 import { daysFromToday } from '@/lib/dates'
@@ -77,8 +78,14 @@ export function ProposedList({ charges }: { charges: Charge[] }) {
   )
 }
 
-export function ConfirmedTable({ charges }: { charges: Charge[] }) {
+/** "~" marks an amount that varies: the figure is an estimate. */
+const shown = (c: Charge, value: string) => `${c.amount_varies ? '~' : ''}${signed(value)}`
+
+/** Confirmed income or bills. Income has no essentiality and its yearly column reads "Per year". */
+export function ConfirmedTable({ charges, kind }: { charges: Charge[]; kind: 'income' | 'bills' }) {
   const update = useUpdateRecurring()
+  const bills = kind === 'bills'
+  const money = cn('whitespace-nowrap text-right tabular-nums', !bills && income)
   return (
     <Table>
       <TableHeader>
@@ -86,59 +93,61 @@ export function ConfirmedTable({ charges }: { charges: Charge[] }) {
           <TableHead>Merchant</TableHead>
           <TableHead>Cadence</TableHead>
           <TableHead className="text-right">Amount</TableHead>
+          <TableHead>Varies</TableHead>
           <TableHead>Next expected</TableHead>
-          <TableHead>Essentiality</TableHead>
-          <TableHead className="text-right">Annual cost</TableHead>
+          {bills && <TableHead>Essentiality</TableHead>}
+          <TableHead className="text-right">{bills ? 'Annual cost' : 'Per year'}</TableHead>
           <TableHead>
             <span className="sr-only">Actions</span>
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {charges.map((c) => {
-          const inflow = Number(c.amount) > 0
-          return (
-            <TableRow key={c.id}>
-              <TableCell className="max-w-56">
-                <Name charge={c} />
-              </TableCell>
-              <TableCell className="text-muted-foreground">{humanizeEnum(c.cadence)}</TableCell>
-              <TableCell className={cn('whitespace-nowrap text-right tabular-nums', inflow && income)}>
-                {signed(c.amount)}
-              </TableCell>
-              <TableCell className="whitespace-nowrap">
-                <span className="text-muted-foreground">{formatDate(c.next_expected_date)}</span>{' '}
-                <NextHint date={c.next_expected_date} />
-              </TableCell>
+        {charges.map((c) => (
+          <TableRow key={c.id}>
+            <TableCell className="max-w-56">
+              <Name charge={c} />
+            </TableCell>
+            <TableCell className="text-muted-foreground">{humanizeEnum(c.cadence)}</TableCell>
+            <TableCell className={money} title={c.amount_varies ? 'Estimate: the median of the last six' : undefined}>
+              {shown(c, c.amount)}
+            </TableCell>
+            <TableCell>
+              <Switch
+                size="sm"
+                checked={c.amount_varies}
+                onCheckedChange={(amount_varies) => update.mutate({ id: c.id, body: { amount_varies } })}
+                aria-label={`Amount varies for ${c.name}`}
+              />
+            </TableCell>
+            <TableCell className="whitespace-nowrap">
+              <span className="text-muted-foreground">{formatDate(c.next_expected_date)}</span>{' '}
+              <NextHint date={c.next_expected_date} />
+            </TableCell>
+            {bills && (
               <TableCell>
-                {inflow ? (
-                  <span className="text-muted-foreground">—</span>
-                ) : (
-                  <EssentialitySelect
-                    inline
-                    value={c.essentiality}
-                    onChange={(essentiality) => essentiality && update.mutate({ id: c.id, body: { essentiality } })}
-                    label={`Essentiality for ${c.name}`}
-                  />
-                )}
+                <EssentialitySelect
+                  inline
+                  value={c.essentiality}
+                  onChange={(essentiality) => essentiality && update.mutate({ id: c.id, body: { essentiality } })}
+                  label={`Essentiality for ${c.name}`}
+                />
               </TableCell>
-              <TableCell className={cn('whitespace-nowrap text-right tabular-nums', inflow && income)}>
-                {signed(c.annual_cost)}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  className="text-muted-foreground"
-                  aria-label={`Stop tracking ${c.name}`}
-                  onClick={() => update.mutate({ id: c.id, body: { status: 'dismissed' } })}
-                >
-                  Stop tracking
-                </Button>
-              </TableCell>
-            </TableRow>
-          )
-        })}
+            )}
+            <TableCell className={money}>{shown(c, c.annual_cost)}</TableCell>
+            <TableCell className="text-right">
+              <Button
+                size="xs"
+                variant="ghost"
+                className="text-muted-foreground"
+                aria-label={`Stop tracking ${c.name}`}
+                onClick={() => update.mutate({ id: c.id, body: { status: 'dismissed' } })}
+              >
+                Stop tracking
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   )

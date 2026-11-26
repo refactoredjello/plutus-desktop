@@ -1,0 +1,1 @@
+ALTER TABLE `recurrences` ADD `amount_varies` integer DEFAULT false NOT NULL;
