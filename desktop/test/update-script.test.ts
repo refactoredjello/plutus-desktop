@@ -1,5 +1,5 @@
 // End-to-end tests for scripts/update.sh against temp dirs: a fake, ad hoc signed Plutus.app,
-// fake release zips, a stub `gh`, and a throwaway HOME. They never touch /Applications or the
+// fake release zips, stub `gh` and `git`, and a throwaway HOME. They never touch /Applications or the
 // real data folder (every run passes --target and --data-dir). macOS only (ditto, codesign).
 
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
@@ -83,6 +83,7 @@ function run(args: string[], { env = {}, input = '' }: { env?: Record<string, st
       PATH: `${bin}:/usr/bin:/bin:/usr/sbin:/sbin`,
       HOME: home,
       PLUTUS_PROCESS_NAME: 'PlutusUpdateTestNotRunning',
+      PLUTUS_TEST_ORIGIN: 'https://github.com/example/plutus.git',
       ...env,
     },
   })
@@ -117,6 +118,21 @@ describe.skipIf(process.platform !== 'darwin')('scripts/update.sh', () => {
     for (const d of [target, bin, home, zips]) mkdirSync(d, { recursive: true })
     makeApp(target, '0.1.0')
     writeData('v1')
+    // Stub git: this checkout has two remotes, origin (PLUTUS_TEST_ORIGIN; '' for none) and archive.
+    writeFileSync(
+      join(bin, 'git'),
+      `#!/bin/bash
+case "$*" in
+  *"remote get-url origin")
+    [ -n "$PLUTUS_TEST_ORIGIN" ] || { echo "error: No such remote 'origin'" >&2; exit 2; }
+    echo "$PLUTUS_TEST_ORIGIN" ;;
+  *"remote get-url archive") echo https://github.com/example/plutus-archive.git ;;
+  *remote) [ -n "$PLUTUS_TEST_ORIGIN" ] && echo origin; echo archive ;;
+  *) echo "git stub: unexpected $*" >&2; exit 1 ;;
+esac
+`,
+    )
+    chmodSync(join(bin, 'git'), 0o755)
     mkdirSync(join(data, 'backups', 'plutus-earlier.sqlite.d'), { recursive: true })
   })
 
@@ -385,8 +401,151 @@ cp "${zip}" "$dir/"
     expect(r.status, r.out).toBe(0)
 
     const calls = readFileSync(log, 'utf8').trim().split('\n')
-    expect(calls[0]).toMatch(new RegExp(`^release download --pattern Plutus-\\*-${arch}\\.zip --dir `))
-    expect(calls[1]).toMatch(new RegExp(`^release download v0\\.2\\.0 --pattern Plutus-0\\.2\\.0-${arch}\\.zip --dir `))
+    expect(calls[0]).toMatch(
+      new RegExp(`^release download --repo example/plutus --pattern Plutus-\\*-${arch}\\.zip --dir `),
+    )
+    expect(calls[1]).toMatch(
+      new RegExp(`^release download v0\\.2\\.0 --repo example/plutus --pattern Plutus-0\\.2\\.0-${arch}\\.zip --dir `),
+    )
+  })
+
+  /**
+   * Stub gh like the real one in a checkout with two remotes and no default repository: without
+   * --repo or GH_REPO it refuses. `release download` copies `zip` into --dir unless `fail` is set
+   * (printed to stderr, exit 1); `release view` prints the tag and the asset names.
+   */
+  function stubGh({ zip = '', fail = '', tag = 'v0.2.0', assets = [`Plutus-0.2.0-${arch}.zip`] } = {}) {
+    const log = join(root, 'gh.log')
+    writeFileSync(
+      join(bin, 'gh'),
+      `#!/bin/bash
+echo "$@" >> "${log}"
+case " $* " in
+  *" --repo "*) ;;
+  *) if [ -z "$GH_REPO" ]; then
+       echo "No default remote repository has been set. To learn more about the default repository, run: gh repo set-default --help" >&2
+       exit 1
+     fi ;;
+esac
+if [ -n "${fail}" ]; then printf '%s\\n' "${fail}" >&2; exit 1; fi
+if [ "$1 $2" = "release view" ]; then
+  printf '%s\\n' ${[tag, ...assets].map((a) => `'${a}'`).join(' ')}
+  exit 0
+fi
+while [ $# -gt 0 ]; do case "$1" in --dir) dir="$2"; shift ;; esac; shift; done
+cp "${zip}" "$dir/"
+`,
+    )
+    chmodSync(join(bin, 'gh'), 0o755)
+    return () => (existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [])
+  }
+
+  const unchanged = () => {
+    expect(installedVersion()).toBe('0.1.0')
+    expect(backups('manual-')).toEqual([])
+    expect(previousApps()).toEqual([])
+    expect(readdirSync(target)).toEqual(['Plutus.app'])
+  }
+
+  it("downloads from origin's repository when gh has no default repository", () => {
+    const calls = stubGh({ zip: makeZip('0.2.0') })
+    const r = run([], { env: { PLUTUS_TEST_ORIGIN: 'https://github.com/someone/plutus-desktop.git' } })
+
+    expect(r.status, r.out).toBe(0)
+    expect(installedVersion()).toBe('0.2.0')
+    expect(r.out).toContain(`Downloading the latest release for ${arch} from someone/plutus-desktop`)
+    expect(calls()).toEqual([expect.stringMatching(/^release download --repo someone\/plutus-desktop /)])
+  })
+
+  it('uses GH_REPO over the origin remote', () => {
+    const calls = stubGh({ zip: makeZip('0.2.0') })
+    const r = run([], { env: { GH_REPO: 'other/fork' } })
+
+    expect(r.status, r.out).toBe(0)
+    expect(r.out).toContain('from other/fork')
+    expect(calls()).toEqual([expect.stringMatching(/^release download --repo other\/fork /)])
+  })
+
+  it('reads owner/repo from https, scp-style, and ssh origin URLs', () => {
+    const urls = [
+      'https://github.com/o1/r1.git',
+      'https://github.com/o1/r1',
+      'git@github.com:o1/r1.git',
+      'git@github.com:o1/r1',
+      'ssh://git@github.com/o1/r1.git',
+      'ssh://git@github.com/o1/r1',
+    ]
+    const calls = stubGh()
+    for (const url of urls) {
+      const r = run(['--check'], { env: { PLUTUS_TEST_ORIGIN: url } })
+      expect(r.status, `${url}\n${r.out}`).toBe(0)
+    }
+    expect(calls()).toHaveLength(urls.length)
+    for (const c of calls()) expect(c).toMatch(/^release view --repo o1\/r1 /)
+  })
+
+  it('fails clearly, before changing anything, without a GitHub origin or GH_REPO', () => {
+    const calls = stubGh({ zip: makeZip('0.2.0') })
+    for (const origin of ['', 'https://gitlab.com/o/r.git']) {
+      for (const args of [[], ['--check']]) {
+        const r = run(args, { env: { PLUTUS_TEST_ORIGIN: origin } })
+        expect(r.status, r.out).not.toBe(0)
+        expect(r.out).toMatch(/which GitHub repository/)
+        expect(r.out).toContain('GH_REPO=<owner/repo>')
+        expect(r.out).not.toMatch(/Downloading/)
+      }
+    }
+    expect(calls()).toEqual([])
+    unchanged()
+  })
+
+  it("shows gh's own error when the download fails, without the login hint", () => {
+    stubGh({ fail: 'HTTP 404: Not Found (https://api.github.com/repos/example/plutus/releases/latest)' })
+    const r = run([])
+
+    expect(r.status).not.toBe(0)
+    expect(r.out).toContain('could not download the latest release from example/plutus')
+    expect(r.out).toContain('HTTP 404: Not Found')
+    expect(r.out).toContain('GH_REPO=<owner/repo>')
+    expect(r.out).not.toMatch(/logged in|gh auth/)
+    unchanged()
+  })
+
+  it('suggests gh auth login only when gh says it is not logged in', () => {
+    stubGh({ fail: 'To get started with GitHub CLI, please run:  gh auth login' })
+    const r = run(['0.2.0'])
+
+    expect(r.status).not.toBe(0)
+    expect(r.out).toContain('could not download release v0.2.0 from example/plutus')
+    expect(r.out).toMatch(/not logged in.*gh auth login/)
+    unchanged()
+  })
+
+  it('--check looks up the release for this Mac without changing anything', () => {
+    const calls = stubGh()
+    const r = run(['--check'])
+    expect(r.status, r.out).toBe(0)
+    expect(r.out).toContain(`Found release v0.2.0 for ${arch} in example/plutus`)
+
+    expect(run(['--check', '0.2.0']).status).toBe(0)
+    expect(calls()).toEqual([
+      expect.stringMatching(/^release view --repo example\/plutus --json /),
+      expect.stringMatching(/^release view v0\.2\.0 --repo example\/plutus --json /),
+    ])
+    unchanged()
+  })
+
+  it('--check fails when the release is missing or has no zip for this Mac', () => {
+    stubGh({ fail: 'release not found' })
+    let r = run(['--check', '9.9.9'])
+    expect(r.status).not.toBe(0)
+    expect(r.out).toContain('release not found')
+
+    stubGh({ assets: ['Plutus-0.2.0-other.zip'] })
+    r = run(['--check'])
+    expect(r.status).not.toBe(0)
+    expect(r.out).toContain(`has no Plutus-*-${arch}.zip`)
+    unchanged()
   })
 
   it('rolls back to the previous app, copying the data first', () => {
@@ -453,5 +612,6 @@ cp "${zip}" "$dir/"
     const r = run(['--restore-data'])
     expect(r.status).toBe(2)
     expect(r.out).toMatch(/--rollback/)
+    expect(run(['--check', '--rollback']).status).toBe(2)
   })
 })
