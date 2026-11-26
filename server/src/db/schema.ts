@@ -386,6 +386,8 @@ export const recurrences = sqliteTable(
       .notNull()
       .$defaultFn(() => 'proposed'),
     essentiality: text('essentiality', { enum: ESSENTIALITIES }),
+    // Owner-set: the amount is an estimate from recent bills (a utility), not a fixed price.
+    amount_varies: bool('amount_varies').notNull().default(false),
     ...timestamps(),
   },
   (t) => [

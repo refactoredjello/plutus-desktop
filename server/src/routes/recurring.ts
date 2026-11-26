@@ -23,6 +23,7 @@ function read(charge: service.RecurringCharge, names: Map<number, string>): Recu
     last_seen_on: charge.last_seen_on,
     status: charge.status,
     essentiality: charge.essentiality,
+    amount_varies: charge.amount_varies,
     annual_cost: formatMoney(service.annualCost(charge)),
   }
 }

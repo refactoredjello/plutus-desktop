@@ -1271,6 +1271,8 @@ export interface components {
          * @description Mark a transaction's merchant as recurring (confirmed) at the given cadence.
          */
         RecurringChargeCreate: {
+            /** Amount Varies */
+            amount_varies?: boolean;
             cadence: components["schemas"]["Cadence"];
             /** Transaction Id */
             transaction_id: number;
@@ -1281,6 +1283,8 @@ export interface components {
             account_id: number;
             /** Amount */
             amount: string;
+            /** Amount Varies */
+            amount_varies: boolean;
             /** Annual Cost */
             annual_cost: string;
             cadence: components["schemas"]["Cadence"];
@@ -1304,6 +1308,8 @@ export interface components {
         RecurringChargeUpdate: {
             /** Amount */
             amount?: number | string | null;
+            /** Amount Varies */
+            amount_varies?: boolean | null;
             cadence?: components["schemas"]["Cadence"] | null;
             essentiality?: components["schemas"]["Essentiality"] | null;
             status?: components["schemas"]["RecurrenceStatus"] | null;

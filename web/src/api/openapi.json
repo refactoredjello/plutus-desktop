@@ -1493,6 +1493,10 @@
         "additionalProperties": false,
         "description": "Mark a transaction's merchant as recurring (confirmed) at the given cadence.",
         "properties": {
+          "amount_varies": {
+            "title": "Amount Varies",
+            "type": "boolean"
+          },
           "cadence": {
             "$ref": "#/components/schemas/Cadence"
           },
@@ -1518,6 +1522,10 @@
             "pattern": "^-?\\d+\\.\\d{2}$",
             "title": "Amount",
             "type": "string"
+          },
+          "amount_varies": {
+            "title": "Amount Varies",
+            "type": "boolean"
           },
           "annual_cost": {
             "pattern": "^-?\\d+\\.\\d{2}$",
@@ -1581,6 +1589,7 @@
           "last_seen_on",
           "status",
           "essentiality",
+          "amount_varies",
           "annual_cost"
         ],
         "title": "RecurringChargeRead",
@@ -1603,6 +1612,13 @@
               }
             ],
             "title": "Amount"
+          },
+          "amount_varies": {
+            "title": "Amount Varies",
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "cadence": {
             "anyOf": [
