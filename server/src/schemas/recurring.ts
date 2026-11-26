@@ -2,7 +2,7 @@
 
 import { z } from '@hono/zod-openapi'
 import { Money, MoneyInput, PlainDate } from './common.js'
-import { Cadence, Essentiality, RecurrenceStatus } from './enums.js'
+import { Cadence, Essentiality, EstimateBasis, RecurrenceStatus } from './enums.js'
 import { model, orNull, requestModel } from './model.js'
 
 export const RecurringChargeRead = model('RecurringChargeRead', {
@@ -17,7 +17,9 @@ export const RecurringChargeRead = model('RecurringChargeRead', {
   status: RecurrenceStatus,
   essentiality: orNull(Essentiality),
   amount_varies: z.boolean(), // true: `amount` is an estimate, the median of the last six bills
-  annual_cost: Money,
+  next_amount: Money, // the estimate for next_expected_date; `amount` unless amount_varies
+  estimate_basis: EstimateBasis, // how next_amount was estimated
+  annual_cost: Money, // amount_varies with a year of history: the last 365 days' bills
 })
 export type RecurringChargeRead = z.infer<typeof RecurringChargeRead>
 

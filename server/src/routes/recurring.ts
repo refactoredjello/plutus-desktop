@@ -11,7 +11,8 @@ import { RecurringChargeCreate, RecurringChargeRead, RecurringChargeUpdate } fro
 import * as service from '../services/recurring.js'
 import { json, jsonBody } from './openapi.js'
 
-function read(charge: service.RecurringCharge, names: Map<number, string>): RecurringChargeRead {
+function read(db: Db, charge: service.RecurringCharge, names: Map<number, string>): RecurringChargeRead {
+  const next = service.estimateFor(db, charge, charge.next_expected_date)
   return {
     id: charge.id,
     merchant_key: charge.merchant_key,
@@ -24,12 +25,14 @@ function read(charge: service.RecurringCharge, names: Map<number, string>): Recu
     status: charge.status,
     essentiality: charge.essentiality,
     amount_varies: charge.amount_varies,
-    annual_cost: formatMoney(service.annualCost(charge)),
+    next_amount: formatMoney(next.amount),
+    estimate_basis: next.basis,
+    annual_cost: formatMoney(service.annualCostFor(db, charge)),
   }
 }
 
 function one(db: Db, charge: service.RecurringCharge): RecurringChargeRead {
-  return read(charge, service.recurringNames(db, [charge]))
+  return read(db, charge, service.recurringNames(db, [charge]))
 }
 
 const listRecurring = createRoute({
@@ -68,7 +71,7 @@ export function registerRecurring(app: App): void {
     const { status } = c.req.valid('query')
     const charges = service.listRecurring(c.var.db, status ?? null)
     const names = service.recurringNames(c.var.db, charges)
-    return c.json(charges.map((charge) => read(charge, names)), 200)
+    return c.json(charges.map((charge) => read(c.var.db, charge, names)), 200)
   })
   app.openapi(markRecurring, (c) => {
     const body = c.req.valid('json')

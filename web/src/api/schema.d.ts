@@ -964,6 +964,12 @@ export interface components {
             /** Total */
             total: string;
         };
+        /**
+         * EstimateBasis
+         * @description `fixed`: the amount; `recent`: the median of the last six bills; `last_year`: the median of the bills within 45 days of the same date last year.
+         * @enum {string}
+         */
+        EstimateBasis: "fixed" | "recent" | "last_year";
         /** GoalCreate */
         GoalCreate: {
             /** Name */
@@ -1289,6 +1295,7 @@ export interface components {
             annual_cost: string;
             cadence: components["schemas"]["Cadence"];
             essentiality: components["schemas"]["Essentiality"] | null;
+            estimate_basis: components["schemas"]["EstimateBasis"];
             /** Id */
             id: number;
             /** Last Seen On */
@@ -1297,6 +1304,8 @@ export interface components {
             merchant_key: string;
             /** Name */
             name: string;
+            /** Next Amount */
+            next_amount: string;
             /**
              * Next Expected Date
              * Format: date

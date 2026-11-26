@@ -14,9 +14,10 @@ import {
   recurrences,
   transactions,
 } from '../db/schema.js'
-import { type PlainDate, daysBetween, toParts } from '../lib/dates.js'
+import { type PlainDate, addDays, daysBetween, toParts } from '../lib/dates.js'
 import { DomainError, NotFoundError } from '../lib/errors.js'
-import { type Cents, cents, median } from '../lib/money.js'
+import { type Cents, cents, median, sum } from '../lib/money.js'
+import type { EstimateBasis } from '../schemas/enums.js'
 import { MONTH_END_FROM, addMonths, nextAfter, today } from './schedule.js'
 
 export type RecurringCharge = typeof recurrences.$inferSelect
@@ -150,10 +151,9 @@ function medianOfLast(amounts: readonly Cents[], n: number): Cents | null {
 }
 
 /**
- * The median of the last `n` occurrences of a merchant on an account: non-transfer, posted,
- * majority sign only. Null when there is no history.
+ * A merchant's occurrences on an account, oldest first: non-transfer, posted, majority sign only.
  */
-function historyMedian(db: Db, merchantKey: string, accountId: number, n: number): Cents | null {
+function history(db: Db, merchantKey: string, accountId: number): Item[] {
   const rows = db
     .select({ posted_on: transactions.posted_on, amount: transactions.amount })
     .from(transactions)
@@ -167,11 +167,57 @@ function historyMedian(db: Db, merchantKey: string, accountId: number, n: number
     )
     .orderBy(asc(transactions.posted_on), asc(transactions.id))
     .all()
-  const items = dominantDirection(rows.map((r): Item => [r.posted_on, r.amount]))
+  return dominantDirection(rows.map((r): Item => [r.posted_on, r.amount]))
+}
+
+/** The median of the last `n` occurrences of a merchant on an account; null with no history. */
+function historyMedian(db: Db, merchantKey: string, accountId: number, n: number): Cents | null {
   return medianOfLast(
-    items.map(([, a]) => a),
+    history(db, merchantKey, accountId).map(([, a]) => a),
     n,
   )
+}
+
+/** Days either side of the same date last year whose bills estimate an amount that varies. */
+const SEASON_DAYS = 45
+
+export interface Estimate {
+  amount: Cents
+  basis: EstimateBasis
+}
+
+/**
+ * The expected amount of a charge on `date`. An amount that varies is the median of the bills
+ * within 45 days of the same date last year, else the six-bill median in `amount`.
+ */
+export function estimateFor(db: Db, charge: RecurringCharge, date: PlainDate): Estimate {
+  if (!charge.amount_varies) return { amount: charge.amount, basis: 'fixed' }
+  const center = addMonths(date, -12)
+  const from = addDays(center, -SEASON_DAYS)
+  const to = addDays(center, SEASON_DAYS)
+  const season = history(db, charge.merchant_key, charge.account_id)
+    .filter(([d]) => from <= d && d <= to)
+    .map(([, a]) => a)
+  if (season.length === 0) return { amount: charge.amount, basis: 'recent' }
+  return { amount: median(season), basis: 'last_year' }
+}
+
+export function expectedAmount(db: Db, charge: RecurringCharge, date: PlainDate): Cents {
+  return estimateFor(db, charge, date).amount
+}
+
+/**
+ * The annual cost: for an amount that varies with a year of history, the sum of the last 365
+ * days' bills; otherwise `annualCost`.
+ */
+export function annualCostFor(db: Db, charge: RecurringCharge): Cents {
+  if (!charge.amount_varies) return annualCost(charge)
+  const items = history(db, charge.merchant_key, charge.account_id)
+  const now = today()
+  const since = addDays(now, -365)
+  const first = items[0]
+  if (first === undefined || first[0] > since) return annualCost(charge)
+  return sum(items.filter(([d]) => d > since && d <= now).map(([, a]) => a))
 }
 
 const groupKey = (merchantKey: string, accountId: number): string => JSON.stringify([merchantKey, accountId])

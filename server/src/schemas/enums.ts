@@ -35,3 +35,12 @@ export const RecurrenceStatus = enumComponent('RecurrenceStatus', RECURRENCE_STA
 export const SuggestionStatus = enumComponent('SuggestionStatus', SUGGESTION_STATUSES)
 export const SyncTrigger = enumComponent('SyncTrigger', SYNC_TRIGGERS)
 export const SyncStatus = enumComponent('SyncStatus', SYNC_STATUSES)
+
+/** Not a column: how a recurring item's next amount was estimated. */
+export const ESTIMATE_BASES = ['fixed', 'recent', 'last_year'] as const
+export type EstimateBasis = (typeof ESTIMATE_BASES)[number]
+export const EstimateBasis = enumComponent(
+  'EstimateBasis',
+  ESTIMATE_BASES,
+  '`fixed`: the amount; `recent`: the median of the last six bills; `last_year`: the median of the bills within 45 days of the same date last year.',
+)

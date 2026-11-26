@@ -54,6 +54,8 @@ describe('Repeats in the transaction panel', () => {
       status: 'confirmed',
       essentiality: 'discretionary',
       amount_varies: true,
+      next_amount: '-5.75',
+      estimate_basis: 'recent',
       annual_cost: '-299.00',
     })
     const user = userEvent.setup()

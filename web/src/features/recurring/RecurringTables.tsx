@@ -78,6 +78,12 @@ export function ProposedList({ charges }: { charges: Charge[] }) {
   )
 }
 
+const ESTIMATE_TITLE: Record<Charge['estimate_basis'], string | undefined> = {
+  fixed: undefined,
+  recent: 'Estimate: the median of the last six',
+  last_year: 'Estimate: the same time last year',
+}
+
 /** "~" marks an amount that varies: the figure is an estimate. */
 const shown = (c: Charge, value: string) => `${c.amount_varies ? '~' : ''}${signed(value)}`
 
@@ -109,8 +115,8 @@ export function ConfirmedTable({ charges, kind }: { charges: Charge[]; kind: 'in
               <Name charge={c} />
             </TableCell>
             <TableCell className="text-muted-foreground">{humanizeEnum(c.cadence)}</TableCell>
-            <TableCell className={money} title={c.amount_varies ? 'Estimate: the median of the last six' : undefined}>
-              {shown(c, c.amount)}
+            <TableCell className={money} title={c.amount_varies ? ESTIMATE_TITLE[c.estimate_basis] : undefined}>
+              {shown(c, c.amount_varies ? c.next_amount : c.amount)}
             </TableCell>
             <TableCell>
               <Switch

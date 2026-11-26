@@ -15,7 +15,7 @@ import { type Cadence, manualEntries, recurrences, transactions } from '../db/sc
 import { type PlainDate, addDays, daysBetween, daysInMonth, fromParts, toParts } from '../lib/dates.js'
 import { type Cents, ZERO, cents, formatMoney } from '../lib/money.js'
 import { currentTotalBalance, expensesBetween, incomeBetween } from './aggregates.js'
-import type { RecurringCharge } from './recurring.js'
+import { type RecurringCharge, expectedAmount } from './recurring.js'
 import { occurrences, today as scheduleToday } from './schedule.js'
 
 export const TRAILING_DAYS = 90
@@ -199,9 +199,10 @@ export function project(db: Db, months = 3, today: PlainDate = scheduleToday()):
     let manIn = 0
     let manOut = 0
     for (const c of confirmed) {
-      for (const _ of occurrences(c.next_expected_date, c.cadence, after, last)) {
-        if (c.amount > 0) recIn += c.amount
-        else recOut -= c.amount
+      for (const day of occurrences(c.next_expected_date, c.cadence, after, last)) {
+        const amount = expectedAmount(db, c, day)
+        if (amount > 0) recIn += amount
+        else recOut -= amount
       }
     }
     for (const e of entries) {
@@ -243,6 +244,9 @@ export function project(db: Db, months = 3, today: PlainDate = scheduleToday()):
     `${confirmed.length} confirmed recurring ` +
       `${plural(confirmed.length, 'item is', 'items are')} included at their usual amounts ` +
       'and cadence.',
+    ...(confirmed.some((c) => c.amount_varies)
+      ? ['Bills whose amount varies use the same time last year where there is a year of history.']
+      : []),
     `${entries.length} planned manual ` +
       `${plural(entries.length, 'entry is', 'entries are')} included on their due dates.`,
     'The current month counts only days after today.',

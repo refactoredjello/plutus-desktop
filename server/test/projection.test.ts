@@ -252,6 +252,62 @@ describe('projection', () => {
   })
 })
 
+describe('amount varies', () => {
+  const VARIES = 'Bills whose amount varies use the same time last year where there is a year of history.'
+
+  /** A confirmed monthly bill due 2026-11-05 with fifteen months of seasonal history. */
+  function seasonalBill(varies: boolean): void {
+    const chk = makeAccount(db)
+    const bills = [
+      ['-60.00', '2025-08-05'],
+      ['-70.00', '2025-09-05'],
+      ['-90.00', '2025-10-05'],
+      ['-150.00', '2025-11-05'],
+      ['-200.00', '2025-12-05'],
+      ['-240.00', '2026-01-05'],
+      ['-220.00', '2026-02-05'],
+      ['-160.00', '2026-03-05'],
+      ['-110.00', '2026-04-05'],
+      ['-80.00', '2026-05-05'],
+      ['-65.00', '2026-06-05'],
+      ['-55.00', '2026-07-05'],
+      ['-62.00', '2026-08-05'],
+      ['-75.00', '2026-09-05'],
+      ['-95.00', '2026-10-05'],
+    ] as const
+    for (const [amount, day] of bills) makeTx(db, chk, amount, 'GAS CO', day, { merchant_key: 'gas co' })
+    db.insert(recurrences)
+      .values({
+        merchant_key: 'gas co',
+        account_id: chk.id,
+        amount: parseMoney('-70.00'), // the six-bill median
+        cadence: 'monthly',
+        next_expected_date: d('2026-11-05'),
+        last_seen_on: d('2026-10-05'),
+        status: 'confirmed',
+        amount_varies: varies,
+      })
+      .run()
+  }
+
+  it('projects each bill from the same time last year', async () => {
+    seasonalBill(true)
+    const body = await getProjection(4)
+    // Nov 5: Oct 5, Nov 5, Dec 5 last year (90, 150, 200). Dec 5: 150, 200, 240. Jan 5: 200, 240, 220.
+    expect(body.months.map((m) => m.recurring_expenses)).toEqual(['0.00', '150.00', '200.00', '220.00'])
+    const at = body.assumptions.indexOf(VARIES)
+    expect(at).toBeGreaterThan(-1)
+    expect(body.assumptions[at - 1]).toContain('1 confirmed recurring item is included')
+  })
+
+  it('projects an unflagged bill at its amount, without the assumption', async () => {
+    seasonalBill(false)
+    const body = await getProjection(4)
+    expect(body.months.map((m) => m.recurring_expenses)).toEqual(['0.00', '70.00', '70.00', '70.00'])
+    expect(body.assumptions).not.toContain(VARIES)
+  })
+})
+
 describe('variable amounts use 28-digit decimal arithmetic (half even)', () => {
   // (total, window days, days) -> [cents(total / window * days), cents(total / window)].
   // 0.01 / 6 * 3 is exactly 0.005, which a single half-even division would round to 0.00; the
