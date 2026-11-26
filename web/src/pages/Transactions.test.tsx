@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Schemas } from '@/api/client'
 import { server } from '@/mocks/server'
 import { transactions } from '@/mocks/transactions'
+import { toasts } from '@/test/motion'
 import { renderAt } from '@/test/render'
 
 /** First data row (index 0 is the header). Mock data: newest first, a pending Blue Bottle Coffee. */
@@ -221,6 +222,17 @@ describe('Transactions', () => {
     await waitFor(() => expect(bodies[0]).toMatchObject({ essentiality: 'essential' }))
   })
 
+  it('confirms a category change by the control alone, with no toast', async () => {
+    const bodies = recordPatches()
+    renderAt('/transactions')
+    const row = await firstRow()
+    await chooseCategory(row, 'Groceries')
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(await within(row).findByText('Make this a rule')).toBeInTheDocument()
+    expect(within(row).getByRole('combobox', { name: /Category for/ })).toHaveTextContent('Groceries')
+    expect(toasts().queryByRole('listitem')).not.toBeInTheDocument()
+  })
+
   it('rolls back the optimistic update when the save fails', async () => {
     recordPatches(500)
     renderAt('/transactions')
@@ -230,7 +242,9 @@ describe('Transactions', () => {
 
     await chooseCategory(row, 'Groceries')
 
-    expect(await within(row).findByRole('alert')).toHaveTextContent('Database unavailable')
+    expect(await toasts().findByText('Could not save')).toBeInTheDocument()
+    expect(toasts().getByText('Database unavailable')).toBeInTheDocument()
+    expect(within(row).queryByRole('alert')).not.toBeInTheDocument()
     expect(trigger).toHaveTextContent('Coffee')
     expect(within(row).queryByText('Make this a rule')).not.toBeInTheDocument()
   })

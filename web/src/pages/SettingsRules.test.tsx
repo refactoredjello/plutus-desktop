@@ -7,6 +7,7 @@ import { requestsInLastDay } from '@/features/settings/requests'
 import { rules } from '@/mocks/rules'
 import { settingsState } from '@/mocks/settings'
 import { server } from '@/mocks/server'
+import { toasts } from '@/test/motion'
 import { renderAt } from '@/test/render'
 
 describe('Settings: rules', () => {
@@ -22,6 +23,7 @@ describe('Settings: rules', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(screen.queryByText('NETFLIX.COM CA')).not.toBeInTheDocument())
     expect(rules).toHaveLength(2)
+    expect(await toasts().findByText('Rule deleted')).toBeInTheDocument()
   })
 
   it('words every match type in plain language', async () => {
@@ -115,6 +117,7 @@ describe('Settings: new rule', () => {
     expect(row.textContent).toMatch(/^starts withUBER/)
     expect(within(row).getByText('Public transit')).toBeInTheDocument()
     await waitFor(() => expect(fetches.count).toBeGreaterThan(before))
+    expect(await toasts().findByText('Rule created')).toBeInTheDocument()
   })
 
   it('sends no essentiality after choosing "Not set"', async () => {
@@ -211,6 +214,7 @@ describe('Settings: edit rule', () => {
     expect(screen.queryByText('SHELL OIL')).not.toBeInTheDocument()
     expect(rules).toHaveLength(3)
     await waitFor(() => expect(fetches.count).toBeGreaterThan(before))
+    expect(await toasts().findByText('Rule updated')).toBeInTheDocument()
   })
 
   it('clears essentiality with an explicit null after choosing "Not set"', async () => {

@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { goals, mockFlags } from '@/mocks/goals'
+import { toasts } from '@/test/motion'
 import { renderAt } from '@/test/render'
 
 const card = async (name: string) => (await screen.findByText(name)).closest('[data-slot="card"]') as HTMLElement
@@ -67,7 +68,7 @@ describe('Goals', () => {
     renderAt('/goals')
     const vacation = within(await card('Vacation fund'))
     await user.click(vacation.getByRole('button', { name: 'Suggest ways to save' }))
-    expect(await vacation.findByRole('alert')).toHaveTextContent('The AI service is unavailable')
+    expect(await toasts().findByText('The AI service is unavailable')).toBeInTheDocument()
     expect(vacation.getByRole('button', { name: 'Suggest ways to save' })).toBeEnabled()
   })
 })

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import type { Schemas } from '@/api/client'
 import { server } from '@/mocks/server'
 import { needsReview, transactions } from '@/mocks/transactions'
+import { setReducedMotion, toasts } from '@/test/motion'
 import { renderAt } from '@/test/render'
 
 const queue = () => transactions.filter((t) => !t.is_transfer && needsReview(t))
@@ -48,6 +49,38 @@ describe('Review queue', () => {
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'Looks right' }).length).toBeLessThan(before))
     expect(await screen.findByText(`${n - 1} to review`)).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: `Review ${n - 1}` })).toBeInTheDocument()
+    expect(await toasts().findByText('Category confirmed')).toBeInTheDocument()
+  })
+
+  /** Click the first "Looks right"; return its row and where focus should land next. */
+  async function looksRightOnFirst() {
+    const user = userEvent.setup()
+    renderAt('/review')
+    await screen.findAllByText('Amazon')
+    const button = screen.getAllByRole('button', { name: 'Looks right' })[0]!
+    const row = button.closest('tr')!
+    const next = row.nextElementSibling as HTMLElement
+    const target = within(next).queryByRole('button', { name: 'Looks right' }) ?? next
+    const before = screen.getAllByRole('button', { name: 'Looks right' }).length
+    await user.click(button)
+    return { row, target, before }
+  }
+
+  it('fades a cleared row out, then removes it and focuses the next row', async () => {
+    const { row, target, before } = await looksRightOnFirst()
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Looks right' }).length).toBeLessThan(before))
+    expect(row).toHaveAttribute('data-leaving')
+    expect(row.isConnected).toBe(true)
+    await waitFor(() => expect(row.isConnected).toBe(false))
+    expect(target).toHaveFocus()
+  })
+
+  it('removes a cleared row at once with reduced motion', async () => {
+    setReducedMotion(true)
+    const { row, target, before } = await looksRightOnFirst()
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Looks right' }).length).toBeLessThan(before))
+    expect(row.isConnected).toBe(false)
+    expect(target).toHaveFocus()
   })
 
   it('keeps a row with the rule offer until it is dismissed, then drops it', async () => {

@@ -8,6 +8,7 @@ import { categories } from '@/mocks/categories'
 import { rules } from '@/mocks/rules'
 import { server } from '@/mocks/server'
 import { transactions } from '@/mocks/transactions'
+import { toasts } from '@/test/motion'
 import { renderAt } from '@/test/render'
 
 const groceries = categories.find((c) => c.detailed === 'FOOD_AND_DRINK_GROCERIES')!.id
@@ -89,7 +90,8 @@ describe('Transaction panel', () => {
       url: '/api/rules',
       body: { match_type: 'exact', pattern: 'blue-bottle-coffee', category_id: coffee, essentiality: 'discretionary' },
     })
-    expect(await within(section).findByText('Rule saved.')).toBeInTheDocument()
+    expect(await toasts().findByText('Rule created')).toBeInTheDocument()
+    expect(within(section).queryByText('Rule saved.')).not.toBeInTheDocument()
     expect(await within(section).findByRole('button', { name: 'Save rule' })).toBeInTheDocument()
   })
 
