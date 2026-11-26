@@ -1,10 +1,8 @@
 # Plutus
 
-A private personal finance app for one person. Plutus pulls balances and transactions from your banks through [SimpleFIN Bridge](https://bridge.simplefin.org), categorizes them with an LLM without sending identifying data, and shows where your money goes, what repeats, where the month is heading, and what changed.
+Plutus pulls balances and transactions from your banks through [SimpleFIN Bridge](https://bridge.simplefin.org), categorizes them with an LLM without sending identifying data, and shows where your money goes, what repeats, where the month is heading, and what changed.
 
 It is a desktop app (Electron) that keeps everything in one SQLite file on your machine. The same server also runs headless, without Electron, serving the web app on a port.
-
-Plutus is a personal project, built for its author's own use and published as is. It is not a hosted service: there is no Plutus account to sign up for and no Plutus server. You bring your own SimpleFIN Bridge subscription and, if you use Claude, your own Anthropic API key. It runs on macOS only.
 
 ## What it does
 
