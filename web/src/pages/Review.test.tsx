@@ -50,27 +50,34 @@ describe('Review queue', () => {
     expect(await screen.findByRole('link', { name: `Review ${n - 1}` })).toBeInTheDocument()
   })
 
-  it('keeps a row with the apply-to-all prompt until it is answered, then drops it', async () => {
+  it('keeps a row with the rule offer until it is dismissed, then drops it', async () => {
     const user = userEvent.setup()
     renderAt('/review')
     const [row] = (await screen.findAllByText('Amazon')).map((el) => el.closest('tr')!)
     await user.click(within(row!).getByRole('combobox', { name: /Category for/ }))
     await user.click(await screen.findByRole('option', { name: 'Groceries' }))
-    expect(await within(row!).findByText('Apply to all where')).toBeInTheDocument()
-    expect(within(row!).getByRole('textbox', { name: 'Pattern' })).toHaveValue('amazon')
+    expect(await within(row!).findByRole('button', { name: 'Make this a rule' })).toBeInTheDocument()
+    expect(row!.isConnected).toBe(true)
     await user.click(within(row!).getByRole('button', { name: 'Dismiss' }))
     await waitFor(() => expect(row!.isConnected).toBe(false))
   })
 
-  it('starts a contains rule from the bank description when it does not contain the payee', async () => {
+  it('keeps the row while its rule is open in the panel, and drops it when the panel closes', async () => {
     const user = userEvent.setup()
     renderAt('/review')
     const [row] = (await screen.findAllByText('Amazon')).map((el) => el.closest('tr')!)
     await user.click(within(row!).getByRole('combobox', { name: /Category for/ }))
     await user.click(await screen.findByRole('option', { name: 'Groceries' }))
-    await user.click(await within(row!).findByRole('combobox', { name: 'Match type' }))
+    await user.click(await within(row!).findByRole('button', { name: 'Make this a rule' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Amazon' })
+    const section = within(dialog).getByRole('region', { name: 'Rule' })
+    await user.click(await within(section).findByRole('combobox', { name: 'Match type' }))
     await user.click(await screen.findByRole('option', { name: 'Bank description contains' }))
-    expect(within(row!).getByRole('textbox', { name: 'Pattern' })).toHaveValue('AMZN Mktp US*2K4LM0 AMZN.COM/BILL WA')
+    // A contains rule starts from the bank description when it does not contain the payee.
+    expect(within(section).getByRole('textbox', { name: 'Pattern' })).toHaveValue('AMZN Mktp US*2K4LM0 AMZN.COM/BILL WA')
+    expect(row!.isConnected).toBe(true)
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(row!.isConnected).toBe(false))
   })
 
   it('filters to uncategorized transactions', async () => {

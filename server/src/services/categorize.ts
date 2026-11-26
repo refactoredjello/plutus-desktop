@@ -437,13 +437,13 @@ class Rules {
   }
 }
 
-/**
- * Re-apply a rule to existing non-transfer transactions whose categorization is not manual.
- *
- * Covers transactions that have no categorization yet. Returns how many were changed.
- * The writes run in one transaction, a savepoint inside a caller's.
- */
-export function applyRule(db: Db, rule: Pick<Rule, 'match_type' | 'pattern' | 'category_id' | 'essentiality'>): number {
+/** The owner rule categorization would pick for a transaction (exact, contains, prefix), if any. */
+export function matchingRule(db: Db, key: string, rawDescription: string): Rule | undefined {
+  return new Rules(db.select().from(rules).all()).match(key, rawDescription)
+}
+
+/** The non-transfer transactions a rule matches, with their categorization if any: what applyRule rewrites. */
+export function ruleMatches(db: Db, rule: Pick<Rule, 'match_type' | 'pattern'>) {
   // Contains rules filter in code with containsPattern, so they agree with categorizePending.
   const match =
     rule.match_type === 'exact'
@@ -452,13 +452,23 @@ export function applyRule(db: Db, rule: Pick<Rule, 'match_type' | 'pattern' | 'c
         ? undefined
         : // A literal, case-sensitive prefix (SQLite's LIKE ignores ASCII case).
           sql`substr(${transactions.merchant_key}, 1, length(${rule.pattern})) = ${rule.pattern}`
-  const rows = db
+  return db
     .select({ id: transactions.id, raw: transactions.raw_description, current: categorizations })
     .from(transactions)
     .leftJoin(categorizations, eq(categorizations.transaction_id, transactions.id))
     .where(and(eq(transactions.is_transfer, false), match))
     .all()
     .filter((row) => rule.match_type !== 'contains' || containsPattern(row.raw, rule.pattern))
+}
+
+/**
+ * Re-apply a rule to existing non-transfer transactions whose categorization is not manual.
+ *
+ * Covers transactions that have no categorization yet. Returns how many were changed.
+ * The writes run in one transaction, a savepoint inside a caller's.
+ */
+export function applyRule(db: Db, rule: Pick<Rule, 'match_type' | 'pattern' | 'category_id' | 'essentiality'>): number {
+  const rows = ruleMatches(db, rule)
   let changed = 0
   db.transaction(() => {
     for (const { id, current } of rows) {

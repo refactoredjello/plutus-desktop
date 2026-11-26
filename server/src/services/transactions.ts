@@ -18,11 +18,11 @@ import { type Essentiality, type EssentialityFilter, categories, categorizations
 import { type PlainDate, utcNow } from '../lib/dates.js'
 import { DomainError, NotFoundError } from '../lib/errors.js'
 import { formatMoney } from '../lib/money.js'
-import type { TransactionRead, TransactionUpdate } from '../schemas/transactions.js'
+import type { TransactionRead, TransactionRuleRead, TransactionUpdate } from '../schemas/transactions.js'
 import type { SecretStore } from '../secrets.js'
 import { essentialityCondition } from './aggregates.js'
 import { pyStrip, saveRule } from './categories.js'
-import { containsPattern, ensurePgLower, icontains } from './categorize.js'
+import { containsPattern, ensurePgLower, icontains, matchingRule } from './categorize.js'
 import { runtimeConfig } from './config.js'
 import { merchantKey as scrubMerchantKey } from './scrub.js'
 
@@ -38,6 +38,7 @@ export function toTransactionRead(tx: Tx, cat: Categorization | null | undefined
     amount: formatMoney(tx.amount),
     raw_description: tx.raw_description,
     payee: tx.payee,
+    memo: tx.memo,
     pending: tx.pending,
     merchant_key: tx.merchant_key,
     note: tx.note,
@@ -205,6 +206,35 @@ function overrideCategory(
     const matchType = body.rule_match_type
     const pattern = body.rule_pattern ?? (matchType === 'contains' ? defaultContainsPattern(tx) : key)
     saveRule(db, { match_type: matchType, pattern, category_id: categoryId, essentiality })
+  }
+}
+
+/**
+ * GET /api/transactions/{id}/rule: the rule categorization picks for this transaction, with its
+ * precedence, or null (always for a transfer, which rules never categorize); and defaults for
+ * a new rule, as save_as_rule builds them. A transaction without a merchant key yet is matched
+ * on the key the next sync would give it. Read-only.
+ */
+export function transactionRule(
+  db: Db,
+  secrets: SecretStore,
+  defaults: RuntimeDefaults,
+  transactionId: number,
+): TransactionRuleRead {
+  const tx = getTransaction(db, transactionId)
+  if (tx === undefined) throw new NotFoundError(`Transaction ${transactionId} not found`)
+  const key = tx.merchant_key || scrubMerchantKey(tx.raw_description, runtimeConfig(db, secrets, defaults).ownerNameTokens)
+  const rule = tx.is_transfer ? undefined : matchingRule(db, key, tx.raw_description)
+  const current = getCategorization(db, tx.id)
+  return {
+    rule: rule ?? null,
+    suggestion: {
+      match_type: 'exact',
+      pattern: key,
+      contains_pattern: defaultContainsPattern(tx),
+      category_id: current?.category_id ?? null,
+      essentiality: current?.essentiality ?? null,
+    },
   }
 }
 

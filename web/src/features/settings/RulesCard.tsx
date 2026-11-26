@@ -55,8 +55,7 @@ export function RulesCard() {
           <Skeleton className="h-16 w-full" />
         ) : !rules.data?.length ? (
           <p className="text-sm text-muted-foreground">
-            No rules yet. Add one with "New rule", or change a transaction's category on the Transactions page and choose
-            "Apply to all".
+            No rules yet. Add one with "New rule", or open any transaction and create one in its Rule section.
           </p>
         ) : (
           <Table>

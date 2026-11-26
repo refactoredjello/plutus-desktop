@@ -387,6 +387,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rules/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Rule
+         * @description Counts the non-transfer transactions a rule would match and how many of them were set by hand, which a rule leaves as they are. Saves nothing.
+         */
+        post: operations["preview_rule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rules/{rule_id}": {
         parameters: {
             query?: never;
@@ -588,6 +608,26 @@ export interface paths {
         head?: never;
         /** Update Transaction */
         patch: operations["update_transaction"];
+        trace?: never;
+    };
+    "/api/transactions/{transaction_id}/rule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Transaction Rule
+         * @description The rule that categorizes this transaction, with categorization's precedence (exact, contains, prefix), or null; and defaults for a new rule.
+         */
+        get: operations["get_transaction_rule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/transactions/{transaction_id}/unpair": {
@@ -1165,6 +1205,25 @@ export interface components {
          * @enum {string}
          */
         RuleMatchType: "exact" | "prefix" | "contains";
+        /**
+         * RulePreview
+         * @description A rule to count matches for; nothing is saved.
+         */
+        RulePreview: {
+            match_type: components["schemas"]["RuleMatchType"];
+            /** Pattern */
+            pattern: string;
+        };
+        /**
+         * RulePreviewRead
+         * @description How many existing transactions a rule would match.
+         */
+        RulePreviewRead: {
+            /** Manual */
+            manual: number;
+            /** Matches */
+            matches: number;
+        };
         /** RuleRead */
         RuleRead: {
             /** Category Id */
@@ -1177,6 +1236,20 @@ export interface components {
             essentiality: components["schemas"]["Essentiality"] | null;
             /** Id */
             id: number;
+            match_type: components["schemas"]["RuleMatchType"];
+            /** Pattern */
+            pattern: string;
+        };
+        /**
+         * RuleSuggestion
+         * @description Defaults for a new rule built from a transaction.
+         */
+        RuleSuggestion: {
+            /** Category Id */
+            category_id: number | null;
+            /** Contains Pattern */
+            contains_pattern: string;
+            essentiality: components["schemas"]["Essentiality"] | null;
             match_type: components["schemas"]["RuleMatchType"];
             /** Pattern */
             pattern: string;
@@ -1287,6 +1360,8 @@ export interface components {
             id: number;
             /** Is Transfer */
             is_transfer: boolean;
+            /** Memo */
+            memo: string | null;
             /** Merchant Key */
             merchant_key: string | null;
             /** Note */
@@ -1304,6 +1379,14 @@ export interface components {
             posted_on: string;
             /** Raw Description */
             raw_description: string;
+        };
+        /**
+         * TransactionRuleRead
+         * @description The rule that matches a transaction, if any, and defaults for a new one.
+         */
+        TransactionRuleRead: {
+            rule: components["schemas"]["RuleRead"] | null;
+            suggestion: components["schemas"]["RuleSuggestion"];
         };
         /**
          * TransactionUpdate
@@ -1984,6 +2067,30 @@ export interface operations {
             };
         };
     };
+    preview_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RulePreview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RulePreviewRead"];
+                };
+            };
+        };
+    };
     delete_rule: {
         parameters: {
             query?: never;
@@ -2320,6 +2427,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransactionRead"];
+                };
+            };
+        };
+    };
+    get_transaction_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionRuleRead"];
                 };
             };
         };

@@ -10,7 +10,7 @@ Plutus is a personal project, built for its author's own use and published as is
 
 - **Sync.** Read-only bank access through SimpleFIN, every 6 hours while the app is open or on demand, within SimpleFIN's 24-requests-a-day budget. The access link is encrypted at rest.
 - **Categorize.** Plaid's personal finance categories plus your own custom ones. Your rules come first, then cached results, then Claude (or a local Ollama model) for merchants it hasn't seen. Each transaction is also marked essential, flexible, or discretionary.
-- **Review.** A queue of transactions with no category or a low-confidence guess, with one-click "looks right", inline recategorizing, and "apply to all from this merchant" rules. Transactions can carry private notes.
+- **Review.** A queue of transactions with no category or a low-confidence guess, with one-click "looks right", inline recategorizing, and rules made from any transaction. Transactions can carry private notes.
 - **Understand.** An Overview dashboard, a Month view compared with your recent average, spending breakdowns by category and essentiality, and a "What changed" list of anything unusual this month.
 - **Plan.** Recurring charge detection (including twice-a-month pay), planned income and expenses, a 3-month balance projection that skips expenses you mark as one-time, and savings goals with suggestions.
 

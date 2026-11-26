@@ -6,7 +6,7 @@ import { PlainDate } from '../schemas/common.js'
 import { EssentialityFilter } from '../schemas/enums.js'
 import { orNull, params } from '../schemas/model.js'
 import { pathInt, queryBool, queryInt, queryIntList } from '../schemas/params.js'
-import { TransactionPage, TransactionRead, TransactionUpdate } from '../schemas/transactions.js'
+import { TransactionPage, TransactionRead, TransactionRuleRead, TransactionUpdate } from '../schemas/transactions.js'
 import { plainDate } from '../lib/dates.js'
 import * as service from '../services/transactions.js'
 import { unpairTransfer } from '../services/transfers.js'
@@ -46,6 +46,19 @@ const updateTransaction = createRoute({
   responses: { 200: json(TransactionRead) },
 })
 
+const transactionRule = createRoute({
+  method: 'get',
+  path: '/api/transactions/{transaction_id}/rule',
+  operationId: 'get_transaction_rule',
+  summary: 'Get Transaction Rule',
+  description:
+    'The rule that categorizes this transaction, with categorization\'s precedence (exact, contains, prefix), ' +
+    'or null; and defaults for a new rule.',
+  tags: ['transactions'],
+  request: { params: params({ transaction_id: pathInt() }) },
+  responses: { 200: json(TransactionRuleRead) },
+})
+
 const unpairTransaction = createRoute({
   method: 'post',
   path: '/api/transactions/{transaction_id}/unpair',
@@ -81,6 +94,10 @@ export function registerTransactions(app: App): void {
     const { db, secrets, config } = c.var
     const tx = service.updateTransaction(db, secrets, config.defaults, c.req.valid('param').transaction_id, c.req.valid('json'), fields)
     return c.json(tx, 200)
+  })
+  app.openapi(transactionRule, (c) => {
+    const { db, secrets, config } = c.var
+    return c.json(service.transactionRule(db, secrets, config.defaults, c.req.valid('param').transaction_id), 200)
   })
   app.openapi(unpairTransaction, (c) => c.json(unpairTransfer(c.var.db, c.req.valid('param').transaction_id), 200))
 }

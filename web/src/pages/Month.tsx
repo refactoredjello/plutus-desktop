@@ -87,7 +87,7 @@ export function MonthPage() {
           {d!.income_transactions.length > 0 && (
             <Card>
               <CardHeader><CardTitle>Income</CardTitle></CardHeader>
-              <CardContent><TransactionList month={d!.month} rows={d!.income_transactions} /></CardContent>
+              <CardContent><TransactionList rows={d!.income_transactions} /></CardContent>
             </Card>
           )}
           <Card>
@@ -97,7 +97,7 @@ export function MonthPage() {
           {d!.largest.length > 0 && (
             <Card>
               <CardHeader><CardTitle>Largest transactions</CardTitle></CardHeader>
-              <CardContent><TransactionList month={d!.month} rows={d!.largest} /></CardContent>
+              <CardContent><TransactionList rows={d!.largest} /></CardContent>
             </Card>
           )}
         </>

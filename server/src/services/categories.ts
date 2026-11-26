@@ -22,8 +22,8 @@ import {
   transactions,
 } from '../db/schema.js'
 import { ConflictError, DomainError, NotFoundError } from '../lib/errors.js'
-import type { CategoryCreate, CategoryUpdate, RuleCreate, RuleUpdate } from '../schemas/categories.js'
-import { applyRule, containsPattern } from './categorize.js'
+import type { CategoryCreate, CategoryUpdate, RuleCreate, RulePreview, RulePreviewRead, RuleUpdate } from '../schemas/categories.js'
+import { applyRule, containsPattern, ruleMatches } from './categorize.js'
 
 export type Category = typeof categories.$inferSelect
 export type Rule = typeof rules.$inferSelect
@@ -210,6 +210,15 @@ export function updateRule(db: Db, ruleId: number, body: RuleUpdate): Rule {
     applyRule(db, rule)
     return rule
   })
+}
+
+/**
+ * POST /api/rules/preview: how many non-transfer transactions a rule would match, as applyRule
+ * selects them, and how many of those are manual (a rule never overwrites them). Read-only.
+ */
+export function previewRule(db: Db, body: RulePreview): RulePreviewRead {
+  const rows = ruleMatches(db, { match_type: body.match_type, pattern: normalizePattern(body.match_type, body.pattern) })
+  return { matches: rows.length, manual: rows.filter((r) => r.current?.source === 'manual').length }
 }
 
 export function deleteRule(db: Db, ruleId: number): void {

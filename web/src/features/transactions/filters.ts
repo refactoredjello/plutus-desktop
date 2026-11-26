@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Schemas } from '@/api/client'
+import { monthEnd } from '@/lib/dates'
 
 export const PAGE_SIZE = 50
 
@@ -78,3 +79,9 @@ export function useFilters() {
 
 export const hasActiveFilters = (f: Filters) =>
   Boolean(f.q || f.start || f.end || f.account || f.category || f.essentiality || f.uncategorized || f.review || f.transfers)
+
+/** Transactions filtered to this transaction's payee (or bank description) in its month. */
+export function transactionsLink(t: Schemas['TransactionRead']): string {
+  const month = t.posted_on.slice(0, 7)
+  return `/transactions?${new URLSearchParams({ q: t.payee ?? t.raw_description, start: `${month}-01`, end: monthEnd(month) })}`
+}
