@@ -37,6 +37,18 @@ export type TransactionRead = z.infer<typeof TransactionRead>
 export const TransactionPage = Page(TransactionRead, 'TransactionRead')
 export type TransactionPage = z.infer<typeof TransactionPage>
 
+export const TransactionSummary = model(
+  'TransactionSummary',
+  {
+    count: z.int(), // every matching row, pending included (the list's total)
+    pending_count: z.int(), // matching rows still pending: counted, but in neither sum
+    spent: Money, // posted money out, positive
+    received: Money, // posted money in
+  },
+  'Totals for every transaction the filters match, not one page.',
+)
+export type TransactionSummary = z.infer<typeof TransactionSummary>
+
 export const TransactionUpdate = requestModel(
   'TransactionUpdate',
   {

@@ -4,7 +4,7 @@
  * detectRecurring is called by services/sync.ts after categorization. Keep its signature stable.
  */
 
-import { and, asc, eq, gte, isNotNull, ne } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNotNull, ne } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import {
   type Cadence,
@@ -312,6 +312,28 @@ export function listRecurring(db: Db, status: RecurrenceStatus | null = null): R
     .where(status === null ? ne(recurrences.status, 'dismissed') : eq(recurrences.status, status))
     .orderBy(asc(recurrences.next_expected_date), asc(recurrences.id))
     .all()
+}
+
+/**
+ * Display names: the payee of the latest transaction with the charge's merchant key on its
+ * account, or the key when none has a payee. Read from the database only; nothing goes to an LLM.
+ */
+export function recurringNames(db: Db, charges: readonly RecurringCharge[]): Map<number, string> {
+  const keys = [...new Set(charges.map((c) => c.merchant_key))]
+  const latest = new Map<string, string>()
+  if (keys.length > 0) {
+    const rows = db
+      .select({ key: transactions.merchant_key, account: transactions.account_id, payee: transactions.payee })
+      .from(transactions)
+      .where(and(inArray(transactions.merchant_key, keys), isNotNull(transactions.payee), ne(transactions.payee, '')))
+      .orderBy(desc(transactions.posted_on), desc(transactions.id))
+      .all()
+    for (const row of rows) {
+      const k = groupKey(row.key as string, row.account)
+      if (!latest.has(k)) latest.set(k, row.payee as string)
+    }
+  }
+  return new Map(charges.map((c) => [c.id, latest.get(groupKey(c.merchant_key, c.account_id)) ?? c.merchant_key]))
 }
 
 /**

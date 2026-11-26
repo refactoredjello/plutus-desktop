@@ -8,6 +8,7 @@ import { model, orNull, requestModel } from './model.js'
 export const RecurringChargeRead = model('RecurringChargeRead', {
   id: z.int(),
   merchant_key: z.string(),
+  name: z.string(), // the latest matching payee on the account, else the merchant key
   account_id: z.int(),
   amount: Money,
   cadence: Cadence,

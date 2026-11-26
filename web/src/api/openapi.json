@@ -1488,6 +1488,10 @@
             "title": "Merchant Key",
             "type": "string"
           },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
           "next_expected_date": {
             "format": "date",
             "title": "Next Expected Date",
@@ -1500,6 +1504,7 @@
         "required": [
           "id",
           "merchant_key",
+          "name",
           "account_id",
           "amount",
           "cadence",
@@ -2118,6 +2123,37 @@
           "suggestion"
         ],
         "title": "TransactionRuleRead",
+        "type": "object"
+      },
+      "TransactionSummary": {
+        "description": "Totals for every transaction the filters match, not one page.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "received": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Received",
+            "type": "string"
+          },
+          "spent": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Spent",
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "pending_count",
+          "spent",
+          "received"
+        ],
+        "title": "TransactionSummary",
         "type": "object"
       },
       "TransactionUpdate": {
@@ -3677,6 +3713,144 @@
           }
         },
         "summary": "List Transactions",
+        "tags": [
+          "transactions"
+        ]
+      }
+    },
+    "/api/transactions/summary": {
+      "get": {
+        "description": "Count and posted sums for every transaction the list filters match. Pending rows are counted (pending_count) but are in neither sum; transfers are excluded unless include_transfers.",
+        "operationId": "summarize_transactions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "title": "Q",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "integer"
+              },
+              "title": "Account Id",
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "integer"
+              },
+              "title": "Category Id",
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "essentiality",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EssentialityFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Essentiality"
+            }
+          },
+          {
+            "in": "query",
+            "name": "uncategorized",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Uncategorized",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "needs_review",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Needs Review",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_transfers",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Transfers",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Summarize Transactions",
         "tags": [
           "transactions"
         ]
