@@ -408,3 +408,54 @@ describe('Clear filters', () => {
     expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
   })
 })
+
+describe('Transactions summary and header', () => {
+  const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  const expected = (rows: Schemas['TransactionRead'][]) => {
+    const posted = rows.filter((t) => !t.pending)
+    const spent = posted.filter((t) => Number(t.amount) < 0).reduce((s, t) => s - Number(t.amount) * 100, 0) / 100
+    const received = posted.filter((t) => Number(t.amount) > 0).reduce((s, t) => s + Number(t.amount) * 100, 0) / 100
+    return { spent: usd(spent), received: usd(received), pending: rows.length - posted.length }
+  }
+
+  it('summarises the whole filtered set above the table, pending rows counted apart', async () => {
+    renderAt('/transactions')
+    const rows = transactions.filter((t) => !t.is_transfer)
+    const e = expected(rows)
+    const line = await screen.findByTestId('transactions-summary')
+    await waitFor(() =>
+      expect(line).toHaveTextContent(
+        `${rows.length} transactions · ${e.spent} spent · ${e.received} in · ${e.pending} pending, not in totals`,
+      ),
+    )
+  })
+
+  it('follows the filters', async () => {
+    renderAt('/transactions?q=netflix')
+    const rows = transactions.filter((t) => !t.is_transfer && t.payee === 'Netflix')
+    const e = expected(rows)
+    const line = await screen.findByTestId('transactions-summary')
+    await waitFor(() => expect(line).toHaveTextContent(`${rows.length} transactions · ${e.spent} spent · ${e.received} in`))
+    expect(line).not.toHaveTextContent('pending')
+  })
+
+  it('says "1 transaction" for one', async () => {
+    server.use(
+      http.get('/api/transactions/summary', () =>
+        HttpResponse.json<Schemas['TransactionSummary']>({ count: 1, pending_count: 0, spent: '4.00', received: '0.00' }),
+      ),
+    )
+    renderAt('/transactions')
+    expect(await screen.findByText('1 transaction · $4.00 spent · $0.00 in')).toBeInTheDocument()
+  })
+
+  it('keeps the header row in view on Transactions but not on Review', async () => {
+    const { unmount } = renderAt('/transactions')
+    await firstRow()
+    expect(document.querySelector('thead')).toHaveClass('sticky')
+    unmount()
+    renderAt('/review')
+    await screen.findAllByRole('row')
+    expect(document.querySelector('thead')).not.toHaveClass('sticky')
+  })
+})

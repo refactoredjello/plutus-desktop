@@ -72,3 +72,15 @@ describe('Goals', () => {
     expect(vacation.getByRole('button', { name: 'Suggest ways to save' })).toBeEnabled()
   })
 })
+
+describe('Goal progress display', () => {
+  it('shows the percentage complete and colours the bar by status', async () => {
+    renderAt('/goals')
+    const vacation = await card('Vacation fund')
+    expect(within(vacation).getByText('33%')).toBeInTheDocument()
+    expect(vacation.querySelector('[data-slot="progress-indicator"]')!.className).toMatch(/amber/)
+    const emergency = await card('Emergency fund')
+    expect(within(emergency).getByText('80%')).toBeInTheDocument()
+    expect(emergency.querySelector('[data-slot="progress-indicator"]')!.className).toMatch(/emerald/)
+  })
+})

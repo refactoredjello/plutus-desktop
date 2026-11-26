@@ -71,3 +71,17 @@ describe('Overview', () => {
     expect(screen.getByText('Income vs. expenses')).toBeInTheDocument()
   })
 })
+
+describe('Overview stat tile deltas', () => {
+  it('shows the direction and size against last month, neutral while the month is in progress', async () => {
+    renderAt('/')
+    const [prev, cur] = monthlySummaries().slice(-2) as [{ income: string; expenses: string }, { income: string; expenses: string }]
+    const income = tile('Income so far')
+    const delta = await within(income).findByTestId('delta')
+    const pct = Math.round((Math.abs(Number(cur.income) - Number(prev.income)) / Number(prev.income)) * 100)
+    expect(delta).toHaveTextContent(`${Number(cur.income) < Number(prev.income) ? 'down' : 'up'}${pct}%`)
+    expect(delta.className).not.toMatch(/destructive|emerald/)
+    expect(within(tile('Spent so far')).getByTestId('delta')).toBeInTheDocument()
+    expect(within(tile('Projected month-end balance')).queryByTestId('delta')).toBeNull()
+  })
+})

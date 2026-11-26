@@ -69,28 +69,44 @@ const notFound = () => HttpResponse.json({ title: 'Not Found', status: 404, deta
 const notPending = (id: number) =>
   HttpResponse.json({ title: 'Conflict', status: 409, detail: `Transaction ${id} is not pending.` }, { status: 409 })
 
+/** The rows the list filters in `p` match, as the server's filter code does. */
+function matching(p: URLSearchParams): Txn[] {
+  const q = p.get('q')?.toLowerCase()
+  const accountIds = p.getAll('account_id').map(Number)
+  const categoryIds = p.getAll('category_id').map(Number)
+  return transactions
+    .filter((t) => p.get('include_transfers') === 'true' || !t.is_transfer)
+    .filter((t) => !q || `${t.payee ?? ''} ${t.raw_description} ${t.note ?? ''}`.toLowerCase().includes(q))
+    .filter((t) => !p.get('start') || t.posted_on >= p.get('start')!)
+    .filter((t) => !p.get('end') || t.posted_on <= p.get('end')!)
+    .filter((t) => !accountIds.length || accountIds.includes(t.account_id))
+    .filter((t) => !categoryIds.length || (t.categorization && categoryIds.includes(t.categorization.category_id)))
+    .filter((t) => {
+      const ess = p.get('essentiality')
+      if (!ess) return true
+      return ess === 'unset' ? !t.categorization?.essentiality : t.categorization?.essentiality === ess
+    })
+    .filter((t) => p.get('uncategorized') !== 'true' || !t.categorization)
+    .filter((t) => p.get('needs_review') !== 'true' || needsReview(t))
+}
+
 export const transactionHandlers = [
+  http.get('/api/transactions/summary', ({ request }) => {
+    const rows = matching(new URL(request.url).searchParams)
+    const posted = rows.filter((t) => !t.pending)
+    const sum = (sign: number) => posted.reduce((s, t) => (Math.sign(Number(t.amount)) === sign ? s + Math.round(Math.abs(Number(t.amount)) * 100) : s), 0)
+    return HttpResponse.json<Schemas['TransactionSummary']>({
+      count: rows.length,
+      pending_count: rows.length - posted.length,
+      spent: (sum(-1) / 100).toFixed(2),
+      received: (sum(1) / 100).toFixed(2),
+    })
+  }),
   http.get('/api/transactions', ({ request }) => {
     const p = new URL(request.url).searchParams
-    const q = p.get('q')?.toLowerCase()
-    const accountIds = p.getAll('account_id').map(Number)
-    const categoryIds = p.getAll('category_id').map(Number)
     const limit = Number(p.get('limit') ?? 50)
     const offset = Number(p.get('offset') ?? 0)
-    const filtered = transactions
-      .filter((t) => p.get('include_transfers') === 'true' || !t.is_transfer)
-      .filter((t) => !q || `${t.payee ?? ''} ${t.raw_description} ${t.note ?? ''}`.toLowerCase().includes(q))
-      .filter((t) => !p.get('start') || t.posted_on >= p.get('start')!)
-      .filter((t) => !p.get('end') || t.posted_on <= p.get('end')!)
-      .filter((t) => !accountIds.length || accountIds.includes(t.account_id))
-      .filter((t) => !categoryIds.length || (t.categorization && categoryIds.includes(t.categorization.category_id)))
-      .filter((t) => {
-        const ess = p.get('essentiality')
-        if (!ess) return true
-        return ess === 'unset' ? !t.categorization?.essentiality : t.categorization?.essentiality === ess
-      })
-      .filter((t) => p.get('uncategorized') !== 'true' || !t.categorization)
-      .filter((t) => p.get('needs_review') !== 'true' || needsReview(t))
+    const filtered = matching(p)
     return HttpResponse.json<Schemas['Page_TransactionRead_']>({
       items: filtered.slice(offset, offset + limit),
       total: filtered.length,
