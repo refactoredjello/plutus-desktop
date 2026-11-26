@@ -8,7 +8,7 @@ How Plutus is built with one orchestrating Opus session managing a small set of 
                     ┌──────────────────────────────┐
                     │  Orchestrator (main session) │
                     │  plans, owns contracts,      │
-                    │  reviews, merges             │
+                    │  reviews, opens PRs          │
                     └──────┬─────────┬─────────┬───┘
             brief + branch │         │         │  report back
                  ┌─────────▼──┐ ┌────▼──────┐ ┌▼────────────┐
@@ -18,7 +18,7 @@ How Plutus is built with one orchestrating Opus session managing a small set of 
                  └────────────┘ └───────────┘ └─────────────┘
 ```
 
-- **The orchestrator never writes feature code.** It writes briefs, owns shared contracts (`server/src/db/schema.ts`, migrations, Zod schemas, `server/src/app.ts`, root config), reviews diffs, runs the full suite, and merges.
+- **The orchestrator never writes feature code.** It writes briefs, owns shared contracts (`server/src/db/schema.ts`, migrations, Zod schemas, `server/src/app.ts`, root config), reviews diffs, runs the full suite, and opens the pull request; the owner merges it into `main`.
 - **Subagents never talk to each other.** All coordination goes through the orchestrator. Contracts are fixed before parallel work starts, so peers have nothing to negotiate.
 - **Each subagent works in its own git worktree and branch** (Agent tool with `isolation: "worktree"`), so parallel agents cannot overwrite each other's files.
 - **At most five subagents run at once.** Review bandwidth, not agent capacity, is the bottleneck. Each agent also starts cold and re-reads the project.
@@ -47,7 +47,7 @@ Role definitions live in `.claude/agents/`. Review uses the built-in `/code-revi
 2. Spawn the agent in the background in a worktree.
 3. When it reports, read the diff, check the branch log (a failing-test commit before each implementation commit), and run `/code-review` on the branch.
 4. Send fixes back to the same agent via SendMessage until clean.
-5. Merge with `git merge --no-ff`, run `make check`, regenerate the API client if schemas changed (`make openapi`).
+5. Merge into the orchestrator's branch (never `main`) with `git merge --no-ff`, run `make check`, regenerate the API client if schemas changed (`make openapi`), then push and open a pull request against `main`.
 6. Log anything that changed a requirement in the decisions table in REQUIREMENTS.md.
 
 ## Rules that keep parallel work safe
@@ -56,5 +56,5 @@ Role definitions live in `.claude/agents/`. Review uses the built-in `/code-revi
 - **File ownership is explicit in every brief.** Two agents never own the same file in the same wave.
 - **Shared registration points are pre-written**, such as route registration in `server/src/app.ts` and routes in the React router.
 - **No real secrets in any agent's environment.** Fixtures and fake providers only. The owner adds real keys in the app's Settings.
-- **Merges happen one at a time**, each followed by a green `make check`.
+- **Merges into the orchestrator's branch happen one at a time**, each followed by a green `make check`.
 - **Items on docs/BACKLOG.md are fixed only with the owner's go-ahead.**

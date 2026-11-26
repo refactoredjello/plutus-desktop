@@ -64,6 +64,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - Migrations are drizzle-kit SQL in `server/src/db/migrations`, reviewed by hand. Never edit an applied migration. Table rebuilds (drizzle-kit's `__new_<table>` copy, drop, rename) are safe: `openDb` migrates with foreign keys off, then runs `foreign_key_check` and `integrity_check` and restores the backup on a failure. Before migrating a database with data it writes a verified copy to `<data dir>/backups/` and keeps the newest 5; a database migrated by a newer app refuses to open (docs/ARCHITECTURE.md, "Migrations and backups").
 - Tests first: a failing-test commit, then the implementation commit.
 - Commits end with a `Co-Authored-By` line for the model that wrote them.
+- Every change goes on a new branch cut from `origin/main` and reaches `main` only through a pull request; never commit on `main`. The owner merges: agents never merge into `main` or enable auto-merge. An agent that opens a PR reports its URL and check status.
 
 ## Privacy rules (enforced by tests)
 
@@ -89,6 +90,6 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 
 ## Multi-agent work
 
-An orchestrator session owns `server/src/db/schema.ts`, migrations, Zod schemas, `server/src/app.ts`, root config, and merges; subagents implement briefs in their own worktree and branch, touching only files they own. Role definitions live in `.claude/agents/`. See `docs/AGENT_PLAN.md`.
+An orchestrator session owns `server/src/db/schema.ts`, migrations, Zod schemas, `server/src/app.ts`, root config, and merging subagent branches into its own branch for the PR; subagents implement briefs in their own worktree and branch, touching only files they own. Role definitions live in `.claude/agents/`. See `docs/AGENT_PLAN.md`.
 
 Open bugs and wanted changes are listed in `docs/BACKLOG.md`; never fix one without the owner's go-ahead.
