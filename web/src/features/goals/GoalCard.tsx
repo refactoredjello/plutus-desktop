@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { formatDate } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
+import { cn } from '@/lib/utils'
 import { useGoalMutations } from './queries'
 import { Suggestions } from './Suggestions'
 
@@ -40,10 +41,21 @@ export function GoalCard({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
       <CardContent className="space-y-4">
         {p ? (
           <div className="space-y-2">
-            <Progress value={percent} aria-label={`Progress for ${goal.name}`} />
+            <Progress
+              value={percent}
+              aria-label={`Progress for ${goal.name}`}
+              className={cn(
+                '[&_[data-slot=progress-indicator]]:motion-reduce:transition-none',
+                p.on_track
+                  ? '[&_[data-slot=progress-indicator]]:bg-emerald-600 dark:[&_[data-slot=progress-indicator]]:bg-emerald-500'
+                  : '[&_[data-slot=progress-indicator]]:bg-amber-500',
+              )}
+            />
             <div className="flex flex-wrap justify-between gap-x-4 text-sm">
               <span className="tabular-nums">
                 {formatMoney(p.saved_so_far)} of {formatMoney(goal.target_amount)}
+                {/* Floored, so 100% only once the goal is reached. */}
+                <span className="ml-2 text-muted-foreground">{Math.floor(percent)}%</span>
               </span>
               <span className="text-muted-foreground">by {formatDate(goal.target_date)}</span>
             </div>

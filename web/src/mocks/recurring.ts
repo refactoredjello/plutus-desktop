@@ -5,12 +5,12 @@ import { transactions } from './transactions'
 type Charge = Schemas['RecurringChargeRead']
 
 const initial = (): Charge[] => [
-  { id: 1, merchant_key: 'NETFLIX.COM CA', account_id: 3, amount: '-15.49', cadence: 'monthly', next_expected_date: '2026-10-15', last_seen_on: '2026-09-15', status: 'confirmed', essentiality: 'discretionary', annual_cost: '-185.88' },
-  { id: 2, merchant_key: 'LANDLORD LLC', account_id: 1, amount: '-2100.00', cadence: 'monthly', next_expected_date: '2026-11-01', last_seen_on: '2026-10-01', status: 'confirmed', essentiality: 'essential', annual_cost: '-25200.00' },
-  { id: 3, merchant_key: 'GYM CO', account_id: 3, amount: '-40.00', cadence: 'monthly', next_expected_date: '2026-10-20', last_seen_on: '2026-09-20', status: 'confirmed', essentiality: 'flexible', annual_cost: '-480.00' },
-  { id: 4, merchant_key: 'ACME CORP PAYROLL', account_id: 1, amount: '3150.00', cadence: 'biweekly', next_expected_date: '2026-10-09', last_seen_on: '2026-09-25', status: 'confirmed', essentiality: null, annual_cost: '81900.00' },
-  { id: 5, merchant_key: 'SPOTIFY USA', account_id: 3, amount: '-11.99', cadence: 'monthly', next_expected_date: '2026-10-12', last_seen_on: '2026-09-12', status: 'proposed', essentiality: null, annual_cost: '-143.88' },
-  { id: 6, merchant_key: 'OLD MAGAZINE', account_id: 3, amount: '-9.00', cadence: 'monthly', next_expected_date: '2026-10-30', last_seen_on: '2026-09-30', status: 'dismissed', essentiality: null, annual_cost: '-108.00' },
+  { id: 1, merchant_key: 'NETFLIX.COM CA', name: 'Netflix', account_id: 3, amount: '-15.49', cadence: 'monthly', next_expected_date: '2026-10-15', last_seen_on: '2026-09-15', status: 'confirmed', essentiality: 'discretionary', annual_cost: '-185.88' },
+  { id: 2, merchant_key: 'LANDLORD LLC', name: 'Landlord LLC', account_id: 1, amount: '-2100.00', cadence: 'monthly', next_expected_date: '2026-11-01', last_seen_on: '2026-10-01', status: 'confirmed', essentiality: 'essential', annual_cost: '-25200.00' },
+  { id: 3, merchant_key: 'GYM CO', name: 'GYM CO', account_id: 3, amount: '-40.00', cadence: 'monthly', next_expected_date: '2026-10-20', last_seen_on: '2026-09-20', status: 'confirmed', essentiality: 'flexible', annual_cost: '-480.00' },
+  { id: 4, merchant_key: 'ACME CORP PAYROLL', name: 'Acme Corp', account_id: 1, amount: '3150.00', cadence: 'biweekly', next_expected_date: '2026-10-09', last_seen_on: '2026-09-25', status: 'confirmed', essentiality: null, annual_cost: '81900.00' },
+  { id: 5, merchant_key: 'SPOTIFY USA', name: 'Spotify', account_id: 3, amount: '-11.99', cadence: 'monthly', next_expected_date: '2026-10-12', last_seen_on: '2026-09-12', status: 'proposed', essentiality: null, annual_cost: '-143.88' },
+  { id: 6, merchant_key: 'OLD MAGAZINE', name: 'Old Magazine', account_id: 3, amount: '-9.00', cadence: 'monthly', next_expected_date: '2026-10-30', last_seen_on: '2026-09-30', status: 'dismissed', essentiality: null, annual_cost: '-108.00' },
 ]
 
 export let recurring: Charge[] = initial()
@@ -53,6 +53,7 @@ export const recurringHandlers = [
       charge = {
         id: Math.max(0, ...recurring.map((c) => c.id)) + 1,
         merchant_key: key,
+        name: txn.payee ?? key,
         account_id: txn.account_id,
         amount: txn.amount,
         cadence: body.cadence,

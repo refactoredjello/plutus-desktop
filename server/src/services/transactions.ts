@@ -17,8 +17,8 @@ import type { Db } from '../db/index.js'
 import { type Essentiality, type EssentialityFilter, categories, categorizations, transactions } from '../db/schema.js'
 import { type PlainDate, utcNow } from '../lib/dates.js'
 import { ConflictError, DomainError, NotFoundError } from '../lib/errors.js'
-import { formatMoney } from '../lib/money.js'
-import type { TransactionRead, TransactionRuleRead, TransactionUpdate } from '../schemas/transactions.js'
+import { cents, formatMoney } from '../lib/money.js'
+import type { TransactionRead, TransactionRuleRead, TransactionSummary, TransactionUpdate } from '../schemas/transactions.js'
 import type { SecretStore } from '../secrets.js'
 import { essentialityCondition } from './aggregates.js'
 import { pyStrip, saveRule } from './categories.js'
@@ -69,8 +69,8 @@ export interface TransactionFilters {
   offset: number
 }
 
-/** Filtered transactions, newest first, plus the total matching count. */
-export function listTransactions(db: Db, filters: TransactionFilters): [TransactionRead[], number] {
+/** The WHERE for the list's filters, over transactions left-joined to categorizations. */
+function filterCondition(db: Db, filters: Omit<TransactionFilters, 'limit' | 'offset'>): SQL | undefined {
   const { q, start, end, account_ids, category_ids, essentiality } = filters
   const where: SQL[] = []
   if (q) {
@@ -95,7 +95,12 @@ export function listTransactions(db: Db, filters: TransactionFilters): [Transact
     )
   }
   if (!filters.include_transfers) where.push(eq(transactions.is_transfer, false))
-  const condition = and(...where)
+  return and(...where)
+}
+
+/** Filtered transactions, newest first, plus the total matching count. */
+export function listTransactions(db: Db, filters: TransactionFilters): [TransactionRead[], number] {
+  const condition = filterCondition(db, filters)
 
   // One categorization per transaction (its primary key), so the join never adds rows.
   const total =
@@ -115,6 +120,33 @@ export function listTransactions(db: Db, filters: TransactionFilters): [Transact
     .offset(filters.offset)
     .all()
   return [rows.map((r) => toTransactionRead(r.tx, r.cat)), total]
+}
+
+/**
+ * Count and sums for every row the filters match. Pending rows count but stay out of both sums,
+ * as in every total (aggregates.ts); transfers follow include_transfers like the list. The sums
+ * split posted rows by sign, so they add up to the rows the list shows; income and expense
+ * rules (refunds, money movement) belong to the month reports.
+ */
+export function summarizeTransactions(db: Db, filters: Omit<TransactionFilters, 'limit' | 'offset'>): TransactionSummary {
+  const posted = sql`${transactions.pending} = 0`
+  const row = db
+    .select({
+      count: count(),
+      pending: sql<number>`coalesce(sum(case when ${transactions.pending} = 1 then 1 else 0 end), 0)`,
+      spent: sql<number>`coalesce(sum(case when ${posted} and ${transactions.amount} < 0 then -${transactions.amount} else 0 end), 0)`,
+      received: sql<number>`coalesce(sum(case when ${posted} and ${transactions.amount} > 0 then ${transactions.amount} else 0 end), 0)`,
+    })
+    .from(transactions)
+    .leftJoin(categorizations, eq(categorizations.transaction_id, transactions.id))
+    .where(filterCondition(db, filters))
+    .get()
+  return {
+    count: row?.count ?? 0,
+    pending_count: row?.pending ?? 0,
+    spent: formatMoney(cents(row?.spent ?? 0)),
+    received: formatMoney(cents(row?.received ?? 0)),
+  }
 }
 
 /** The values that differ from the row: what an update writes. */

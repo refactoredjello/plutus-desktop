@@ -210,6 +210,11 @@ const SAMPLES: Record<string, { query?: string; body?: unknown }> = {
       'q=coffee&start=2026-01-01&end=2026-01-31&account_id=1&account_id=2&category_id=3' +
       '&essentiality=unset&uncategorized=true&needs_review=false&include_transfers=1&limit=500&offset=0',
   },
+  summarize_transactions: {
+    query:
+      'q=coffee&start=2026-01-01&end=2026-01-31&account_id=1&account_id=2&category_id=3' +
+      '&essentiality=unset&uncategorized=true&needs_review=false&include_transfers=1',
+  },
   update_transaction: {
     body: { category_id: 1, note: '', save_as_rule: true, rule_match_type: 'prefix', rule_pattern: 'UBER' },
   },

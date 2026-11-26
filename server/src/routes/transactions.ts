@@ -6,11 +6,23 @@ import { PlainDate } from '../schemas/common.js'
 import { EssentialityFilter } from '../schemas/enums.js'
 import { orNull, params } from '../schemas/model.js'
 import { pathInt, queryBool, queryInt, queryIntList } from '../schemas/params.js'
-import { TransactionPage, TransactionRead, TransactionRuleRead, TransactionUpdate } from '../schemas/transactions.js'
+import { TransactionPage, TransactionRead, TransactionRuleRead, TransactionSummary, TransactionUpdate } from '../schemas/transactions.js'
 import { plainDate } from '../lib/dates.js'
 import * as service from '../services/transactions.js'
 import { unpairTransfer } from '../services/transfers.js'
 import { json, jsonBody, noContent } from './openapi.js'
+
+const filterParams = {
+  q: z.string().nullable().optional(),
+  start: PlainDate.nullable().optional(),
+  end: PlainDate.nullable().optional(),
+  account_id: queryIntList(),
+  category_id: queryIntList(),
+  essentiality: orNull(EssentialityFilter).optional(),
+  uncategorized: queryBool(false),
+  needs_review: queryBool(false),
+  include_transfers: queryBool(false),
+}
 
 const listTransactions = createRoute({
   method: 'get',
@@ -20,20 +32,25 @@ const listTransactions = createRoute({
   tags: ['transactions'],
   request: {
     query: params({
-      q: z.string().nullable().optional(),
-      start: PlainDate.nullable().optional(),
-      end: PlainDate.nullable().optional(),
-      account_id: queryIntList(),
-      category_id: queryIntList(),
-      essentiality: orNull(EssentialityFilter).optional(),
-      uncategorized: queryBool(false),
-      needs_review: queryBool(false),
-      include_transfers: queryBool(false),
+      ...filterParams,
       limit: queryInt(50, { minimum: 1, maximum: 500 }),
       offset: queryInt(0, { minimum: 0 }),
     }),
   },
   responses: { 200: json(TransactionPage) },
+})
+
+const summarizeTransactions = createRoute({
+  method: 'get',
+  path: '/api/transactions/summary',
+  operationId: 'summarize_transactions',
+  summary: 'Summarize Transactions',
+  description:
+    'Count and posted sums for every transaction the list filters match. Pending rows are counted ' +
+    '(pending_count) but are in neither sum; transfers are excluded unless include_transfers.',
+  tags: ['transactions'],
+  request: { query: params(filterParams) },
+  responses: { 200: json(TransactionSummary) },
 })
 
 const updateTransaction = createRoute({
@@ -94,24 +111,34 @@ const removePending = createRoute({
   responses: { 204: noContent },
 })
 
+type FilterQuery = z.infer<z.ZodObject<typeof filterParams>>
+
+/** The service's filters from the parsed query. */
+function filters(query: FilterQuery): Omit<service.TransactionFilters, 'limit' | 'offset'> {
+  return {
+    q: query.q ?? null,
+    start: query.start ? plainDate(query.start) : null,
+    end: query.end ? plainDate(query.end) : null,
+    account_ids: query.account_id ?? null,
+    category_ids: query.category_id ?? null,
+    essentiality: query.essentiality ?? null,
+    uncategorized: query.uncategorized,
+    needs_review: query.needs_review,
+    include_transfers: query.include_transfers,
+  }
+}
+
 export function registerTransactions(app: App): void {
   app.openapi(listTransactions, (c) => {
     const query = c.req.valid('query')
     const [items, total] = service.listTransactions(c.var.db, {
-      q: query.q ?? null,
-      start: query.start ? plainDate(query.start) : null,
-      end: query.end ? plainDate(query.end) : null,
-      account_ids: query.account_id ?? null,
-      category_ids: query.category_id ?? null,
-      essentiality: query.essentiality ?? null,
-      uncategorized: query.uncategorized,
-      needs_review: query.needs_review,
-      include_transfers: query.include_transfers,
+      ...filters(query),
       limit: query.limit,
       offset: query.offset,
     })
     return c.json({ items, total, limit: query.limit, offset: query.offset }, 200)
   })
+  app.openapi(summarizeTransactions, (c) => c.json(service.summarizeTransactions(c.var.db, filters(c.req.valid('query'))), 200))
   app.openapi(updateTransaction, async (c) => {
     // The keys the client sent, so absent fields stay untouched (the body is validated, so known).
     const fields = new Set(Object.keys((await c.req.json()) as object))

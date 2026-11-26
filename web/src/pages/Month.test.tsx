@@ -181,3 +181,61 @@ describe('Overview entry points', () => {
     expect(screen.getByRole('link', { name: 'Previous month' })).toBeInTheDocument()
   })
 })
+
+describe('Month view display', () => {
+  const delta = (label: string) => within(tile(label)).getByTestId('delta')
+
+  it('shows each tile against the average, coloured by whether it is good for that metric', async () => {
+    serve({
+      income: '5000.00', income_average: '4000.00',
+      expenses: '6000.00', expenses_average: '5000.00',
+      net: '-1000.00', net_average: '-500.00',
+      savings_rate: -0.2, savings_rate_average: -0.125,
+    })
+    renderAt(`/month/${prev}`)
+    await screen.findByText('Complete month')
+    expect(delta('Income')).toHaveTextContent('up25%')
+    expect(delta('Income')).toHaveClass('text-emerald-700')
+    expect(delta('Spending')).toHaveTextContent('up20%')
+    expect(delta('Spending')).toHaveClass('text-destructive')
+    expect(delta('Net')).toHaveTextContent('down100%')
+    expect(delta('Net')).toHaveClass('text-destructive')
+    expect(delta('Savings rate')).toHaveTextContent('down7.5 pts')
+    expect(delta('Savings rate')).toHaveClass('text-destructive')
+  })
+
+  it('is neutral within 5% and absent without an average', async () => {
+    serve({ income: '5100.00', income_average: '5000.00', expenses_average: null, average_months: 3 })
+    renderAt(`/month/${prev}`)
+    await screen.findByText('Complete month')
+    expect(delta('Income').className).not.toMatch(/destructive|emerald/)
+    expect(within(tile('Spending')).queryByTestId('delta')).toBeNull()
+  })
+
+  it('renders a negative net and savings rate in the destructive colour', async () => {
+    serve({ net: '-250.00', savings_rate: -0.05 })
+    renderAt(`/month/${prev}`)
+    expect(await within(await waitFor(() => tile('Net'))).findByText('-$250.00')).toHaveClass('text-destructive')
+    expect(within(tile('Savings rate')).getByText('-5.0%')).toHaveClass('text-destructive')
+  })
+
+  it('keeps a positive net in the normal colour', async () => {
+    serve({ net: '250.00', savings_rate: 0.05 })
+    renderAt(`/month/${prev}`)
+    expect(await within(await waitFor(() => tile('Net'))).findByText('$250.00')).not.toHaveClass('text-destructive')
+  })
+
+  it('shows a thin progress bar for a month in progress, none for a complete one', async () => {
+    serve({ is_complete: false, days_elapsed: 25, days_in_month: 30 })
+    const { unmount } = renderAt(`/month/${current}`)
+    expect(await screen.findByText('In progress, day 25 of 30')).toBeInTheDocument()
+    const bar = screen.getByTestId('month-progress')
+    expect(bar).toHaveAttribute('aria-valuenow', '25')
+    expect(bar).toHaveAttribute('aria-valuemax', '30')
+    unmount()
+    serve({ is_complete: true })
+    renderAt(`/month/${prev}`)
+    await screen.findByText('Complete month')
+    expect(screen.queryByTestId('month-progress')).toBeNull()
+  })
+})

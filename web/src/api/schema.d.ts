@@ -593,6 +593,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/transactions/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Summarize Transactions
+         * @description Count and posted sums for every transaction the list filters match. Pending rows are counted (pending_count) but are in neither sum; transfers are excluded unless include_transfers.
+         */
+        get: operations["summarize_transactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transactions/{transaction_id}": {
         parameters: {
             query?: never;
@@ -1197,6 +1217,8 @@ export interface components {
             last_seen_on: string | null;
             /** Merchant Key */
             merchant_key: string;
+            /** Name */
+            name: string;
             /**
              * Next Expected Date
              * Format: date
@@ -1413,6 +1435,20 @@ export interface components {
         TransactionRuleRead: {
             rule: components["schemas"]["RuleRead"] | null;
             suggestion: components["schemas"]["RuleSuggestion"];
+        };
+        /**
+         * TransactionSummary
+         * @description Totals for every transaction the filters match, not one page.
+         */
+        TransactionSummary: {
+            /** Count */
+            count: number;
+            /** Pending Count */
+            pending_count: number;
+            /** Received */
+            received: string;
+            /** Spent */
+            spent: string;
         };
         /**
          * TransactionUpdate
@@ -2427,6 +2463,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_TransactionRead_"];
+                };
+            };
+        };
+    };
+    summarize_transactions: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                start?: string | null;
+                end?: string | null;
+                account_id?: number[] | null;
+                category_id?: number[] | null;
+                essentiality?: components["schemas"]["EssentialityFilter"] | null;
+                uncategorized?: boolean;
+                needs_review?: boolean;
+                include_transfers?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionSummary"];
                 };
             };
         };
