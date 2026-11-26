@@ -1,7 +1,7 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Schemas } from '@/api/client'
 import { server } from '@/mocks/server'
 import { transactions } from '@/mocks/transactions'
@@ -350,5 +350,84 @@ describe('One-time expenses', () => {
     await user.click(within(row).getByRole('button', { name: /Unmark Blue Bottle Coffee as one-time/ }))
     await waitFor(() => expect(bodies).toEqual([{ one_time: true }, { one_time: false }]))
     await waitFor(() => expect(within(row).queryByText('One-time')).not.toBeInTheDocument())
+  })
+})
+
+describe('Clear filters', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('is absent when no filter is set', async () => {
+    renderAt('/transactions')
+    await firstRow()
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+  })
+
+  it('appears in the top row for filters from the URL and clears every filter', async () => {
+    const urls: URL[] = []
+    server.use(
+      http.get('/api/transactions', ({ request }) => {
+        const url = new URL(request.url)
+        if (url.searchParams.get('limit') !== '1') urls.push(url) // limit=1 is the nav badge
+        return HttpResponse.json({ items: [], total: 0, limit: 50, offset: 0 })
+      }),
+    )
+    const user = userEvent.setup()
+    const { router } = renderAt(
+      '/transactions?q=coffee&start=2026-09-01&end=2026-09-30&account=2&category=7&essentiality=flexible&review=1&transfers=1&page=2',
+    )
+    const button = await screen.findByRole('button', { name: 'Clear filters' })
+    const topRow = screen.getByLabelText('Search transactions').parentElement!
+    expect(topRow).toContainElement(button)
+    expect(topRow).toContainElement(screen.getByRole('combobox', { name: 'Essentiality filter' }))
+
+    await user.click(button)
+    await waitFor(() => expect(router.state.location.search).toBe(''))
+    expect(screen.getByLabelText('Search transactions')).toHaveValue('')
+    expect(screen.getByLabelText('From date')).toHaveValue('')
+    expect(screen.getByLabelText('To date')).toHaveValue('')
+    expect(screen.getByRole('switch', { name: 'Needs review' })).not.toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Include transfers' })).not.toBeChecked()
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+    await waitFor(() => expect(urls.at(-1)!.searchParams.get('offset')).toBe('0'))
+    const p = urls.at(-1)!.searchParams
+    for (const key of ['q', 'start', 'end', 'account_id', 'category_id', 'essentiality', 'needs_review', 'include_transfers']) {
+      expect(p.has(key)).toBe(false)
+    }
+  })
+
+  it('appears for the uncategorized filter alone', async () => {
+    renderAt('/transactions?uncategorized=1')
+    expect(await screen.findByRole('button', { name: 'Clear filters' })).toBeInTheDocument()
+  })
+
+  it('discards a pending search so typed text is not re-applied after clearing', async () => {
+    const { router } = renderAt('/transactions?review=1')
+    await screen.findByRole('button', { name: 'Clear filters' })
+    // Only the debounce timer is faked; userEvent's async wrapper would wait on a faked timer.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const box = screen.getByLabelText('Search transactions')
+    fireEvent.change(box, { target: { value: 'netflix' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(box).toHaveValue('')
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    expect(box).toHaveValue('')
+    expect(router.state.location.search).toBe('')
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+  })
+
+  it('appears while a search is still pending, before the debounce fires', async () => {
+    renderAt('/transactions')
+    await firstRow()
+    // Only the debounce timer is faked; userEvent's async wrapper would wait on a faked timer.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const box = screen.getByLabelText('Search transactions')
+    fireEvent.change(box, { target: { value: 'net' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(box).toHaveValue('')
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    expect(box).toHaveValue('')
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
   })
 })
