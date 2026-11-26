@@ -20,7 +20,7 @@ export function TransactionsTable({
 }: {
   filters: Filters
   onChange: (patch: Partial<Filters>) => void
-  /** Hide rows that fail this test (rows with an open apply-to-all prompt stay until it is answered). */
+  /** Hide rows that fail this test (rows with an open "Make this a rule" offer stay until it is answered). */
   visible?: (t: Txn) => boolean
   /** Optional trailing column, e.g. the review queue's "Looks right". */
   action?: { header: string; render: (t: Txn) => ReactNode }

@@ -1,24 +1,33 @@
-import { useState, type ReactNode } from 'react'
-import { StickyNote } from 'lucide-react'
+import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { ListFilter, StickyNote } from 'lucide-react'
 import type { Schemas } from '@/api/client'
 import { Link } from 'react-router'
+import { useTransactionPanel } from '@/app/transactionPanel'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { cadencePhrase } from '@/features/recurring/queries'
 import { formatDate } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
-import { ApplyToAllPrompt } from './ApplyToAllPrompt'
 import { useUpdateTransaction } from './queries'
 import { needsReview } from './review'
 import { NoteEditor } from './NoteEditor'
 import { OneTimeToggle } from './OneTimeToggle'
 import { RecurringMark } from './RecurringMark'
 import { UnpairTransfer } from './UnpairTransfer'
-import type { RuleMatchType } from './RuleMatchSelect'
 import { CategorySelect, EssentialitySelect } from './selects'
 
 type Txn = Schemas['TransactionRead']
+
+/** Controls inside a row act on their own; a click anywhere else opens the panel. */
+const CONTROLS = 'a, button, input, select, textarea, [role="combobox"], [role="option"], [role="listbox"], [role="dialog"]'
+
+/** A click on the row itself, not on a control in it or in a popup it opened (popups are portaled out of the row). */
+function isRowClick(e: MouseEvent<HTMLElement>): boolean {
+  const target = e.target as HTMLElement
+  return e.currentTarget.contains(target) && target.closest(CONTROLS) === null
+}
 
 export function TransactionRow({
   txn,
@@ -32,13 +41,13 @@ export function TransactionRow({
   categories: Schemas['CategoryRead'][]
   /** Optional trailing cell (e.g. the review queue's "Looks right"). */
   action?: ReactNode
-  /** Called with true while the apply-to-all prompt needs this row to stay on screen. */
+  /** Called with true while the "Make this a rule" offer needs this row to stay on screen. */
   onKeep?: (keep: boolean) => void
 }) {
   const update = useUpdateTransaction()
-  // Category id the "apply to all" prompt would save as a rule; null when hidden or dismissed.
-  const [promptCategory, setPromptCategory] = useState<number | null>(null)
-  const [ruleSaved, setRuleSaved] = useState(false)
+  const panel = useTransactionPanel()
+  // The category the "Make this a rule" offer would start a rule with; null when hidden.
+  const [ruleCategory, setRuleCategory] = useState<number | null>(null)
   const [markedCadence, setMarkedCadence] = useState<Schemas['Cadence'] | null>(null)
 
   const inflow = Number(txn.amount) > 0
@@ -46,42 +55,36 @@ export function TransactionRow({
 
   function changeCategory(id: number | null) {
     if (id === null || id === txn.categorization?.category_id) return
-    setRuleSaved(false)
-    // Lists that drop resolved rows must keep this one until the apply-to-all prompt is answered.
-    if (txn.merchant_key) onKeep?.(true)
+    // Lists that drop resolved rows must keep this one while the rule offer is shown.
+    if (!txn.is_transfer) onKeep?.(true)
     update.mutate(
       { id: txn.id, body: { category_id: id } },
       {
-        onSuccess: () => txn.merchant_key && setPromptCategory(id),
+        onSuccess: () => !txn.is_transfer && setRuleCategory(id),
         onError: () => onKeep?.(false),
       },
     )
   }
 
-  function dismissPrompt() {
-    setPromptCategory(null)
+  function dismissOffer() {
+    setRuleCategory(null)
     onKeep?.(false)
   }
 
-  function applyToAll(matchType: RuleMatchType, pattern: string) {
-    if (promptCategory === null) return
-    update.mutate(
-      {
-        id: txn.id,
-        body: { category_id: promptCategory, save_as_rule: true, rule_match_type: matchType, rule_pattern: pattern },
-      },
-      {
-        onSuccess: () => {
-          setPromptCategory(null)
-          setRuleSaved(true)
-          onKeep?.(false)
-        },
-      },
-    )
-  }
+  const openPanel = () => panel.open(txn)
+  const openRule = (categoryId?: number) =>
+    panel.open(txn, { section: 'rule', categoryId, onClose: categoryId === undefined ? undefined : dismissOffer })
 
   return (
-    <TableRow className="group/row">
+    <TableRow
+      className="group/row cursor-pointer"
+      tabIndex={0}
+      aria-label={`${description}, ${formatMoney(txn.amount)} on ${formatDate(txn.posted_on)}`}
+      onClick={(e) => isRowClick(e) && openPanel()}
+      onKeyDown={(e: KeyboardEvent<HTMLElement>) => {
+        if (e.key === 'Enter' && e.target === e.currentTarget) openPanel()
+      }}
+    >
       <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(txn.posted_on)}</TableCell>
       <TableCell className="min-w-48 max-w-80 whitespace-normal">
         <div className="flex items-center gap-2">
@@ -89,6 +92,18 @@ export function TransactionRow({
             {description}
           </span>
           <NoteEditor txn={txn} label={description} />
+          {!txn.is_transfer && (
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              className="shrink-0 text-muted-foreground sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100 sm:focus-visible:opacity-100"
+              aria-label={`Rule for ${description}`}
+              title="Rule"
+              onClick={() => openRule()}
+            >
+              <ListFilter aria-hidden />
+            </Button>
+          )}
           {!txn.is_transfer && <RecurringMark txn={txn} label={description} onMarked={setMarkedCadence} />}
           {!txn.is_transfer && !inflow && <OneTimeToggle txn={txn} label={description} />}
           {txn.is_transfer && <UnpairTransfer txn={txn} label={description} />}
@@ -109,8 +124,15 @@ export function TransactionRow({
             <span className="truncate">{txn.note}</span>
           </p>
         )}
-        {promptCategory !== null && (
-          <ApplyToAllPrompt txn={txn} pending={update.isPending} onApply={applyToAll} onDismiss={dismissPrompt} />
+        {ruleCategory !== null && (
+          <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+            <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => openRule(ruleCategory)}>
+              Make this a rule
+            </button>
+            <button type="button" className="hover:text-foreground" onClick={dismissOffer}>
+              Dismiss
+            </button>
+          </p>
         )}
         {markedCadence && (
           <p className="mt-1 text-xs text-muted-foreground">
@@ -120,7 +142,6 @@ export function TransactionRow({
             </Link>
           </p>
         )}
-        {ruleSaved && <p className="mt-1 text-xs text-muted-foreground">Rule saved.</p>}
         {update.isError && (
           <p role="alert" className="mt-1 text-xs text-destructive">
             Could not save: {update.error.message}

@@ -202,8 +202,10 @@ POST /api/recalculate       (header Refresh: re-apply rules, categorize from the
 GET  /api/settings/simplefin   POST /api/settings/simplefin   DELETE /api/settings/simplefin
 GET  /api/settings/llm      GET  /api/settings/config    PUT /api/settings/config
 GET  /api/transactions      PATCH /api/transactions/{id}   POST /api/transactions/{id}/unpair
+GET  /api/transactions/{id}/rule   (the rule categorization picks for it, or null, plus defaults for a new one)
 GET  /api/categories        POST /api/categories         PATCH /api/categories/{id}
 GET  /api/rules             POST /api/rules              PATCH /api/rules/{id}       DELETE /api/rules/{id}
+POST /api/rules/preview     (how many transactions a rule would match, and how many of them are manual; saves nothing)
 GET  /api/reports/monthly   GET /api/reports/month/{month}   GET /api/reports/by-category?month=
 GET  /api/reports/balances  GET /api/reports/changes     POST /api/reports/changes/dismiss
 DELETE /api/reports/changes/dismissals
@@ -221,13 +223,15 @@ React 19, TypeScript 6, Vite 8. Libraries: TanStack Query (server state), React 
 Pages, in navigation order:
 
 1. **Overview** — "What changed", current-month summary, income vs expenses (12 mo), balances over time, projection chart.
-2. **Month** — one month against the three complete months before it.
-3. **Transactions** — table with filters and inline category/essentiality editing.
+2. **Month** — one month against the three complete months before it; its Income and Largest rows open the transaction panel.
+3. **Transactions** — table with filters and inline category/essentiality editing; a row click opens the transaction panel, and after a category change the row offers "Make this a rule".
 4. **Review** — uncategorized and low-confidence transactions to confirm or fix.
 5. **Recurring** — detected and confirmed recurrences with annual cost.
 6. **Goals** — goal card with on-track indicator, suggestions list, Suggest button.
 7. **Planned** — manual expected income and expenses: simple form and list.
 8. **Settings** — SimpleFIN token, sync now, sync history, runtime config (LLM provider, model, key, owner name tokens, sync settings), category management, rules (create, edit, delete), and the app version at the foot (`GET /api/health` reports the desktop release, or the server package version headless).
+
+The **transaction panel** is one side sheet for every page (`web/src/app/TransactionPanelProvider.tsx`): a transaction's full details, its category and essentiality, and the rule that matches it, edited there, or a new one, with a live match count. Settings creates and edits rules with the same form in a dialog.
 
 **Spending** (`/spending`) is a single-bucket essentiality breakdown reached from Overview and Month, not from the navigation.
 

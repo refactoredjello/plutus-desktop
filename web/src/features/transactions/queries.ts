@@ -5,11 +5,8 @@ import { PAGE_SIZE, type Filters } from './filters'
 
 type Page = Schemas['Page_TransactionRead_']
 type Update = Schemas['TransactionUpdate']
-/** What callers send; the generated type also demands the rule defaults, which we fill in. */
-export type TransactionEdit = Pick<Update, 'category_id' | 'essentiality' | 'note' | 'one_time' | 'rule_pattern'> & {
-  save_as_rule?: boolean
-  rule_match_type?: Update['rule_match_type']
-}
+/** What callers send; the generated type also demands the rule defaults, which we fill in. Rules are saved through /api/rules. */
+export type TransactionEdit = Pick<Update, 'category_id' | 'essentiality' | 'note' | 'one_time'>
 
 /** A note or one-time edit: sent as-is and never touches the categorization. */
 const isFlagEdit = (body: TransactionEdit) => body.note !== undefined || body.one_time != null
@@ -42,7 +39,8 @@ export const useCategories = () =>
     queryFn: () => unwrap(api.GET('/api/categories', { params: { query: { include_hidden: true } } })),
   })
 
-function patchTransaction(t: Schemas['TransactionRead'], body: TransactionEdit): Schemas['TransactionRead'] {
+/** A transaction with an edit applied, as the server will return it. */
+export function patchTransaction(t: Schemas['TransactionRead'], body: TransactionEdit): Schemas['TransactionRead'] {
   if (body.note !== undefined) return { ...t, note: body.note?.trim() || null }
   if (body.one_time != null) return { ...t, one_time: body.one_time }
   const cur = t.categorization
@@ -74,11 +72,9 @@ export function useUpdateTransaction() {
     onMutate: async ({ id, body }) => {
       await qc.cancelQueries({ queryKey: ['transactions'] })
       const previous = qc.getQueriesData<Page>({ queryKey: ['transactions'] })
-      if (!body.save_as_rule) {
-        qc.setQueriesData<Page>({ queryKey: ['transactions'] }, (page) =>
-          page && { ...page, items: page.items.map((t) => (t.id === id ? patchTransaction(t, body) : t)) },
-        )
-      }
+      qc.setQueriesData<Page>({ queryKey: ['transactions'] }, (page) =>
+        page && { ...page, items: page.items.map((t) => (t.id === id ? patchTransaction(t, body) : t)) },
+      )
       return { previous }
     },
     onError: (_err, _vars, ctx) => {

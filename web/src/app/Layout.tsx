@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { RefreshButton } from '@/app/RefreshButton'
+import { TransactionPanelProvider } from '@/app/TransactionPanelProvider'
 import { navItems } from '@/app/router'
 import { useReviewCount } from '@/features/review/queries'
 import { cn } from '@/lib/utils'
@@ -41,7 +42,9 @@ export function Layout() {
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <Outlet />
+        <TransactionPanelProvider>
+          <Outlet />
+        </TransactionPanelProvider>
       </main>
     </div>
   )
