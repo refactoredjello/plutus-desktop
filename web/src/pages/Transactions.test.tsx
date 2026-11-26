@@ -452,10 +452,10 @@ describe('Transactions summary and header', () => {
   it('keeps the header row in view on Transactions but not on Review', async () => {
     const { unmount } = renderAt('/transactions')
     await firstRow()
-    expect(document.querySelector('thead')).toHaveClass('sticky')
+    expect(document.querySelector('thead')).toHaveClass('lg:sticky')
     unmount()
     renderAt('/review')
     await screen.findAllByRole('row')
-    expect(document.querySelector('thead')).not.toHaveClass('sticky')
+    expect(document.querySelector('thead')!.className).not.toMatch(/sticky/)
   })
 })
