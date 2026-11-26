@@ -12,7 +12,7 @@ import {
 } from '../src/db/schema.js'
 import { type PlainDate, addDays, plainDate, utcNow } from '../src/lib/dates.js'
 import { parseMoney } from '../src/lib/money.js'
-import { detectRecurring } from '../src/services/recurring.js'
+import { detectRecurring, expectedAmount } from '../src/services/recurring.js'
 import { addMonths, nextAfter } from '../src/services/schedule.js'
 import { type Account, categoryId, makeAccount, makeTx } from './factories.js'
 import { makeApp, makeDb } from './setup.js'
@@ -568,5 +568,123 @@ describe('amount varies', () => {
     await c.post('/api/recurring', { transaction_id: last.id, cadence: 'monthly', amount_varies: true })
     const again = (await (await c.post('/api/recurring', { transaction_id: last.id, cadence: 'monthly' })).json()) as Row
     expect([again.amount, again.amount_varies]).toEqual(['-130.00', true])
+  })
+})
+
+describe('seasonal estimate', () => {
+  // Fifteen monthly bills, high in winter and low in summer; today is 2026-10-17.
+  const SEASONAL = [
+    ['-60.00', '2025-08-05'],
+    ['-70.00', '2025-09-05'],
+    ['-90.00', '2025-10-05'],
+    ['-150.00', '2025-11-05'],
+    ['-200.00', '2025-12-05'],
+    ['-240.00', '2026-01-05'],
+    ['-220.00', '2026-02-05'],
+    ['-160.00', '2026-03-05'],
+    ['-110.00', '2026-04-05'],
+    ['-80.00', '2026-05-05'],
+    ['-65.00', '2026-06-05'],
+    ['-55.00', '2026-07-05'],
+    ['-62.00', '2026-08-05'],
+    ['-75.00', '2026-09-05'],
+    ['-95.00', '2026-10-05'],
+  ] as const
+
+  /** Marks the seasonal bill as recurring from its latest bill; returns the response body. */
+  async function seasonal(varies: boolean): Promise<Row> {
+    const acct = makeAccount(db)
+    const txs = SEASONAL.map(([amount, day]) => makeTx(db, acct, amount, 'GAS CO', day, { merchant_key: 'gas co' }))
+    const last = txs.at(-1) as (typeof txs)[number]
+    const res = await client().post('/api/recurring', { transaction_id: last.id, cadence: 'monthly', amount_varies: varies })
+    expect(res.status).toBe(201)
+    return (await res.json()) as Row
+  }
+
+  it('estimates a flagged bill from the same time last year', async () => {
+    await seasonal(true)
+    const charge = only(db)
+    // The six-bill median: 80, 65, 55, 62, 75, 95; the middle two are 65 and 75.
+    expect(charge.amount).toBe(money('-70.00'))
+    // 2026-01-05 +/- 45 days: Dec 5 (200), Jan 5 (240), Feb 5 (220).
+    expect(expectedAmount(db, charge, d('2027-01-05'))).toBe(money('-220.00'))
+    // 2026-07-05 +/- 45 days: Jun 5 (65), Jul 5 (55), Aug 5 (62).
+    expect(expectedAmount(db, charge, d('2027-07-05'))).toBe(money('-62.00'))
+    // 2025-12-20 - 45 days is 2025-11-05, inside the window: 150, 200, 240.
+    expect(expectedAmount(db, charge, d('2026-12-20'))).toBe(money('-200.00'))
+    // A year before 2026-12-21 the window starts on 2025-11-06: 200 and 240 only.
+    expect(expectedAmount(db, charge, d('2026-12-21'))).toBe(money('-220.00'))
+  })
+
+  it('falls back to the six-bill median without a year of history', () => {
+    const acct = makeAccount(db)
+    makeTx(db, acct, '-100.00', 'CON EDISON', '2026-09-05', { merchant_key: 'con edison' })
+    const charge = db
+      .insert(recurrences)
+      .values({
+        merchant_key: 'con edison',
+        account_id: acct.id,
+        amount: money('-130.00'),
+        cadence: 'monthly',
+        next_expected_date: d('2026-11-05'),
+        last_seen_on: d('2026-09-05'),
+        status: 'confirmed',
+        amount_varies: true,
+      })
+      .returning()
+      .get()
+    expect(expectedAmount(db, charge, d('2026-11-05'))).toBe(money('-130.00'))
+  })
+
+  it('keeps an unflagged amount even with a year of history', async () => {
+    await seasonal(false)
+    const charge = only(db)
+    expect(charge.amount).toBe(money('-95.00'))
+    expect(expectedAmount(db, charge, d('2027-01-05'))).toBe(money('-95.00'))
+  })
+
+  it('lists the next amount, its basis, and the last twelve months as the annual cost', async () => {
+    const body = await seasonal(true)
+    // Next bill 2026-11-05; 2025-11-05 +/- 45 days: Oct 5 (90), Nov 5 (150), Dec 5 (200).
+    expect([body.amount, body.next_amount, body.estimate_basis]).toEqual(['-70.00', '-150.00', 'last_year'])
+    // Bills after 2025-10-17: 150 + 200 + 240 + 220 + 160 + 110 + 80 + 65 + 55 + 62 + 75 + 95.
+    expect(body.annual_cost).toBe('-1512.00')
+    const listed = (await (await client().get('/api/recurring')).json()) as Row[]
+    expect(listed.map((r) => [r.next_amount, r.estimate_basis, r.annual_cost])).toEqual([
+      ['-150.00', 'last_year', '-1512.00'],
+    ])
+  })
+
+  it('lists an unflagged item at its amount, as fixed', async () => {
+    const body = await seasonal(false)
+    expect([body.amount, body.next_amount, body.estimate_basis, body.annual_cost]).toEqual([
+      '-95.00',
+      '-95.00',
+      'fixed',
+      '-1140.00',
+    ])
+  })
+
+  it('lists a flagged item without a year of history at the six-bill median', async () => {
+    const acct = makeAccount(db)
+    const bills = [
+      ['-80.00', '2026-04-05'],
+      ['-95.00', '2026-05-05'],
+      ['-120.00', '2026-06-05'],
+      ['-210.00', '2026-07-05'],
+      ['-180.00', '2026-08-05'],
+      ['-140.00', '2026-09-05'],
+      ['-100.00', '2026-10-05'],
+    ] as const
+    const txs = bills.map(([amount, day]) => makeTx(db, acct, amount, 'CON EDISON', day, { merchant_key: 'con edison' }))
+    const last = txs.at(-1) as (typeof txs)[number]
+    await client().post('/api/recurring', { transaction_id: last.id, cadence: 'monthly', amount_varies: true })
+    const [row] = (await (await client().get('/api/recurring')).json()) as Row[]
+    expect([row?.amount, row?.next_amount, row?.estimate_basis, row?.annual_cost]).toEqual([
+      '-130.00',
+      '-130.00',
+      'recent',
+      '-1560.00',
+    ])
   })
 })

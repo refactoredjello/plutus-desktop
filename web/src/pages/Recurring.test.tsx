@@ -108,6 +108,21 @@ describe('Recurring income and bills', () => {
     expect(within(row).getByRole('switch', { name: 'Amount varies for Netflix' })).toBeChecked()
     expect(recurring.find((c) => c.id === 1)?.amount_varies).toBe(true)
   })
+
+  it('shows a varying bill at its next estimate, titled by its basis', async () => {
+    const gym = recurring.find((c) => c.id === 3)!
+    Object.assign(gym, { amount_varies: true, amount: '-40.00', next_amount: '-55.00', estimate_basis: 'last_year' })
+    const netflix = recurring.find((c) => c.id === 1)!
+    Object.assign(netflix, { amount_varies: true, amount: '-15.49', next_amount: '-15.49', estimate_basis: 'recent' })
+    renderAt('/recurring')
+    const gymRow = (await screen.findByText('GYM CO')).closest('tr')!
+    expect(within(gymRow).getByText('~-$55.00')).toHaveAttribute('title', 'Estimate: the same time last year')
+    expect(within(gymRow).queryByText('~-$40.00')).not.toBeInTheDocument()
+    const netflixRow = screen.getByText('Netflix').closest('tr')!
+    expect(within(netflixRow).getByText('~-$15.49')).toHaveAttribute('title', 'Estimate: the median of the last six')
+    const rentRow = screen.getByText('Landlord LLC').closest('tr')!
+    expect(within(rentRow).getByText('-$2,100.00')).not.toHaveAttribute('title')
+  })
 })
 
 describe('Recurring display', () => {
