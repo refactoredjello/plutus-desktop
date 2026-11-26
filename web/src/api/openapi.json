@@ -2068,6 +2068,13 @@
           "raw_description": {
             "title": "Raw Description",
             "type": "string"
+          },
+          "review_reason": {
+            "title": "Review Reason",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -2083,6 +2090,7 @@
           "note",
           "one_time",
           "is_transfer",
+          "review_reason",
           "categorization"
         ],
         "title": "TransactionRead",
@@ -3675,6 +3683,30 @@
       }
     },
     "/api/transactions/{transaction_id}": {
+      "delete": {
+        "description": "Delete a pending transaction that never became a charge. 409 for a posted transaction.",
+        "operationId": "delete_pending_transaction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Remove Pending Transaction",
+        "tags": [
+          "transactions"
+        ]
+      },
       "patch": {
         "operationId": "update_transaction",
         "parameters": [
@@ -3711,6 +3743,39 @@
           }
         },
         "summary": "Update Transaction",
+        "tags": [
+          "transactions"
+        ]
+      }
+    },
+    "/api/transactions/{transaction_id}/mark-posted": {
+      "post": {
+        "description": "A pending transaction the bank will not return again becomes posted, so it counts in totals. A later sync sets it back to pending only if the bank returns it as pending. 409 for a posted transaction.",
+        "operationId": "mark_transaction_posted",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mark Pending Transaction Posted",
         "tags": [
           "transactions"
         ]

@@ -10,7 +10,7 @@ import { TransactionPage, TransactionRead, TransactionRuleRead, TransactionUpdat
 import { plainDate } from '../lib/dates.js'
 import * as service from '../services/transactions.js'
 import { unpairTransfer } from '../services/transfers.js'
-import { json, jsonBody } from './openapi.js'
+import { json, jsonBody, noContent } from './openapi.js'
 
 const listTransactions = createRoute({
   method: 'get',
@@ -70,6 +70,30 @@ const unpairTransaction = createRoute({
   responses: { 200: json(TransactionRead) },
 })
 
+const markPosted = createRoute({
+  method: 'post',
+  path: '/api/transactions/{transaction_id}/mark-posted',
+  operationId: 'mark_transaction_posted',
+  summary: 'Mark Pending Transaction Posted',
+  description:
+    'A pending transaction the bank will not return again becomes posted, so it counts in totals. ' +
+    'A later sync sets it back to pending only if the bank returns it as pending. 409 for a posted transaction.',
+  tags: ['transactions'],
+  request: { params: params({ transaction_id: pathInt() }) },
+  responses: { 200: json(TransactionRead) },
+})
+
+const removePending = createRoute({
+  method: 'delete',
+  path: '/api/transactions/{transaction_id}',
+  operationId: 'delete_pending_transaction',
+  summary: 'Remove Pending Transaction',
+  description: 'Delete a pending transaction that never became a charge. 409 for a posted transaction.',
+  tags: ['transactions'],
+  request: { params: params({ transaction_id: pathInt() }) },
+  responses: { 204: noContent },
+})
+
 export function registerTransactions(app: App): void {
   app.openapi(listTransactions, (c) => {
     const query = c.req.valid('query')
@@ -100,4 +124,9 @@ export function registerTransactions(app: App): void {
     return c.json(service.transactionRule(db, secrets, config.defaults, c.req.valid('param').transaction_id), 200)
   })
   app.openapi(unpairTransaction, (c) => c.json(unpairTransfer(c.var.db, c.req.valid('param').transaction_id), 200))
+  app.openapi(markPosted, (c) => c.json(service.markPosted(c.var.db, c.req.valid('param').transaction_id), 200))
+  app.openapi(removePending, (c) => {
+    service.removePending(c.var.db, c.req.valid('param').transaction_id)
+    return c.body(null, 204)
+  })
 }

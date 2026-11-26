@@ -603,11 +603,35 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Remove Pending Transaction
+         * @description Delete a pending transaction that never became a charge. 409 for a posted transaction.
+         */
+        delete: operations["delete_pending_transaction"];
         options?: never;
         head?: never;
         /** Update Transaction */
         patch: operations["update_transaction"];
+        trace?: never;
+    };
+    "/api/transactions/{transaction_id}/mark-posted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Pending Transaction Posted
+         * @description A pending transaction the bank will not return again becomes posted, so it counts in totals. A later sync sets it back to pending only if the bank returns it as pending. 409 for a posted transaction.
+         */
+        post: operations["mark_transaction_posted"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/transactions/{transaction_id}/rule": {
@@ -1379,6 +1403,8 @@ export interface components {
             posted_on: string;
             /** Raw Description */
             raw_description: string;
+            /** Review Reason */
+            review_reason: string | null;
         };
         /**
          * TransactionRuleRead
@@ -2405,6 +2431,26 @@ export interface operations {
             };
         };
     };
+    delete_pending_transaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     update_transaction: {
         parameters: {
             query?: never;
@@ -2419,6 +2465,28 @@ export interface operations {
                 "application/json": components["schemas"]["TransactionUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionRead"];
+                };
+            };
+        };
+    };
+    mark_transaction_posted: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

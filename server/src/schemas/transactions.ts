@@ -27,6 +27,8 @@ export const TransactionRead = model('TransactionRead', {
   note: z.string().nullable(),
   one_time: z.boolean(),
   is_transfer: z.boolean(),
+  // Why it needs review beyond its categorization, e.g. pending past the sync's reach; else null.
+  review_reason: z.string().nullable(),
   categorization: orNull(CategorizationRead),
 })
 export type TransactionRead = z.infer<typeof TransactionRead>
