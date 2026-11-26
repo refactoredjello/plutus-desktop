@@ -7,7 +7,7 @@
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { count } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from '../src/db/index.js'
 import {
@@ -112,6 +112,14 @@ describe('S1 recurring amount changed', () => {
     expect(item.text).toBe('Netflix went from $15.49 to $22.99.')
     expect(item.key).toBe(`S1:recurrence:${charge.id}:2299`)
     expect(item.href).toBe('/recurring')
+  })
+
+  it('S1 skips a charge whose amount varies', () => {
+    const acct = account('credit')
+    const charge = recurrence(acct, 'CON EDISON', '-130.00')
+    db.update(recurrences).set({ amount_varies: true }).where(eq(recurrences.id, charge.id)).run()
+    makeTx(db, acct, '-210.00', 'CON EDISON', '2026-10-03', { merchant_key: 'CON EDISON' })
+    expect(items('S1')).toEqual([])
   })
 
   it('S1 small change ignored', () => {
