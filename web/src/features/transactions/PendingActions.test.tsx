@@ -39,6 +39,7 @@ describe('Pending transaction actions', () => {
     const id = transactions[1]!.id
     await user.click(within(dialog).getByRole('button', { name: 'Mark as posted' }))
     await waitFor(() => expect(calls).toEqual([`POST /api/transactions/${id}/mark-posted`]))
+    expect(await screen.findByText('Marked as posted')).toBeInTheDocument()
     await waitFor(() => expect(within(dialog).queryByText('Pending')).not.toBeInTheDocument())
     expect(within(dialog).queryByRole('button', { name: 'Mark as posted' })).not.toBeInTheDocument()
   })
@@ -52,6 +53,7 @@ describe('Pending transaction actions', () => {
     await user.click(await screen.findByRole('button', { name: 'Remove transaction' }))
     await waitFor(() => expect(calls).toEqual([`DELETE /api/transactions/${id}`]))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Whole Foods' })).not.toBeInTheDocument())
+    expect(await screen.findByText('Transaction removed')).toBeInTheDocument()
   })
 
   it('offers no pending actions on a posted transaction', async () => {

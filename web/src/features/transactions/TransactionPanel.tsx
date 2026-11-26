@@ -15,6 +15,7 @@ import { formatDate } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { transactionsLink } from './filters'
+import { PendingActions } from './PendingActions'
 import { patchTransaction, useCategories, useUpdateTransaction, type TransactionEdit } from './queries'
 import type { RuleMatchType } from './RuleMatchSelect'
 import { CategorySelect, EssentialitySelect } from './selects'
@@ -103,6 +104,7 @@ export function TransactionPanel({
               label={`Essentiality for ${name}`}
             />
           </div>
+          {txn.pending && <PendingActions txn={txn} onPosted={setTxn} onRemoved={() => onOpenChange(false)} />}
           <Link
             to={transactionsLink(txn)}
             onClick={() => onOpenChange(false)}

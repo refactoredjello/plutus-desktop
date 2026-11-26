@@ -150,7 +150,7 @@ desktop/  Electron shell that runs the server in-process
 docs/     Architecture, backlog, and the agent plan
 ```
 
-Income, spending, and averages are defined once in `server/src/services/aggregates.ts`, so every page agrees. Only posted transactions count; pending ones show in the Transactions list but stay out of every total until they post. The frontend's API types are generated from the server's OpenAPI spec, and a test fails if they drift.
+Income, spending, and averages are defined once in `server/src/services/aggregates.ts`, so every page agrees. Only posted transactions count; pending ones show in the Transactions list but stay out of every total until they post. A charge still pending after 44 days, which a sync can no longer check with the bank, goes to Review, where you can mark it posted or remove it. The frontend's API types are generated from the server's OpenAPI spec, and a test fails if they drift.
 
 ## Documentation
 

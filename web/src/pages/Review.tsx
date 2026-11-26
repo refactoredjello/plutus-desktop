@@ -47,11 +47,16 @@ export function ReviewPage() {
         onChange={(patch) => patch.page && setPage(patch.page)}
         // Resolved rows leave straight away: the optimistic edit marks them manual, which no longer needs review.
         // "Low confidence" is the rest of the queue: the API has no filter for it, so it is applied to each page here.
-        visible={(t) => needsReview(t) && (chip !== 'low' || t.categorization !== null)}
+        visible={(t) => needsReview(t) && (chip !== 'low' || (t.categorization !== null && t.review_reason === null))}
         action={{
           header: '',
+          // A server reason (a pending charge past the sync reach) is resolved in the panel, not by "Looks right".
           render: (t) =>
-            t.categorization ? <LooksRightButton id={t.id} categoryId={t.categorization.category_id} /> : null,
+            t.review_reason ? (
+              <span className="text-xs text-muted-foreground">{t.review_reason}</span>
+            ) : t.categorization ? (
+              <LooksRightButton id={t.id} categoryId={t.categorization.category_id} />
+            ) : null,
         }}
         empty="All caught up."
       />

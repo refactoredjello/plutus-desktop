@@ -48,7 +48,7 @@ describe('Review queue', () => {
     renderAt('/review')
     const n = queue().length
     await screen.findByText(`${n} to review`)
-    const firstWithCategory = queue().find((t) => t.categorization)!
+    const firstWithCategory = queue().find((t) => t.categorization && !t.review_reason)!
     const before = screen.getAllByRole('button', { name: 'Looks right' }).length
     await user.click(screen.getAllByRole('button', { name: 'Looks right' })[0]!)
 

@@ -98,3 +98,23 @@ export function useUnpairTransfer() {
     meta: { inlineError: true },
   })
 }
+
+/** The owner says a pending charge posted: it counts in totals, so everything derived refreshes. */
+export function useMarkPosted() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.POST('/api/transactions/{transaction_id}/mark-posted', { params: { path: { transaction_id: id } } })),
+    onSuccess: () => invalidateDerived(qc),
+  })
+}
+
+/** Remove a pending hold that never became a charge. */
+export function useRemovePending() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.DELETE('/api/transactions/{transaction_id}', { params: { path: { transaction_id: id } } })),
+    onSuccess: () => invalidateDerived(qc),
+  })
+}
