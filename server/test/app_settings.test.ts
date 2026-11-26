@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import type { Db } from '../src/db/index.js'
 import { appSettings } from '../src/db/schema.js'
 import { DomainError } from '../src/lib/errors.js'
-import { KeySecretStore } from '../src/secrets.js'
+import { KeySecretStore, SecretDecryptError, type SecretStore } from '../src/secrets.js'
 import {
   SIMPLEFIN_ACCESS_URL,
   SIMPLEFIN_CONNECTED_AT,
@@ -101,9 +101,39 @@ describe('app settings', () => {
   })
 })
 
+/** A store that can no longer read anything: the Keychain denied access or the key changed. */
+const locked: SecretStore = {
+  encrypt: (plain) => secrets.encrypt(plain),
+  decrypt: () => {
+    throw new SecretDecryptError()
+  },
+}
+
 describe('SimpleFIN connection', () => {
   it('reports disconnected on an empty database', () => {
     expect(simplefinStatus(makeDb(), secrets)).toEqual({ connected: false, connected_at: null })
+  })
+
+  // Backlog 13 (fixed): the status only checks that an access URL is stored, never decrypts it.
+  it('reports connected when the stored access URL cannot be decrypted', () => {
+    const db = makeDb()
+    const stamp = '2026-11-01T12:00:00.000Z'
+    setSetting(db, secrets, SIMPLEFIN_ACCESS_URL, ACCESS_URL, { encrypt: true })
+    setSetting(db, secrets, SIMPLEFIN_CONNECTED_AT, stamp)
+    expect(simplefinStatus(db, locked)).toEqual({ connected: true, connected_at: stamp })
+    expect(simplefinStatus(db, new KeySecretStore('another-secret'))).toEqual({
+      connected: true,
+      connected_at: stamp,
+    })
+  })
+
+  it('reports disconnected, without decrypting, when nothing or an empty value is stored', () => {
+    const db = makeDb()
+    expect(simplefinStatus(db, locked)).toEqual({ connected: false, connected_at: null })
+    setSetting(db, secrets, SIMPLEFIN_CONNECTED_AT, '2026-11-01T12:00:00.000Z')
+    expect(simplefinStatus(db, locked)).toEqual({ connected: false, connected_at: null })
+    db.insert(appSettings).values({ key: SIMPLEFIN_ACCESS_URL, value: '', is_encrypted: true }).run()
+    expect(simplefinStatus(db, locked)).toEqual({ connected: false, connected_at: null })
   })
 
   it('claims the token, stores the access URL encrypted, and stamps the connection', async () => {
