@@ -1,16 +1,3 @@
-import {
-  Banknote,
-  CalendarClock,
-  CalendarX,
-  Circle,
-  Gauge,
-  Repeat,
-  Sparkles,
-  Tag,
-  TrendingDown,
-  TrendingUp,
-  type LucideIcon,
-} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
@@ -22,27 +9,6 @@ import { useChanges, useDismissChange } from './queries'
 type Item = Schemas['ChangeItem']
 
 const EMPHASISED = new Set(['S1', 'S2', 'S3', 'S9'])
-
-const WARN = 'text-amber-600 dark:text-amber-400'
-const QUIET = 'text-muted-foreground'
-
-/** A marker per signal (services/changes.ts), so the list scans by kind. */
-const MARKERS: Record<string, [LucideIcon, string]> = {
-  S1: [Repeat, WARN], // a recurring charge changed price
-  S2: [CalendarX, 'text-destructive'], // a recurring charge is missing
-  S3: [CalendarClock, WARN], // a planned entry is overdue
-  S4: [TrendingUp, WARN], // a category is above its usual pace
-  S5: [Sparkles, QUIET], // a first-time merchant
-  S6: [Banknote, WARN], // a large expense
-  S7: [Tag, QUIET], // transactions need review
-  S8: [Gauge, WARN], // discretionary pace
-  S9: [TrendingDown, 'text-destructive'], // projected balance below zero
-}
-
-function Marker({ signal }: { signal: string }) {
-  const [Icon, tone] = MARKERS[signal] ?? [Circle, QUIET]
-  return <Icon aria-hidden data-signal={signal} className={`size-4 shrink-0 ${tone}`} />
-}
 const MONEY = /[\u2212-]?\$\d[\d,]*(?:\.\d+)?/g
 
 /** The figure in the sentence that matches `amount` (the backend rounds to whole dollars from $100). */
@@ -107,12 +73,9 @@ export function ChangesCard() {
               <Link
                 to={item.href}
                 onClick={() => scrollToHash(item.href)}
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-sm hover:underline focus-visible:underline"
+                className="min-w-0 flex-1 rounded-sm hover:underline focus-visible:underline"
               >
-                <Marker signal={item.signal} />
-                <span className="min-w-0">
-                  <Sentence item={item} />
-                </span>
+                <Sentence item={item} />
               </Link>
               <Button
                 variant="ghost"

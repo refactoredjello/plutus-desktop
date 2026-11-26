@@ -156,24 +156,3 @@ describe('ChangesCard behaviour', () => {
     expect(await screen.findByText('Nothing unusual this month.')).toBeInTheDocument()
   })
 })
-
-describe('ChangesCard signal markers', () => {
-  it('leads every line with a marker for its signal, inside the link', async () => {
-    renderAt('/')
-    const link = await sentence(/Netflix went from/)
-    expect(link.querySelector('[data-signal="S1"]')).not.toBeNull()
-    expect((await sentence(/Gym membership/)).querySelector('[data-signal="S2"]')).not.toBeNull()
-    expect((await sentence(/First purchase at Home Depot/)).querySelector('[data-signal="S5"]')).not.toBeNull()
-    expect((await sentence(/need a category/)).querySelector('[data-signal="S7"]')).not.toBeNull()
-    // The dismiss control stays beside the link.
-    expect(screen.getByRole('button', { name: /Dismiss: Netflix went from/ })).toBeInTheDocument()
-  })
-
-  it('colours a missed bill as a warning and a first-time merchant quietly', async () => {
-    renderAt('/')
-    const missed = (await sentence(/Gym membership/)).querySelector('[data-signal="S2"]')!
-    expect(missed.getAttribute('class')).toMatch(/destructive/)
-    const first = (await sentence(/First purchase at Home Depot/)).querySelector('[data-signal="S5"]')!
-    expect(first.getAttribute('class')).toMatch(/muted-foreground/)
-  })
-})

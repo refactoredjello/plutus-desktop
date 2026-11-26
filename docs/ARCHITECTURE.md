@@ -224,7 +224,7 @@ React 19, TypeScript 6, Vite 8. Libraries: TanStack Query (server state), React 
 
 Pages, in navigation order:
 
-1. **Overview** — "What changed" (each line marked by its kind and linked to its target), current-month summary with the difference from last month (uncoloured, since the month is in progress), income vs expenses (12 mo), balances over time, projection chart.
+1. **Overview** — "What changed", current-month summary with the difference from last month (uncoloured, since the month is in progress), income vs expenses (12 mo), balances over time, projection chart.
 2. **Month** — one month against the three complete months before it: each tile shows the difference from the average, coloured by whether it is good for that metric once the month is complete; a month in progress shows a thin day bar. Its Income and Largest rows open the transaction panel.
 3. **Transactions** — a one-line summary of the whole filtered set (count, posted spent and in, pending count), then the table, its header kept in view, with filters and inline category/essentiality editing; a row click opens the transaction panel, and after a category change the row offers "Make this a rule".
 4. **Review** — uncategorized and low-confidence transactions to confirm or fix, and pending charges past the sync's reach.
