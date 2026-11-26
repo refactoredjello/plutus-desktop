@@ -62,3 +62,23 @@ export const RuleUpdate = requestModel(
   'Changes to a rule; fields left out keep their value. The rule is re-applied to existing transactions.',
 )
 export type RuleUpdate = z.infer<typeof RuleUpdate>
+
+export const RulePreview = requestModel(
+  'RulePreview',
+  {
+    match_type: RuleMatchType,
+    pattern: z.string().min(1).max(200), // normalized as on create
+  },
+  'A rule to count matches for; nothing is saved.',
+)
+export type RulePreview = z.infer<typeof RulePreview>
+
+export const RulePreviewRead = model(
+  'RulePreviewRead',
+  {
+    matches: z.int(), // non-transfer transactions the rule matches
+    manual: z.int(), // of those, categorized by hand: a rule leaves them as they are
+  },
+  'How many existing transactions a rule would match.',
+)
+export type RulePreviewRead = z.infer<typeof RulePreviewRead>

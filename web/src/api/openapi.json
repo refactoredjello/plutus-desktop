@@ -1609,6 +1609,46 @@
         "title": "RuleMatchType",
         "type": "string"
       },
+      "RulePreview": {
+        "additionalProperties": false,
+        "description": "A rule to count matches for; nothing is saved.",
+        "properties": {
+          "match_type": {
+            "$ref": "#/components/schemas/RuleMatchType"
+          },
+          "pattern": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Pattern",
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_type",
+          "pattern"
+        ],
+        "title": "RulePreview",
+        "type": "object"
+      },
+      "RulePreviewRead": {
+        "description": "How many existing transactions a rule would match.",
+        "properties": {
+          "manual": {
+            "title": "Manual",
+            "type": "integer"
+          },
+          "matches": {
+            "title": "Matches",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "matches",
+          "manual"
+        ],
+        "title": "RulePreviewRead",
+        "type": "object"
+      },
       "RuleRead": {
         "properties": {
           "category_id": {
@@ -1651,6 +1691,48 @@
           "created_at"
         ],
         "title": "RuleRead",
+        "type": "object"
+      },
+      "RuleSuggestion": {
+        "description": "Defaults for a new rule built from a transaction.",
+        "properties": {
+          "category_id": {
+            "title": "Category Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "contains_pattern": {
+            "title": "Contains Pattern",
+            "type": "string"
+          },
+          "essentiality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Essentiality"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_type": {
+            "$ref": "#/components/schemas/RuleMatchType"
+          },
+          "pattern": {
+            "title": "Pattern",
+            "type": "string"
+          }
+        },
+        "required": [
+          "match_type",
+          "pattern",
+          "contains_pattern",
+          "category_id",
+          "essentiality"
+        ],
+        "title": "RuleSuggestion",
         "type": "object"
       },
       "RuleUpdate": {
@@ -1942,6 +2024,13 @@
             "title": "Is Transfer",
             "type": "boolean"
           },
+          "memo": {
+            "title": "Memo",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "merchant_key": {
             "title": "Merchant Key",
             "type": [
@@ -1988,6 +2077,7 @@
           "amount",
           "raw_description",
           "payee",
+          "memo",
           "pending",
           "merchant_key",
           "note",
@@ -1996,6 +2086,30 @@
           "categorization"
         ],
         "title": "TransactionRead",
+        "type": "object"
+      },
+      "TransactionRuleRead": {
+        "description": "The rule that matches a transaction, if any, and defaults for a new one.",
+        "properties": {
+          "rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuleRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/RuleSuggestion"
+          }
+        },
+        "required": [
+          "rule",
+          "suggestion"
+        ],
+        "title": "TransactionRuleRead",
         "type": "object"
       },
       "TransactionUpdate": {
@@ -3011,6 +3125,38 @@
         ]
       }
     },
+    "/api/rules/preview": {
+      "post": {
+        "description": "Counts the non-transfer transactions a rule would match and how many of them were set by hand, which a rule leaves as they are. Saves nothing.",
+        "operationId": "preview_rule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RulePreview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulePreviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Preview Rule",
+        "tags": [
+          "categories"
+        ]
+      }
+    },
     "/api/rules/{rule_id}": {
       "delete": {
         "operationId": "delete_rule",
@@ -3565,6 +3711,39 @@
           }
         },
         "summary": "Update Transaction",
+        "tags": [
+          "transactions"
+        ]
+      }
+    },
+    "/api/transactions/{transaction_id}/rule": {
+      "get": {
+        "description": "The rule that categorizes this transaction, with categorization's precedence (exact, contains, prefix), or null; and defaults for a new rule.",
+        "operationId": "get_transaction_rule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionRuleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Transaction Rule",
         "tags": [
           "transactions"
         ]

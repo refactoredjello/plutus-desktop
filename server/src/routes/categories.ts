@@ -2,7 +2,16 @@
 
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
-import { CategoryCreate, CategoryRead, CategoryUpdate, RuleCreate, RuleRead, RuleUpdate } from '../schemas/categories.js'
+import {
+  CategoryCreate,
+  CategoryRead,
+  CategoryUpdate,
+  RuleCreate,
+  RulePreview,
+  RulePreviewRead,
+  RuleRead,
+  RuleUpdate,
+} from '../schemas/categories.js'
 import { params, responseList } from '../schemas/model.js'
 import { pathInt, queryBool } from '../schemas/params.js'
 import * as service from '../services/categories.js'
@@ -58,6 +67,19 @@ const createRule = createRoute({
   responses: { 200: json(RuleRead) },
 })
 
+const previewRule = createRoute({
+  method: 'post',
+  path: '/api/rules/preview',
+  operationId: 'preview_rule',
+  summary: 'Preview Rule',
+  description:
+    'Counts the non-transfer transactions a rule would match and how many of them were set by hand, ' +
+    'which a rule leaves as they are. Saves nothing.',
+  tags: ['categories'],
+  request: { body: jsonBody(RulePreview) },
+  responses: { 200: json(RulePreviewRead) },
+})
+
 const updateRule = createRoute({
   method: 'patch',
   path: '/api/rules/{rule_id}',
@@ -89,6 +111,7 @@ export function registerCategories(app: App): void {
   )
   app.openapi(listRules, (c) => c.json(service.listRules(c.var.db), 200))
   app.openapi(createRule, (c) => c.json(service.createRule(c.var.db, c.req.valid('json')), 200))
+  app.openapi(previewRule, (c) => c.json(service.previewRule(c.var.db, c.req.valid('json')), 200))
   app.openapi(updateRule, (c) =>
     c.json(service.updateRule(c.var.db, c.req.valid('param').rule_id, c.req.valid('json')), 200),
   )

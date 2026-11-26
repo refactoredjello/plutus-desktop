@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type { Schemas } from '@/api/client'
+import { transactions } from './transactions'
 
 type Rule = Schemas['RuleRead']
 
@@ -19,7 +20,55 @@ export function resetRules() {
 const normalize = (matchType: Rule['match_type'], pattern: string) =>
   matchType === 'contains' ? pattern.trim() : pattern.trim().replace(/\s+/g, ' ').toUpperCase()
 
+type Txn = Schemas['TransactionRead']
+
+/**
+ * Roughly the server's matching: exact and prefix on the merchant key, contains on the
+ * description. Ignores case throughout, since mock merchant keys are lower-case slugs.
+ */
+function matches(r: Pick<Rule, 'match_type' | 'pattern'>, t: Txn): boolean {
+  const pattern = r.pattern.toLowerCase()
+  const key = t.merchant_key?.toLowerCase() ?? ''
+  if (r.match_type === 'exact') return key === pattern
+  if (r.match_type === 'prefix') return key !== '' && key.startsWith(pattern)
+  return t.raw_description.toLowerCase().includes(pattern)
+}
+
+/** Exact beats contains beats prefix; the longest contains or prefix pattern wins. */
+function matchingRule(t: Txn): Rule | null {
+  if (t.is_transfer) return null
+  const rank = { exact: 0, contains: 1, prefix: 2 }
+  const hits = rules
+    .filter((r) => matches(r, t))
+    .sort((a, b) => rank[a.match_type] - rank[b.match_type] || b.pattern.length - a.pattern.length)
+  return hits[0] ?? null
+}
+
 export const ruleHandlers = [
+  http.get('/api/transactions/:id/rule', ({ params }) => {
+    const t = transactions.find((x) => x.id === Number(params.id))
+    if (!t) return HttpResponse.json({ title: 'Not Found', status: 404, detail: 'Transaction not found' }, { status: 404 })
+    const payee = t.payee?.trim()
+    return HttpResponse.json<Schemas['TransactionRuleRead']>({
+      rule: matchingRule(t),
+      suggestion: {
+        match_type: 'exact',
+        pattern: t.merchant_key ?? t.raw_description.toUpperCase(),
+        contains_pattern: payee && t.raw_description.toLowerCase().includes(payee.toLowerCase()) ? payee : t.raw_description,
+        category_id: t.categorization?.category_id ?? null,
+        essentiality: t.categorization?.essentiality ?? null,
+      },
+    })
+  }),
+  http.post('/api/rules/preview', async ({ request }) => {
+    const body = (await request.json()) as Schemas['RulePreview']
+    const rule = { match_type: body.match_type, pattern: normalize(body.match_type, body.pattern) }
+    const hit = transactions.filter((t) => !t.is_transfer && matches(rule, t))
+    return HttpResponse.json<Schemas['RulePreviewRead']>({
+      matches: hit.length,
+      manual: hit.filter((t) => t.categorization?.source === 'manual').length,
+    })
+  }),
   http.get('/api/rules', () => HttpResponse.json<Rule[]>(rules)),
   http.post('/api/rules', async ({ request }) => {
     const body = (await request.json()) as Schemas['RuleCreate']

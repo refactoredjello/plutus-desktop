@@ -161,6 +161,7 @@ describe('month detail details', () => {
         'amount',
         'raw_description',
         'payee',
+        'memo',
         'pending',
         'merchant_key',
         'note',

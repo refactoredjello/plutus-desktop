@@ -33,6 +33,7 @@ function build(): Txn[] {
       amount,
       raw_description: raw,
       payee: conf === null ? null : name,
+      memo: i === 0 ? 'Card ending 4242' : null,
       pending: i < 2,
       merchant_key: conf === null ? null : name.toLowerCase().replace(/\W+/g, '-'),
       note: null,
@@ -46,7 +47,7 @@ function build(): Txn[] {
   }
   out.push({
     id: 500, account_id: 1, posted_on: '2026-09-28', amount: '-500.00', raw_description: 'TRANSFER TO SAVINGS',
-    payee: null, pending: false, merchant_key: null, note: null, one_time: false, is_transfer: true,
+    payee: null, memo: null, pending: false, merchant_key: null, note: null, one_time: false, is_transfer: true,
     categorization: { category_id: byDetailed('TRANSFER_OUT_ACCOUNT_TRANSFER'), essentiality: null, source: 'rule', confidence: 'very_high' },
   })
   return out
@@ -104,13 +105,6 @@ export const transactionHandlers = [
         essentiality: body.essentiality ?? cur?.essentiality ?? null,
         source: 'manual',
         confidence: 'very_high',
-      }
-    }
-    if (body.save_as_rule && txn.merchant_key && categoryId != null) {
-      for (const t of transactions) {
-        if (t.merchant_key === txn.merchant_key && t.categorization?.source !== 'manual') {
-          t.categorization = { ...(t.categorization ?? { essentiality: null }), category_id: categoryId, source: 'rule', confidence: 'very_high' }
-        }
       }
     }
     return HttpResponse.json<Txn>(txn)
