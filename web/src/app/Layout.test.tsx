@@ -38,10 +38,10 @@ describe('Layout', () => {
     const monthly = countRequests('GET', '/api/reports/monthly')
     renderAt('/')
     await waitFor(() => expect(monthly.n).toBe(1))
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Recalculate' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Recalc' }))
     await waitFor(() => expect(recalc.n).toBe(1))
     await waitFor(() => expect(monthly.n).toBe(2))
-    expect(await screen.findByRole('button', { name: 'Recalculate' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Recalc' })).toBeEnabled()
   })
 
   it('shows "Recalculating..." and disables the button while it runs', async () => {
@@ -53,10 +53,10 @@ describe('Layout', () => {
       }),
     )
     renderAt('/')
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Recalculate' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Recalc' }))
     expect(await screen.findByRole('button', { name: 'Recalculating...' })).toBeDisabled()
     release()
-    expect(await screen.findByRole('button', { name: 'Recalculate' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Recalc' })).toBeEnabled()
   })
 
   it('says what Recalculate changed', async () => {
@@ -64,13 +64,13 @@ describe('Layout', () => {
       http.post('/api/recalculate', () => HttpResponse.json({ recategorized: 3, categorized: 1, recurring_changes: 1 })),
     )
     renderAt('/')
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Recalculate' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Recalc' }))
     expect(await toasts().findByText('3 recategorized, 1 newly categorized, 1 recurring change')).toBeInTheDocument()
   })
 
   it('says everything is up to date when Recalculate changed nothing', async () => {
     renderAt('/')
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Recalculate' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Recalc' }))
     expect(await toasts().findByText('Everything is up to date')).toBeInTheDocument()
   })
 
@@ -78,17 +78,17 @@ describe('Layout', () => {
     server.use(http.post('/api/recalculate', () => HttpResponse.json({ detail: 'database is locked' }, { status: 500 })))
     const user = userEvent.setup()
     renderAt('/')
-    await user.click(screen.getByRole('button', { name: 'Recalculate' }))
-    expect(await toasts().findByText('Recalculate failed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Recalc' }))
+    expect(await toasts().findByText('Recalc failed')).toBeInTheDocument()
     expect(toasts().getByText(/database is locked/)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     await user.click(toasts().getByRole('button', { name: 'Close toast' }))
-    await waitFor(() => expect(toasts().queryByText('Recalculate failed')).not.toBeInTheDocument())
+    await waitFor(() => expect(toasts().queryByText('Recalc failed')).not.toBeInTheDocument())
   })
 
   it('says Recalculate is local only', async () => {
     renderAt('/')
-    expect(await screen.findByRole('button', { name: 'Recalculate' })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: 'Recalc' })).toHaveAttribute(
       'title',
       expect.stringMatching(/does not contact the bank/i),
     )

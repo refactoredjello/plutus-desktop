@@ -5,7 +5,7 @@ import { recalculateParts } from '@/features/sync/queries'
 import { notify } from '@/lib/toast'
 
 /** The local-only button's name; one place, as it may still change. */
-const RECALCULATE_LABEL = 'Recalculate'
+const RECALCULATE_LABEL = 'Recalc'
 const RECALCULATE_PENDING_LABEL = 'Recalculating...'
 
 /** What a recalculation changed, in a few words. */
@@ -27,9 +27,9 @@ export function RecalculateButton() {
   })
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
-      className="shrink-0 text-muted-foreground"
+      className="shrink-0"
       title="Re-apply your rules, categories, and recurring charges to the transactions you have. Does not contact the bank."
       onClick={() => recalculate.mutate()}
       disabled={recalculate.isPending}

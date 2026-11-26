@@ -103,7 +103,7 @@ Open http://127.0.0.1:8000. The database is `~/.plutus/plutus.sqlite` unless `PL
 - **Claude:** create an API key in the [Anthropic Console](https://console.anthropic.com) under API keys. API usage is billed to your Anthropic account, separately from any Claude.ai subscription. In Settings, choose Claude and paste the key. The model defaults to `claude-opus-5-5`, and the Model field takes any Claude model ID.
 - **Ollama (fully local):** install [Ollama](https://ollama.com) and download a model with `ollama pull <model>`. In Settings, choose Ollama, set Model to that model's name, and leave the Ollama URL at `http://localhost:11434` unless you changed it.
 
-Syncs then run every 6 hours while the app runs; the header shows when the last one finished. Sync pulls from the bank and then re-applies your rules; Recalculate next to it only re-applies rules, categories, and recurring detection to the data you have, without contacting the bank. SimpleFIN allows 24 requests a day; Settings shows how many are used, and Plutus refuses a sync that would exceed the budget.
+Syncs then run every 6 hours while the app runs; the header shows when the last one finished. Sync pulls from the bank and then re-applies your rules; Recalc next to it only re-applies rules, categories, and recurring detection to the data you have, without contacting the bank. SimpleFIN allows 24 requests a day; Settings shows how many are used, and Plutus refuses a sync that would exceed the budget.
 
 ## Try it without a bank
 
