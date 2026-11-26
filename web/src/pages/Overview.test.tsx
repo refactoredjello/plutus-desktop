@@ -75,7 +75,8 @@ describe('Overview', () => {
 describe('Overview stat tile deltas', () => {
   it('shows the direction and size against last month, neutral while the month is in progress', async () => {
     renderAt('/')
-    const [prev, cur] = monthlySummaries().slice(-2) as [{ income: string; expenses: string }, { income: string; expenses: string }]
+    const monthly = monthlySummaries()
+    const [prev, cur] = [monthly.at(-2)!, monthly.at(-1)!]
     const income = tile('Income so far')
     const delta = await within(income).findByTestId('delta')
     const pct = Math.round((Math.abs(Number(cur.income) - Number(prev.income)) / Number(prev.income)) * 100)

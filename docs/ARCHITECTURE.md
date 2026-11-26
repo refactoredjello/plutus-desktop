@@ -204,6 +204,7 @@ GET  /api/settings/llm      GET  /api/settings/config    PUT /api/settings/confi
 GET  /api/transactions      PATCH /api/transactions/{id}   POST /api/transactions/{id}/unpair
 GET  /api/transactions/{id}/rule   (the rule categorization picks for it, or null, plus defaults for a new one)
 POST /api/transactions/{id}/mark-posted   DELETE /api/transactions/{id}   (pending rows only; 409 otherwise)
+GET  /api/transactions/summary   (the list's filters: count, pending count, and posted money out and in for every matching row; pending rows are in neither sum)
 GET  /api/categories        POST /api/categories         PATCH /api/categories/{id}
 GET  /api/rules             POST /api/rules              PATCH /api/rules/{id}       DELETE /api/rules/{id}
 POST /api/rules/preview     (how many transactions a rule would match, and how many of them are manual; saves nothing)
@@ -211,7 +212,7 @@ GET  /api/reports/monthly   GET /api/reports/month/{month}   GET /api/reports/by
 GET  /api/reports/balances  GET /api/reports/changes     POST /api/reports/changes/dismiss
 DELETE /api/reports/changes/dismissals
 GET  /api/projection?months=3
-GET  /api/recurring         POST /api/recurring          PATCH /api/recurring/{id}
+GET  /api/recurring         POST /api/recurring          PATCH /api/recurring/{id}   (each charge's name is its latest matching payee, else the merchant key)
 GET  /api/manual-entries    POST /api/manual-entries     PATCH /api/manual-entries/{id}   DELETE …
 GET  /api/goals             POST /api/goals              GET /api/goals/{id}   PATCH /api/goals/{id}
 GET  /api/goals/{id}/suggestions   POST /api/goals/{id}/suggestions   PATCH /api/suggestions/{id}
@@ -223,12 +224,12 @@ React 19, TypeScript 6, Vite 8. Libraries: TanStack Query (server state), React 
 
 Pages, in navigation order:
 
-1. **Overview** — "What changed", current-month summary, income vs expenses (12 mo), balances over time, projection chart.
-2. **Month** — one month against the three complete months before it; its Income and Largest rows open the transaction panel.
-3. **Transactions** — table with filters and inline category/essentiality editing; a row click opens the transaction panel, and after a category change the row offers "Make this a rule".
+1. **Overview** — "What changed" (each line marked by its kind and linked to its target), current-month summary with the difference from last month (uncoloured, since the month is in progress), income vs expenses (12 mo), balances over time, projection chart.
+2. **Month** — one month against the three complete months before it: each tile shows the difference from the average, coloured by whether it is good for that metric once the month is complete; a month in progress shows a thin day bar. Its Income and Largest rows open the transaction panel.
+3. **Transactions** — a one-line summary of the whole filtered set (count, posted spent and in, pending count), then the table, its header kept in view, with filters and inline category/essentiality editing; a row click opens the transaction panel, and after a category change the row offers "Make this a rule".
 4. **Review** — uncategorized and low-confidence transactions to confirm or fix, and pending charges past the sync's reach.
-5. **Recurring** — detected and confirmed recurrences with annual cost.
-6. **Goals** — goal card with on-track indicator, suggestions list, Suggest button.
+5. **Recurring** — detected and confirmed recurrences by name (the merchant key under it), with how far away the next charge is (overdue in amber) and annual cost.
+6. **Goals** — goal card with percentage complete, a progress bar coloured by on-track status, suggestions list, Suggest button.
 7. **Planned** — manual expected income and expenses: simple form and list.
 8. **Settings** — SimpleFIN token, sync now, sync history, runtime config (LLM provider, model, key, owner name tokens, sync settings), category management, rules (create, edit, delete), and the app version at the foot (`GET /api/health` reports the desktop release, or the server package version headless).
 

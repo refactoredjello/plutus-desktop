@@ -28,6 +28,7 @@ export function TransactionsTable({
   visible,
   action,
   empty,
+  stickyHeader = false,
 }: {
   filters: Filters
   onChange: (patch: Partial<Filters>) => void
@@ -37,6 +38,8 @@ export function TransactionsTable({
   action?: { header: string; render: (t: Txn) => ReactNode }
   /** Replaces the default empty message. */
   empty?: ReactNode
+  /** Keep the header row in view while the page scrolls (the table then never scrolls sideways). */
+  stickyHeader?: boolean
 }) {
   const txns = useTransactions(filters)
   const [kept, setKept] = useState<ReadonlySet<number>>(new Set())
@@ -139,9 +142,20 @@ export function TransactionsTable({
 
   return (
     <div>
-      <div className={cn('rounded-lg border', txns.isPlaceholderData && 'opacity-60')}>
+      <div
+        className={cn(
+          'rounded-lg border',
+          txns.isPlaceholderData && 'opacity-60',
+          // A sticky header needs the page as its scroller, so the table's own overflow box goes.
+          stickyHeader && '[&>[data-slot=table-container]]:overflow-visible',
+        )}
+      >
         <Table>
-          <TableHeader>
+          <TableHeader
+            className={cn(
+              stickyHeader && 'sticky top-0 z-10 bg-background shadow-[inset_0_-1px_0_var(--border)] [&_tr]:border-b-0',
+            )}
+          >
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Description</TableHead>

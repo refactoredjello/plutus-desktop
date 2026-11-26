@@ -9,6 +9,12 @@ export function parseDate(iso: string): Date {
   return new Date(y!, m! - 1, d ?? 1)
 }
 
+/** Whole calendar days from today to `iso` (negative when it has passed). */
+export function daysFromToday(iso: string, now = new Date()): number {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((parseDate(iso).getTime() - today.getTime()) / 86_400_000)
+}
+
 export function addMonths(key: string, n: number): string {
   const [y, m] = key.split('-').map(Number)
   return monthKey(new Date(y!, m! - 1 + n, 1))

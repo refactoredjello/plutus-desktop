@@ -3,17 +3,18 @@ import { Card, CardContent } from '@/components/ui/card'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { avgPhrase, compare, type Detail, percent } from './data'
+import { DANGER, Delta, SUCCESS } from './Delta'
 
-const DANGER = 'text-destructive'
-const SUCCESS = 'text-emerald-700 dark:text-emerald-400'
-
-function Tile({ label, value, sub }: { label: string; value: string; sub: ReactNode }) {
+function Tile({ label, value, sub, delta, negative }: { label: string; value: string; sub: ReactNode; delta?: ReactNode; negative?: boolean }) {
   return (
     // Mounts with the month's data, so it settles in once per load, not on refetch.
     <Card size="sm" className="motion-fade-up">
       <CardContent>
         <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+          <p className={cn('text-2xl font-semibold tracking-tight tabular-nums', negative && DANGER)}>{value}</p>
+          {delta}
+        </div>
         <p className="mt-1 min-h-4 text-xs text-muted-foreground tabular-nums">{sub}</p>
       </CardContent>
     </Card>
@@ -35,6 +36,11 @@ export function MonthTiles({ d }: { d: Detail }) {
       spendingSub = <span className={cn(tone === 'up' ? DANGER : SUCCESS)}>{money} {tone === 'up' ? 'above' : 'below'} {phrase}</span>
   }
 
+  const num = (v: string | null) => (v === null ? null : Number(v))
+  // An average only judges a finished month; one in progress shows the difference, uncoloured.
+  const delta = (value: number | null, average: number | null, better: 'higher' | 'lower', unit?: 'points') =>
+    n === 0 ? null : <Delta value={value} base={average} better={better} unit={unit} judge={d.is_complete} />
+
   const sameNote = (average: string | null, avgNum: number | null, cur: number) => {
     const text = avg(average)
     if (text && d.is_complete && avgNum !== null && compare(cur, avgNum).tone === 'same') return `About the same as usual (${text})`
@@ -47,17 +53,27 @@ export function MonthTiles({ d }: { d: Detail }) {
         label={`Income${so}`}
         value={formatMoney(d.income)}
         sub={sameNote(d.income_average && formatMoney(d.income_average), d.income_average ? Number(d.income_average) : null, Number(d.income))}
+        delta={delta(Number(d.income), num(d.income_average), 'higher')}
       />
-      <Tile label={`Spending${so}`} value={formatMoney(d.expenses)} sub={spendingSub} />
+      <Tile
+        label={`Spending${so}`}
+        value={formatMoney(d.expenses)}
+        sub={spendingSub}
+        delta={delta(Number(d.expenses), num(d.expenses_average), 'lower')}
+      />
       <Tile
         label={`Net${so}`}
         value={formatMoney(d.net)}
+        negative={Number(d.net) < 0}
         sub={sameNote(d.net_average && formatMoney(d.net_average), d.net_average ? Number(d.net_average) : null, Number(d.net))}
+        delta={delta(Number(d.net), num(d.net_average), 'higher')}
       />
       <Tile
         label={`Savings rate${so}`}
         value={percent(d.savings_rate)}
+        negative={d.savings_rate !== null && d.savings_rate < 0}
         sub={avg(d.savings_rate_average === null ? null : percent(d.savings_rate_average))}
+        delta={delta(d.savings_rate, d.savings_rate_average, 'higher', 'points')}
       />
     </section>
   )

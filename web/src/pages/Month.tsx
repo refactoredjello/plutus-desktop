@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CategoryTable } from '@/features/month/CategoryTable'
 import type { Detail } from '@/features/month/data'
@@ -18,14 +19,28 @@ const arrow = 'inline-flex size-8 items-center justify-center rounded-md border 
 
 function Status({ d }: { d: Detail }) {
   return (
-    <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
-      <span>{d.is_complete ? 'Complete month' : `In progress, day ${d.days_elapsed} of ${d.days_in_month}`}</span>
+    <div className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+      {d.is_complete ? (
+        <span>Complete month</span>
+      ) : (
+        <span className="inline-flex items-center gap-2">
+          <span>{`In progress, day ${d.days_elapsed} of ${d.days_in_month}`}</span>
+          {/* The text says the same, so the bar is hidden from assistive tech. */}
+          <Progress
+            data-testid="month-progress"
+            aria-hidden
+            value={d.days_elapsed}
+            max={d.days_in_month}
+            className="w-20 [&_[data-slot=progress-indicator]]:motion-reduce:transition-none"
+          />
+        </span>
+      )}
       {d.review_count > 0 && (
         <Link to="/review" className="underline underline-offset-2 hover:text-foreground">
           {d.review_count} to review
         </Link>
       )}
-    </p>
+    </div>
   )
 }
 

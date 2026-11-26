@@ -11,8 +11,9 @@ export type TransactionEdit = Pick<Update, 'category_id' | 'essentiality' | 'not
 /** A note or one-time edit: sent as-is and never touches the categorization. */
 const isFlagEdit = (body: TransactionEdit) => body.note !== undefined || body.one_time != null
 
-export function useTransactions(f: Filters, limit = PAGE_SIZE) {
-  const query = {
+/** The list filters as API query parameters, shared by the list and its summary. */
+function filterQuery(f: Filters) {
+  return {
     q: f.q || undefined,
     start: f.start || undefined,
     end: f.end || undefined,
@@ -22,12 +23,24 @@ export function useTransactions(f: Filters, limit = PAGE_SIZE) {
     uncategorized: f.uncategorized || undefined,
     needs_review: f.review || undefined,
     include_transfers: f.transfers || undefined,
-    limit,
-    offset: (f.page - 1) * limit,
   }
+}
+
+export function useTransactions(f: Filters, limit = PAGE_SIZE) {
+  const query = { ...filterQuery(f), limit, offset: (f.page - 1) * limit }
   return useQuery({
     queryKey: ['transactions', query],
     queryFn: () => unwrap(api.GET('/api/transactions', { params: { query } })),
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** Count and posted sums for every row the filters match (all pages). Keyed under 'transactions' so edits refresh it. */
+export function useTransactionSummary(f: Filters) {
+  const query = filterQuery(f)
+  return useQuery({
+    queryKey: ['transactions', 'summary', query],
+    queryFn: () => unwrap(api.GET('/api/transactions/summary', { params: { query } })),
     placeholderData: keepPreviousData,
   })
 }
@@ -72,8 +85,9 @@ export function useUpdateTransaction() {
     onMutate: async ({ id, body }) => {
       await qc.cancelQueries({ queryKey: ['transactions'] })
       const previous = qc.getQueriesData<Page>({ queryKey: ['transactions'] })
+      // The summary shares the prefix but has no rows; leave it to the refetch.
       qc.setQueriesData<Page>({ queryKey: ['transactions'] }, (page) =>
-        page && { ...page, items: page.items.map((t) => (t.id === id ? patchTransaction(t, body) : t)) },
+        page && 'items' in page ? { ...page, items: page.items.map((t) => (t.id === id ? patchTransaction(t, body) : t)) } : page,
       )
       return { previous }
     },

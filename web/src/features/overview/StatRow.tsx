@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import type { Schemas } from '@/api/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Delta } from '@/features/month/Delta'
 import { formatMoney } from '@/lib/money'
 import { useMonthly, useProjection } from './queries'
 
@@ -17,7 +18,7 @@ function Tile({
   /** Makes the whole tile a link. */
   to?: string
   query: UseQueryResult<unknown>
-  render: () => { value: string; hint: string } | null
+  render: () => { value: string; hint: string; delta?: ReactNode } | null
 }) {
   let body: ReactNode
   if (query.isPending) {
@@ -29,7 +30,10 @@ function Tile({
     // Replaces the skeleton when the data arrives, so it settles in once per load, not on refetch.
     body = r ? (
       <div className="motion-fade-up">
-        <p className="mt-1 text-2xl font-semibold tracking-tight">{r.value}</p>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+          <p className="text-2xl font-semibold tracking-tight">{r.value}</p>
+          {r.delta}
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">{r.hint}</p>
       </div>
     ) : (
@@ -53,6 +57,10 @@ function Tile({
   )
 }
 
+/**
+ * The income and spending tiles show the difference from last month. This month is still in
+ * progress, so it is never judged against a whole month: the difference stays uncoloured.
+ */
 export function StatRow() {
   const monthly = useMonthly()
   const projection = useProjection()
@@ -67,7 +75,11 @@ export function StatRow() {
         query={monthly}
         render={() => {
           const c = current()
-          return c && { value: formatMoney(c.income), hint: previous ? `Last month: ${formatMoney(previous.income)}` : '' }
+          return c && {
+            value: formatMoney(c.income),
+            hint: previous ? `Last month: ${formatMoney(previous.income)}` : '',
+            delta: previous && <Delta value={Number(c.income)} base={Number(previous.income)} better="higher" judge={false} />,
+          }
         }}
       />
       <Tile
@@ -76,7 +88,11 @@ export function StatRow() {
         query={monthly}
         render={() => {
           const c = current()
-          return c && { value: formatMoney(c.expenses), hint: previous ? `Last month: ${formatMoney(previous.expenses)}` : '' }
+          return c && {
+            value: formatMoney(c.expenses),
+            hint: previous ? `Last month: ${formatMoney(previous.expenses)}` : '',
+            delta: previous && <Delta value={Number(c.expenses)} base={Number(previous.expenses)} better="lower" judge={false} />,
+          }
         }}
       />
       <Tile
