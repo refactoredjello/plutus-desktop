@@ -87,7 +87,7 @@ Never use real credentials or real bank data in code, tests, mocks, or commits. 
 - SimpleFIN: request at most 45 days per call (the live bridge warns above that) and at most 24 requests a day; runs record `requests` and the guard sums them.
 - Bank merchant names vary (e.g. `AMAZON MKTPLACE` vs `AMZN MKTP`); prefer prefix or contains rules, and check variants in the data before writing one.
 - Detection needs three occurrences; yearly charges must be marked recurring by hand (`POST /api/recurring`).
-- A recurring item with `amount_varies` (owner-set only; detection never proposes or flags uneven amounts) carries an estimate in `amount`: the median of its last six occurrences.
+- A recurring item with `amount_varies` (owner-set only; detection never proposes or flags uneven amounts) carries an estimate in `amount`: the median of its last six occurrences; `next_amount` and the projection use the median of its bills within 45 days of the same date last year when there are any.
 - A Base UI `Switch` inside a `<label>` takes its name from the label, over any `aria-label`; give it one or the other.
 - Agent file writes can turn `\uXXXX` escapes in source into literal characters (a literal U+2028 broke a regex class). Keep sources ASCII: `LC_ALL=C grep -nP '[^\x00-\x7F]' <file>` finds strays.
 - JS `RegExp` word boundaries and classes (`\b`, `\d`, `\w`) are ASCII-only; `services/scrub.ts` spells out the Unicode-aware patterns bank text needs, and the scrub golden test catches a regression.

@@ -163,7 +163,7 @@ projected_end = current_total_balance
               + Σ unfulfilled manual entries due before month end
               + (daily_nonrecurring_income − daily_nonrecurring_expense) × remaining_days
 ```
-The daily non-recurring averages cover the trailing 90 days (or less when history is shorter) of posted, non-transfer income and expenses from merchants that are not confirmed recurring. Unconfirmed paychecks and bills are therefore still projected through the averages, and move to their exact amounts and dates once confirmed. Applied per month for the 3-month outlook. Assumptions are returned alongside numbers so the UI can print them.
+The daily non-recurring averages cover the trailing 90 days (or less when history is shorter) of posted, non-transfer income and expenses from merchants that are not confirmed recurring. Unconfirmed paychecks and bills are therefore still projected through the averages, and move to their exact amounts and dates once confirmed. A confirmed item whose amount varies is projected per date at the median of its bills within 45 days of the same date last year, or at its six-bill median when there are none. Applied per month for the 3-month outlook. Assumptions are returned alongside numbers so the UI can print them.
 
 ### Savings suggestions
 

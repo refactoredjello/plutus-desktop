@@ -20,7 +20,6 @@ export const RecurringChargeRead = model('RecurringChargeRead', {
   next_amount: Money, // the estimate for next_expected_date; `amount` unless amount_varies
   estimate_basis: EstimateBasis, // how next_amount was estimated
   annual_cost: Money, // amount_varies with a year of history: the last 365 days' bills
-
 })
 export type RecurringChargeRead = z.infer<typeof RecurringChargeRead>
 

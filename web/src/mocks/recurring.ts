@@ -5,12 +5,12 @@ import { transactions } from './transactions'
 type Charge = Schemas['RecurringChargeRead']
 
 const initial = (): Charge[] => [
-  { id: 1, merchant_key: 'NETFLIX.COM CA', name: 'Netflix', account_id: 3, amount: '-15.49', cadence: 'monthly', next_expected_date: '2026-10-15', last_seen_on: '2026-09-15', status: 'confirmed', essentiality: 'discretionary', amount_varies: false, annual_cost: '-185.88' },
-  { id: 2, merchant_key: 'LANDLORD LLC', name: 'Landlord LLC', account_id: 1, amount: '-2100.00', cadence: 'monthly', next_expected_date: '2026-11-01', last_seen_on: '2026-10-01', status: 'confirmed', essentiality: 'essential', amount_varies: false, annual_cost: '-25200.00' },
-  { id: 3, merchant_key: 'GYM CO', name: 'GYM CO', account_id: 3, amount: '-40.00', cadence: 'monthly', next_expected_date: '2026-10-20', last_seen_on: '2026-09-20', status: 'confirmed', essentiality: 'flexible', amount_varies: false, annual_cost: '-480.00' },
-  { id: 4, merchant_key: 'ACME CORP PAYROLL', name: 'Acme Corp', account_id: 1, amount: '3150.00', cadence: 'biweekly', next_expected_date: '2026-10-09', last_seen_on: '2026-09-25', status: 'confirmed', essentiality: null, amount_varies: false, annual_cost: '81900.00' },
-  { id: 5, merchant_key: 'SPOTIFY USA', name: 'Spotify', account_id: 3, amount: '-11.99', cadence: 'monthly', next_expected_date: '2026-10-12', last_seen_on: '2026-09-12', status: 'proposed', essentiality: null, amount_varies: false, annual_cost: '-143.88' },
-  { id: 6, merchant_key: 'OLD MAGAZINE', name: 'Old Magazine', account_id: 3, amount: '-9.00', cadence: 'monthly', next_expected_date: '2026-10-30', last_seen_on: '2026-09-30', status: 'dismissed', essentiality: null, amount_varies: false, annual_cost: '-108.00' },
+  { id: 1, merchant_key: 'NETFLIX.COM CA', name: 'Netflix', account_id: 3, amount: '-15.49', cadence: 'monthly', next_expected_date: '2026-10-15', last_seen_on: '2026-09-15', status: 'confirmed', essentiality: 'discretionary', amount_varies: false, next_amount: '-15.49', estimate_basis: 'fixed', annual_cost: '-185.88' },
+  { id: 2, merchant_key: 'LANDLORD LLC', name: 'Landlord LLC', account_id: 1, amount: '-2100.00', cadence: 'monthly', next_expected_date: '2026-11-01', last_seen_on: '2026-10-01', status: 'confirmed', essentiality: 'essential', amount_varies: false, next_amount: '-2100.00', estimate_basis: 'fixed', annual_cost: '-25200.00' },
+  { id: 3, merchant_key: 'GYM CO', name: 'GYM CO', account_id: 3, amount: '-40.00', cadence: 'monthly', next_expected_date: '2026-10-20', last_seen_on: '2026-09-20', status: 'confirmed', essentiality: 'flexible', amount_varies: false, next_amount: '-40.00', estimate_basis: 'fixed', annual_cost: '-480.00' },
+  { id: 4, merchant_key: 'ACME CORP PAYROLL', name: 'Acme Corp', account_id: 1, amount: '3150.00', cadence: 'biweekly', next_expected_date: '2026-10-09', last_seen_on: '2026-09-25', status: 'confirmed', essentiality: null, amount_varies: false, next_amount: '3150.00', estimate_basis: 'fixed', annual_cost: '81900.00' },
+  { id: 5, merchant_key: 'SPOTIFY USA', name: 'Spotify', account_id: 3, amount: '-11.99', cadence: 'monthly', next_expected_date: '2026-10-12', last_seen_on: '2026-09-12', status: 'proposed', essentiality: null, amount_varies: false, next_amount: '-11.99', estimate_basis: 'fixed', annual_cost: '-143.88' },
+  { id: 6, merchant_key: 'OLD MAGAZINE', name: 'Old Magazine', account_id: 3, amount: '-9.00', cadence: 'monthly', next_expected_date: '2026-10-30', last_seen_on: '2026-09-30', status: 'dismissed', essentiality: null, amount_varies: false, next_amount: '-9.00', estimate_basis: 'fixed', annual_cost: '-108.00' },
 ]
 
 export let recurring: Charge[] = initial()
@@ -20,6 +20,12 @@ export function resetRecurring() {
 }
 
 const ANNUAL = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12, yearly: 1 } as const
+
+/** The mock has no history: the next amount is the amount, by the recent median when it varies. */
+function estimate(charge: Charge) {
+  charge.next_amount = charge.amount
+  charge.estimate_basis = charge.amount_varies ? 'recent' : 'fixed'
+}
 
 export const recurringHandlers = [
   http.get('/api/recurring', ({ request }) => {
@@ -37,6 +43,7 @@ export const recurringHandlers = [
     if (body.cadence != null) charge.cadence = body.cadence
     if (body.amount != null) charge.amount = String(body.amount)
     if (body.amount_varies != null) charge.amount_varies = body.amount_varies
+    estimate(charge)
     charge.annual_cost = (Number(charge.amount) * ANNUAL[charge.cadence]).toFixed(2)
     return HttpResponse.json<Charge>(charge)
   }),
@@ -63,6 +70,8 @@ export const recurringHandlers = [
         status: 'confirmed',
         essentiality: txn.categorization?.essentiality ?? null,
         amount_varies: false,
+        next_amount: txn.amount,
+        estimate_basis: 'fixed',
         annual_cost: '0.00',
       }
       recurring.push(charge)
@@ -70,6 +79,7 @@ export const recurringHandlers = [
     charge.status = 'confirmed'
     charge.cadence = body.cadence
     if (body.amount_varies !== undefined) charge.amount_varies = body.amount_varies
+    estimate(charge)
     charge.annual_cost = (Number(charge.amount) * ANNUAL[charge.cadence]).toFixed(2)
     return HttpResponse.json<Charge>(charge, { status: 201 })
   }),
