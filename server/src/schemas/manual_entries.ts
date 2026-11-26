@@ -37,3 +37,11 @@ export const ManualEntryUpdate = requestModel('ManualEntryUpdate', {
   fulfilled_transaction_id: z.int().nullable().optional(),
 })
 export type ManualEntryUpdate = z.infer<typeof ManualEntryUpdate>
+
+export const PlannedUpcomingRead = model('PlannedUpcomingRead', {
+  from_date: PlainDate,
+  to_date: PlainDate,
+  due: Money,
+  expected: Money,
+})
+export type PlannedUpcomingRead = z.infer<typeof PlannedUpcomingRead>

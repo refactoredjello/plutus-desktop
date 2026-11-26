@@ -3,9 +3,9 @@
 import { createRoute } from '@hono/zod-openapi'
 import type { App } from '../app.js'
 import { formatMoney } from '../lib/money.js'
-import { ManualEntryCreate, ManualEntryRead, ManualEntryUpdate } from '../schemas/manual_entries.js'
+import { ManualEntryCreate, ManualEntryRead, ManualEntryUpdate, PlannedUpcomingRead } from '../schemas/manual_entries.js'
 import { params, responseList } from '../schemas/model.js'
-import { pathInt } from '../schemas/params.js'
+import { pathInt, queryInt } from '../schemas/params.js'
 import * as service from '../services/manual_entries.js'
 import { json, jsonBody, noContent } from './openapi.js'
 
@@ -29,6 +29,19 @@ const listManualEntries = createRoute({
   summary: 'List Manual Entries',
   tags: ['manual-entries'],
   responses: { 200: json(responseList(ManualEntryRead, 'list_manual_entries')) },
+})
+
+const upcomingManualEntries = createRoute({
+  method: 'get',
+  path: '/api/manual-entries/upcoming',
+  operationId: 'upcoming_manual_entries',
+  summary: 'Upcoming Manual Entries',
+  description:
+    'Totals of the open (unfulfilled) planned entries from today through days - 1 days ahead, ' +
+    'counting every occurrence of a repeating entry. due sums outflows, expected inflows; both positive.',
+  tags: ['manual-entries'],
+  request: { query: params({ days: queryInt(30, { minimum: 1, maximum: 366 }) }) },
+  responses: { 200: json(PlannedUpcomingRead) },
 })
 
 const createManualEntry = createRoute({
@@ -63,6 +76,10 @@ const deleteManualEntry = createRoute({
 
 export function registerManualEntries(app: App): void {
   app.openapi(listManualEntries, (c) => c.json(service.listManualEntries(c.var.db).map(read), 200))
+  app.openapi(upcomingManualEntries, (c) => {
+    const totals = service.upcomingTotals(c.var.db, c.req.valid('query').days)
+    return c.json({ ...totals, due: formatMoney(totals.due), expected: formatMoney(totals.expected) }, 200)
+  })
   app.openapi(createManualEntry, (c) => c.json(read(service.createManualEntry(c.var.db, c.req.valid('json'))), 201))
   app.openapi(updateManualEntry, (c) => {
     const { entry_id } = c.req.valid('param')

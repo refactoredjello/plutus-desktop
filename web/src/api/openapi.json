@@ -1279,6 +1279,38 @@
         "title": "Page[TransactionRead]",
         "type": "object"
       },
+      "PlannedUpcomingRead": {
+        "properties": {
+          "due": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Due",
+            "type": "string"
+          },
+          "expected": {
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "title": "Expected",
+            "type": "string"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_date",
+          "to_date",
+          "due",
+          "expected"
+        ],
+        "title": "PlannedUpcomingRead",
+        "type": "object"
+      },
       "ProjectedMonth": {
         "properties": {
           "manual_expenses": {
@@ -2621,6 +2653,42 @@
           }
         },
         "summary": "Create Manual Entry",
+        "tags": [
+          "manual-entries"
+        ]
+      }
+    },
+    "/api/manual-entries/upcoming": {
+      "get": {
+        "description": "Totals of the open (unfulfilled) planned entries from today through days - 1 days ahead, counting every occurrence of a repeating entry. due sums outflows, expected inflows; both positive.",
+        "operationId": "upcoming_manual_entries",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 366,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlannedUpcomingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Upcoming Manual Entries",
         "tags": [
           "manual-entries"
         ]
