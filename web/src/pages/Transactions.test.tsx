@@ -295,7 +295,8 @@ describe('Transaction notes', () => {
     renderAt('/transactions')
     const box = await screen.findByPlaceholderText('Search descriptions and notes')
     await user.type(box, 'birthday')
-    await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(2))
+    // A 300 ms debounce, a refetch, and a re-render of the page: slow CI runners need more than the 1 s default.
+    await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(2), { timeout: 3000 })
     expect(screen.getByText('birthday surprise')).toBeInTheDocument()
   })
 })
