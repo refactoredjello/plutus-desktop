@@ -149,7 +149,19 @@ run `npm run update:app -- <version>`. To use one of Plutus's own pre-update bac
 
 ## Releases
 
-The app version is `version` in `desktop/package.json` (x.y.z). To release:
+The app version is `version` in `desktop/package.json` (x.y.z). `npm run release` in `desktop/`
+(`scripts/release.sh`, `--help` for details; the `/release` Claude Code skill drives it) does steps
+1 to 4 without touching your branch or working tree:
+
+- `changes`: the last `v*` tag and the PRs merged on `origin/main` since it.
+- `open patch|minor|major [--body-file <file>] [--dry-run]`: bumps in a temporary worktree of
+  `origin/main`, pushes `claude/release-X-Y-Z`, and opens the PR `desktop: version X.Y.Z`.
+- `merge <pr>`: waits for that PR's checks, then squash-merges it; refuses any other PR.
+- `tag`: tags the commit on `origin/main` that set the version and pushes only the tag.
+- `wait [<version>]`: watches the Release workflow and checks the release has its four files.
+- `all patch|minor|major`: `open`, `merge`, `tag`, `wait` in turn.
+
+By hand:
 
 1. Cut a branch from `origin/main` (`git fetch origin && git switch -c release-0.1.1 origin/main`)
    and, in `desktop/`, run `npm run version:bump -- patch` (or `minor`, `major`). It updates

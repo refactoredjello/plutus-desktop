@@ -27,8 +27,9 @@ function bump(arg) {
     throw new Error('the working tree has changes; commit or set them aside before bumping')
   }
   const before = packageVersion()
-  // Updates desktop/package.json and the root package-lock.json together.
-  run('npm', ['version', part, '--no-git-tag-version', '--workspace', 'desktop'], {
+  // Updates desktop/package.json and the root package-lock.json together; --package-lock-only
+  // keeps npm from installing, so it also works in a checkout without node_modules.
+  run('npm', ['version', part, '--no-git-tag-version', '--package-lock-only', '--workspace', 'desktop'], {
     stdio: ['ignore', 'ignore', 'inherit'],
   })
   const after = packageVersion()

@@ -22,6 +22,7 @@
     "version:bump": "node scripts/version.mjs bump",
     "version:check-tag": "node scripts/version.mjs check-tag",
     "update:app": "bash scripts/update.sh",
+    "release": "bash scripts/release.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "oxlint",
