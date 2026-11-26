@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Schemas } from '@/api/client'
 import { formatDateTime, formatDuration, formatRelative } from '@/lib/format'
-import { useSyncRuns } from './queries'
+import { useSyncRuns } from '@/features/sync/queries'
 
 const statusVariant: Record<Schemas['SyncStatus'], 'secondary' | 'destructive' | 'outline'> = {
   success: 'secondary',

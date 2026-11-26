@@ -57,7 +57,7 @@ describe('Overview', () => {
       http.get('/api/reports/balances', () => HttpResponse.json([])),
     )
     renderAt('/')
-    await waitFor(() => expect(screen.getAllByText(/No data yet\. Run/).length).toBe(4))
+    await waitFor(() => expect(screen.getAllByText(/No data yet\./).length).toBe(4))
     expect(screen.getAllByText(/Sync in the header/).length).toBe(4)
   })
 

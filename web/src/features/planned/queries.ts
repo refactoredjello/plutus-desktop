@@ -4,6 +4,16 @@ import { api, unwrap, type Schemas } from '@/api/client'
 export const usePlanned = () =>
   useQuery({ queryKey: ['planned'], queryFn: () => unwrap(api.GET('/api/manual-entries')) })
 
+export const UPCOMING_DAYS = 30
+
+/** Open planned money over the next 30 days; under ['planned'] so every entry edit refreshes it. */
+export const usePlannedUpcoming = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['planned', 'upcoming', UPCOMING_DAYS],
+    queryFn: () => unwrap(api.GET('/api/manual-entries/upcoming', { params: { query: { days: UPCOMING_DAYS } } })),
+    enabled,
+  })
+
 export function usePlannedMutations() {
   const qc = useQueryClient()
   const invalidate = () => qc.invalidateQueries({ queryKey: ['planned'] })

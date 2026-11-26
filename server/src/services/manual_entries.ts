@@ -2,13 +2,13 @@
  * Manual entries: expected income (positive) or expenses (negative) not yet in bank data.
  */
 
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, isNull } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import { type Recurrence, categories, manualEntries, transactions } from '../db/schema.js'
 import { type PlainDate, addDays } from '../lib/dates.js'
 import { DomainError, NotFoundError } from '../lib/errors.js'
-import { type Cents, ZERO } from '../lib/money.js'
-import { today as scheduleToday } from './schedule.js'
+import { type Cents, cents } from '../lib/money.js'
+import { occurrences, today as scheduleToday } from './schedule.js'
 
 export type ManualEntry = typeof manualEntries.$inferSelect
 
@@ -133,6 +133,16 @@ export interface PlannedUpcoming {
  * entries are left out.
  */
 export function upcomingTotals(db: Db, days: number, today: PlainDate = scheduleToday()): PlannedUpcoming {
-  void db
-  return { from_date: today, to_date: addDays(today, days - 1), due: ZERO, expected: ZERO }
+  const last = addDays(today, days - 1)
+  let due = 0
+  let expected = 0
+  const open = db.select().from(manualEntries).where(isNull(manualEntries.fulfilled_transaction_id)).all()
+  for (const e of open) {
+    for (const day of occurrences(e.due_date, e.recurrence, addDays(today, -1), last)) {
+      if (e.end_date !== null && day > e.end_date) break
+      if (e.amount > 0) expected += e.amount
+      else due -= e.amount
+    }
+  }
+  return { from_date: today, to_date: last, due: cents(due), expected: cents(expected) }
 }

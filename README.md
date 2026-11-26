@@ -93,7 +93,7 @@ Open http://127.0.0.1:8000. The database is `~/.plutus/plutus.sqlite` unless `PL
 
 1. Open Settings. Choose the LLM provider (see below), and set the **owner name tokens**: the pieces of your name your bank prints, for example `JANE` and `DOE`, so they're scrubbed before categorization. Do this before the first sync, which caches categories from whichever provider is set.
 2. Get a SimpleFIN setup token (see below). In Settings, paste the token and click Connect.
-3. Click Sync now. The first sync fetches up to 180 days of history and takes a minute or two.
+3. Click Sync at the top right. The first sync fetches up to 180 days of history and takes a minute or two.
 4. Work through the Review page to confirm or fix categories, and confirm detected items on the Recurring page.
 
 **SimpleFIN setup token.** Create an account at [bridge.simplefin.org](https://bridge.simplefin.org), connect your banks there, then create a setup token for a new app. A setup token works only once: Plutus exchanges it for an access link, stores that link encrypted, and the token stops working. To reconnect later, create a new token. SimpleFIN Bridge is a third-party service, so it sees your bank data. Plutus only reads from it.
@@ -103,7 +103,7 @@ Open http://127.0.0.1:8000. The database is `~/.plutus/plutus.sqlite` unless `PL
 - **Claude:** create an API key in the [Anthropic Console](https://console.anthropic.com) under API keys. API usage is billed to your Anthropic account, separately from any Claude.ai subscription. In Settings, choose Claude and paste the key. The model defaults to `claude-opus-5-5`, and the Model field takes any Claude model ID.
 - **Ollama (fully local):** install [Ollama](https://ollama.com) and download a model with `ollama pull <model>`. In Settings, choose Ollama, set Model to that model's name, and leave the Ollama URL at `http://localhost:11434` unless you changed it.
 
-Syncs then run every 6 hours while the app runs. SimpleFIN allows 24 requests a day; Settings shows how many are used, and Plutus refuses a sync that would exceed the budget.
+Syncs then run every 6 hours while the app runs; the header shows when the last one finished. Sync pulls from the bank and then re-applies your rules; Recalculate next to it only re-applies rules, categories, and recurring detection to the data you have, without contacting the bank. SimpleFIN allows 24 requests a day; Settings shows how many are used, and Plutus refuses a sync that would exceed the budget.
 
 ## Try it without a bank
 

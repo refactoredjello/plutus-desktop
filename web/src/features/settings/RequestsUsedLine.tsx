@@ -1,5 +1,5 @@
-import { DAILY_REQUEST_BUDGET, requestsInLastDay } from './requests'
-import { useSyncRuns } from './queries'
+import { DAILY_REQUEST_BUDGET, requestsInLastDay } from '@/features/sync/requests'
+import { useSyncRuns } from '@/features/sync/queries'
 
 export function RequestsUsedLine() {
   const runs = useSyncRuns()

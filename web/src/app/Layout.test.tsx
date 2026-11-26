@@ -90,7 +90,7 @@ describe('Layout', () => {
     renderAt('/')
     expect(await screen.findByRole('button', { name: 'Recalculate' })).toHaveAttribute(
       'title',
-      expect.stringMatching(/does not contact the bank/),
+      expect.stringMatching(/does not contact the bank/i),
     )
   })
 })
@@ -114,8 +114,10 @@ describe('Header sync', () => {
       ...Array.from({ length: 24 }, (_, i) => ({ ...runs[0]!, id: 100 + i, started_at: now, finished_at: now, requests: 1 })),
     )
     renderAt('/')
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Sync' })).toBeDisabled())
-    expect(screen.getByRole('button', { name: 'Sync' })).toHaveAttribute('title', expect.stringMatching(/24 of 24/))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Sync' })).toHaveAttribute('title', expect.stringMatching(/24 of 24/)),
+    )
+    expect(screen.getByRole('button', { name: 'Sync' })).toBeDisabled()
   })
 
   it('pulls from the bank, then recalculates and refetches, with one summary toast', async () => {
@@ -128,7 +130,7 @@ describe('Header sync', () => {
     renderAt('/')
     await waitFor(() => expect(monthly.n).toBe(1))
     const sync = await screen.findByRole('button', { name: 'Sync' })
-    expect(sync).toHaveAttribute('title', expect.stringMatching(/contacts your bank/))
+    expect(sync).toHaveAttribute('title', expect.stringMatching(/contacts your bank/i))
     await waitFor(() => expect(sync).toBeEnabled())
     await userEvent.setup().click(sync)
 

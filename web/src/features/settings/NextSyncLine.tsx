@@ -1,5 +1,6 @@
 import { formatDateTime, formatRelative } from '@/lib/format'
-import { useSimplefinStatus, useSyncSchedule } from './queries'
+import { useSyncSchedule } from '@/features/sync/queries'
+import { useSimplefinStatus } from './queries'
 
 export function NextSyncLine() {
   const schedule = useSyncSchedule()

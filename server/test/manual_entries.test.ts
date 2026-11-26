@@ -126,11 +126,13 @@ describe('upcoming planned totals', () => {
   it('counts every occurrence of a repeating entry until its end date', async () => {
     // Weekly from Nov 3: Nov 10, 17, 24, Dec 1, 8 are in the window.
     await post(body({ amount: '-10.00', due_date: '2026-11-03', recurrence: 'weekly' }))
-    // Semimonthly from Oct 15 pairs with month end: Nov 15, Nov 30 (Dec 15 is past the window).
-    await post(body({ amount: '1000.00', due_date: '2026-10-15', recurrence: 'semimonthly' }))
+    // Monthly from Aug 31 clamps to month end: Nov 30 (Dec 31 is past the window).
+    await post(body({ amount: '1000.00', due_date: '2026-08-31', recurrence: 'monthly' }))
+    // Biweekly from Nov 1: Nov 15 and Nov 29.
+    await post(body({ amount: '250.00', due_date: '2026-11-01', recurrence: 'biweekly' }))
     // Monthly from Oct 12, ending Nov 30: only Nov 12.
     await post(body({ amount: '-7.00', due_date: '2026-10-12', recurrence: 'monthly', end_date: '2026-11-30' }))
-    expect(await upcoming()).toMatchObject({ due: '57.00', expected: '2000.00' })
+    expect(await upcoming()).toMatchObject({ due: '57.00', expected: '1500.00' })
   })
 
   it('leaves fulfilled entries out', async () => {

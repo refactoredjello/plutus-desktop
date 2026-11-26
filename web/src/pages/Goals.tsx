@@ -7,6 +7,21 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { GoalCard } from '@/features/goals/GoalCard'
 import { GoalDialog } from '@/features/goals/GoalDialog'
 import { useGoals } from '@/features/goals/queries'
+import { formatMoney } from '@/lib/money'
+
+const toCents = (money: string) => Math.round(Number(money) * 100)
+
+/** "2 goals \u00b7 $7,000.00 saved of $14,000.00 \u00b7 1 behind", summed in whole cents. */
+function goalsLine(goals: Schemas['GoalRead'][]): string {
+  const saved = goals.reduce((sum, g) => sum + toCents(g.progress?.saved_so_far ?? g.starting_amount), 0)
+  const target = goals.reduce((sum, g) => sum + toCents(g.target_amount), 0)
+  const behind = goals.filter((g) => g.progress && !g.progress.on_track).length
+  return [
+    `${goals.length} ${goals.length === 1 ? 'goal' : 'goals'}`,
+    `${formatMoney((saved / 100).toFixed(2))} saved of ${formatMoney((target / 100).toFixed(2))}`,
+    behind > 0 ? `${behind} behind` : 'all on track',
+  ].join(' \u00b7 ')
+}
 
 export function GoalsPage() {
   const goals = useGoals()
@@ -25,6 +40,9 @@ export function GoalsPage() {
           </Button>
         }
       />
+      {active.length > 0 && (
+        <p className="-mt-3 mb-6 text-sm text-muted-foreground tabular-nums">{goalsLine(active)}</p>
+      )}
       {goals.isPending ? (
         <Skeleton className="h-40 w-full" />
       ) : goals.isError ? (
