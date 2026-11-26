@@ -128,3 +128,83 @@
     @apply font-sans;
     }
 }
+
+/*
+ * Motion. Timings mirror MOTION in src/lib/motion.ts; keep the two in step. Every animation
+ * here is off under prefers-reduced-motion (the media query at the end).
+ */
+:root {
+    --motion-route: 100ms;
+    --motion-exit: 150ms;
+    --motion-enter: 200ms;
+    --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes plutus-fade-up {
+    from { opacity: 0; transform: translateY(4px); }
+}
+@keyframes plutus-grow-x {
+    from { transform: scaleX(0); }
+}
+@keyframes plutus-fade-out {
+    to { opacity: 0; }
+}
+/* A table row cannot shrink by height, so its cells give up their padding and content. */
+@keyframes plutus-collapse-cell {
+    to { padding-block: 0; font-size: 0; line-height: 0; }
+}
+@keyframes plutus-collapse-content {
+    from { max-height: 4rem; }
+    to { max-height: 0; padding-block: 0; margin-block: 0; border-width: 0; }
+}
+
+/* Numbers settling in once, on mount (a refetch does not remount). */
+@utility motion-fade-up {
+    animation: plutus-fade-up var(--motion-enter) var(--motion-ease-out) both;
+}
+/* Bar segments growing from their start edge, on mount. */
+@utility motion-grow-x {
+    transform-origin: left;
+    animation: plutus-grow-x var(--motion-enter) var(--motion-ease-out) both;
+}
+
+/* A list row leaving: fade and collapse, then React removes it (TransactionsTable). */
+tr[data-leaving] {
+    pointer-events: none;
+    animation: plutus-fade-out var(--motion-exit) ease-in forwards;
+}
+tr[data-leaving] > td {
+    overflow: hidden;
+    animation: plutus-collapse-cell var(--motion-exit) ease-in forwards;
+}
+tr[data-leaving] > td > * {
+    overflow: hidden;
+    animation: plutus-collapse-content var(--motion-exit) ease-in forwards;
+}
+
+/* Route changes (react-router's viewTransition on the nav): a quick cross-fade; the header holds still. */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: var(--motion-route);
+    animation-timing-function: ease-out;
+}
+::view-transition-group(header),
+::view-transition-old(header),
+::view-transition-new(header) {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .motion-fade-up,
+    .motion-grow-x,
+    tr[data-leaving],
+    tr[data-leaving] > td,
+    tr[data-leaving] > td > * {
+        animation: none;
+    }
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
+    }
+}

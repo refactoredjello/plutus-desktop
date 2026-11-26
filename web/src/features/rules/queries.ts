@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap, type Schemas } from '@/api/client'
 import { invalidateDerived } from '@/app/invalidate'
+import { notify } from '@/lib/toast'
 
 type Rule = Schemas['RuleRead']
 
@@ -22,9 +23,12 @@ export function useSaveRule(rule: Rule | null | undefined) {
           )
         : unwrap(api.POST('/api/rules', { body })),
     onSuccess: () => {
+      notify(rule ? 'Rule updated' : 'Rule created')
       void qc.invalidateQueries({ queryKey: ['rules'] })
       void invalidateDerived(qc)
     },
+    // Both rule forms show the server's complaint next to their fields.
+    meta: { inlineError: true },
   })
 }
 

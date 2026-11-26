@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useCategories } from '@/features/transactions/queries'
 import { humanizeEnum } from '@/lib/format'
+import { notify } from '@/lib/toast'
 import { RuleDialog } from './RuleDialog'
 
 type Rule = Schemas['RuleRead']
@@ -28,6 +29,7 @@ function useDeleteRule() {
   return useMutation({
     mutationFn: (id: number) => unwrap(api.DELETE('/api/rules/{rule_id}', { params: { path: { rule_id: id } } })),
     onSuccess: () => {
+      notify('Rule deleted')
       void qc.invalidateQueries({ queryKey: ['rules'] })
       void invalidateDerived(qc)
     },
@@ -94,11 +96,6 @@ export function RulesCard() {
               ))}
             </TableBody>
           </Table>
-        )}
-        {remove.isError && (
-          <p role="alert" className="mt-2 text-sm text-destructive">
-            {remove.error.message}
-          </p>
         )}
       </CardContent>
 

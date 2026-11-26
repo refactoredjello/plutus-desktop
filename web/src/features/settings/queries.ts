@@ -36,6 +36,8 @@ export function useConnectSimplefin() {
     mutationFn: (setup_token: string) =>
       unwrap(api.POST('/api/settings/simplefin', { body: { setup_token } })),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings', 'simplefin'] }),
+    // Shown under the token field.
+    meta: { inlineError: true },
   })
 }
 
@@ -59,6 +61,8 @@ export function useSync() {
   const start = useMutation({
     mutationFn: () => unwrap(api.POST('/api/sync')),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sync', 'runs'] }),
+    // The Settings page shows it with the run's own failures.
+    meta: { inlineError: true },
   })
 
   const polled = useQuery({

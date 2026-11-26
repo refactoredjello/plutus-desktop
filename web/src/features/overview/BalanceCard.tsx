@@ -1,5 +1,6 @@
 import { CartesianGrid, ComposedChart, Line, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatDate } from '@/lib/format'
+import { chartAnimation, useAnimateOnce } from '@/lib/motion'
 import { ChartCard } from './ChartCard'
 import { ChartFrame } from './ChartFrame'
 import { moneyCompact, moneyWhole } from './chartFormat'
@@ -14,6 +15,8 @@ export function BalanceCard() {
   const balances = useBalances(90)
   const projection = useProjection()
   const projectionOk = projection.isSuccess && projection.data.months.length > 0
+  // Animate the first render only: refetches and hovers redraw in place.
+  const motion = chartAnimation(useAnimateOnce(balances.isSuccess))
 
   return (
     <ChartCard
@@ -72,7 +75,7 @@ export function BalanceCard() {
                       )
                     }}
                   />
-                  <Line dataKey="actual" name="Balance" stroke="var(--viz-line)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" dot={false} activeDot={{ r: 4, stroke: 'var(--card)', strokeWidth: 2 }} isAnimationActive={false} />
+                  <Line dataKey="actual" name="Balance" stroke="var(--viz-line)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" dot={false} activeDot={{ r: 4, stroke: 'var(--card)', strokeWidth: 2 }} {...motion} />
                   <Line
                     dataKey="projected"
                     name="Projected month-end"
@@ -82,7 +85,7 @@ export function BalanceCard() {
                     strokeLinecap="round"
                     dot={{ r: 4, fill: 'var(--card)', stroke: 'var(--viz-line)', strokeWidth: 2 }}
                     activeDot={{ r: 5, stroke: 'var(--card)', strokeWidth: 2 }}
-                    isAnimationActive={false}
+                    {...motion}
                   />
                 </ComposedChart>
               </ChartFrame>

@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { setAverageMonths } from '@/mocks/changes'
 import { server } from '@/mocks/server'
+import { toasts } from '@/test/motion'
 import { renderAt } from '@/test/render'
 
 const sentence = (re: RegExp) => screen.findByRole('link', { name: re })
@@ -93,11 +94,11 @@ describe('ChangesCard behaviour', () => {
     expect(body).toEqual({ key: 'S1:recurrence:1:2299' })
   })
 
-  it('restores the row and shows a message when dismiss fails', async () => {
+  it('restores the row and toasts when dismiss fails', async () => {
     server.use(http.post('/api/reports/changes/dismiss', () => new HttpResponse(null, { status: 500 })))
     renderAt('/')
     await userEvent.setup().click(await screen.findByRole('button', { name: /^Dismiss: Netflix went from/ }))
-    expect(await screen.findByText(/Couldn’t dismiss that/)).toBeInTheDocument()
+    expect(await toasts().findByText('Could not dismiss that change')).toBeInTheDocument()
     expect(await sentence(/Netflix went from/)).toBeInTheDocument()
   })
 

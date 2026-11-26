@@ -1,12 +1,10 @@
 import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { ListFilter, StickyNote } from 'lucide-react'
 import type { Schemas } from '@/api/client'
-import { Link } from 'react-router'
 import { useTransactionPanel } from '@/app/transactionPanel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
-import { cadencePhrase } from '@/features/recurring/queries'
 import { formatDate } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
@@ -35,6 +33,7 @@ export function TransactionRow({
   categories,
   action,
   onKeep,
+  leaving = false,
 }: {
   txn: Txn
   accountName: string
@@ -43,12 +42,13 @@ export function TransactionRow({
   action?: ReactNode
   /** Called with true while the "Make this a rule" offer needs this row to stay on screen. */
   onKeep?: (keep: boolean) => void
+  /** Cleared from the list and fading out (styled in index.css); no longer interactive. */
+  leaving?: boolean
 }) {
   const update = useUpdateTransaction()
   const panel = useTransactionPanel()
   // The category the "Make this a rule" offer would start a rule with; null when hidden.
   const [ruleCategory, setRuleCategory] = useState<number | null>(null)
-  const [markedCadence, setMarkedCadence] = useState<Schemas['Cadence'] | null>(null)
 
   const inflow = Number(txn.amount) > 0
   const description = txn.payee ?? txn.raw_description
@@ -79,6 +79,10 @@ export function TransactionRow({
     <TableRow
       className="group/row cursor-pointer"
       tabIndex={0}
+      data-row-id={txn.id}
+      data-leaving={leaving || undefined}
+      aria-hidden={leaving || undefined}
+      inert={leaving}
       aria-label={`${description}, ${formatMoney(txn.amount)} on ${formatDate(txn.posted_on)}`}
       onClick={(e) => isRowClick(e) && openPanel()}
       onKeyDown={(e: KeyboardEvent<HTMLElement>) => {
@@ -104,7 +108,7 @@ export function TransactionRow({
               <ListFilter aria-hidden />
             </Button>
           )}
-          {!txn.is_transfer && <RecurringMark txn={txn} label={description} onMarked={setMarkedCadence} />}
+          {!txn.is_transfer && <RecurringMark txn={txn} label={description} />}
           {!txn.is_transfer && !inflow && <OneTimeToggle txn={txn} label={description} />}
           {txn.is_transfer && <UnpairTransfer txn={txn} label={description} />}
           {txn.one_time && (
@@ -132,19 +136,6 @@ export function TransactionRow({
             <button type="button" className="hover:text-foreground" onClick={dismissOffer}>
               Dismiss
             </button>
-          </p>
-        )}
-        {markedCadence && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Recurring {cadencePhrase(markedCadence)}.{' '}
-            <Link to="/recurring" className="underline underline-offset-2 hover:text-foreground">
-              View
-            </Link>
-          </p>
-        )}
-        {update.isError && (
-          <p role="alert" className="mt-1 text-xs text-destructive">
-            Could not save: {update.error.message}
           </p>
         )}
       </TableCell>
@@ -182,7 +173,11 @@ export function TransactionRow({
         />
       </TableCell>
       <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">{accountName}</TableCell>
-      {action !== undefined && <TableCell className="text-right">{action}</TableCell>}
+      {action !== undefined && (
+        <TableCell className="text-right" data-row-action>
+          {action}
+        </TableCell>
+      )}
     </TableRow>
   )
 }

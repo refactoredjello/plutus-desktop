@@ -94,5 +94,7 @@ export function useUnpairTransfer() {
     onSuccess: () => {
       for (const key of ['transactions', 'reports', 'projection']) void qc.invalidateQueries({ queryKey: [key] })
     },
+    // Shown in the open confirm dialog.
+    meta: { inlineError: true },
   })
 }

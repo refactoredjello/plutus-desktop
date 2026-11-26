@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it } from 'vitest'
 import { navItems } from '@/app/router'
 import { server } from '@/mocks/server'
+import { toasts } from '@/test/motion'
 import { renderAt } from '@/test/render'
 
 /** Count requests whose method and path match, from now on. */
@@ -56,10 +57,30 @@ describe('Layout', () => {
     expect(await screen.findByRole('button', { name: 'Refresh' })).toBeEnabled()
   })
 
-  it('shows a failure inline', async () => {
-    server.use(http.post('/api/recalculate', () => HttpResponse.json({ detail: 'database is locked' }, { status: 500 })))
+  it('says what Refresh changed', async () => {
+    server.use(
+      http.post('/api/recalculate', () => HttpResponse.json({ recategorized: 3, categorized: 1, recurring_changes: 1 })),
+    )
     renderAt('/')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(/database is locked/)
+    expect(await toasts().findByText('3 recategorized, 1 newly categorized, 1 recurring change')).toBeInTheDocument()
+  })
+
+  it('says everything is up to date when Refresh changed nothing', async () => {
+    renderAt('/')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh' }))
+    expect(await toasts().findByText('Everything is up to date')).toBeInTheDocument()
+  })
+
+  it('shows a failure in a toast that stays until dismissed', async () => {
+    server.use(http.post('/api/recalculate', () => HttpResponse.json({ detail: 'database is locked' }, { status: 500 })))
+    const user = userEvent.setup()
+    renderAt('/')
+    await user.click(screen.getByRole('button', { name: 'Refresh' }))
+    expect(await toasts().findByText('Refresh failed')).toBeInTheDocument()
+    expect(toasts().getByText(/database is locked/)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(toasts().getByRole('button', { name: 'Close toast' }))
+    await waitFor(() => expect(toasts().queryByText('Refresh failed')).not.toBeInTheDocument())
   })
 })

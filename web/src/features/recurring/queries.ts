@@ -62,6 +62,8 @@ export function useMarkRecurring() {
   return useMutation({
     mutationFn: (body: Schemas['RecurringChargeCreate']) => unwrap(api.POST('/api/recurring', { body })),
     onSuccess: () => invalidateDerived(qc),
+    // Shown in the open cadence popover, next to the choice that failed.
+    meta: { inlineError: true },
   })
 }
 

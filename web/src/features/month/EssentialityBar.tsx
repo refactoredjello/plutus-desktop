@@ -12,7 +12,7 @@ export function EssentialityBar({ d }: { d: Detail }) {
       {sum > 0 && (
         <div role="img" aria-label="Spending split by essentiality" className="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
           {bar.map((r) => (
-            <span key={r.value} className="block h-full min-w-0.5" style={{ flexGrow: Number(r.share!.total) / sum, background: r.color }} />
+            <span key={r.value} className="motion-grow-x block h-full min-w-0.5" style={{ flexGrow: Number(r.share!.total) / sum, background: r.color }} />
           ))}
         </div>
       )}

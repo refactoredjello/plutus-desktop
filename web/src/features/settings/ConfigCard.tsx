@@ -62,6 +62,8 @@ function useUpdateConfig() {
       qc.setQueryData(['settings', 'config'], config)
       return qc.invalidateQueries({ queryKey: ['settings'] })
     },
+    // Shown beside Save, where a field-level complaint makes sense.
+    meta: { inlineError: true },
   })
 }
 

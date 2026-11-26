@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router'
 import { trimLeadingEmptyMonths } from './data'
 import { Bar, CartesianGrid, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
 import { monthLabel } from '@/lib/dates'
+import { chartAnimation, useAnimateOnce } from '@/lib/motion'
 import { ChartCard } from './ChartCard'
 import { ChartFrame } from './ChartFrame'
 import { moneyCompact, moneyWhole } from './chartFormat'
@@ -13,6 +14,8 @@ const tick = { fill: 'var(--viz-muted)', fontSize: 12 }
 export function CashflowCard() {
   const query = useMonthly()
   const navigate = useNavigate()
+  // Animate the first render only: refetches and hovers redraw in place.
+  const motion = chartAnimation(useAnimateOnce(query.isSuccess))
   return (
     <ChartCard
       title="Income vs. expenses"
@@ -56,8 +59,8 @@ export function CashflowCard() {
                     />
                   )}
                 />
-                <Bar dataKey="Income" fill="var(--viz-income)" maxBarSize={14} radius={[4, 4, 0, 0]} isAnimationActive={false} onClick={openMonth} />
-                <Bar dataKey="Expenses" fill="var(--viz-expense)" maxBarSize={14} radius={[4, 4, 0, 0]} isAnimationActive={false} onClick={openMonth} />
+                <Bar dataKey="Income" fill="var(--viz-income)" maxBarSize={14} radius={[4, 4, 0, 0]} {...motion} onClick={openMonth} />
+                <Bar dataKey="Expenses" fill="var(--viz-expense)" maxBarSize={14} radius={[4, 4, 0, 0]} {...motion} onClick={openMonth} />
                 <Line
                   dataKey="Net"
                   stroke="var(--viz-ink)"
@@ -66,7 +69,7 @@ export function CashflowCard() {
                   strokeLinejoin="round"
                   dot={{ r: 4, fill: 'var(--viz-ink)', stroke: 'var(--card)', strokeWidth: 2 }}
                   activeDot={{ r: 5, stroke: 'var(--card)', strokeWidth: 2 }}
-                  isAnimationActive={false}
+                  {...motion}
                 />
               </ComposedChart>
             </ChartFrame>
