@@ -19,11 +19,6 @@ export function ClearDismissalsCard() {
             Cleared
           </span>
         )}
-        {clear.isError && (
-          <span role="alert" className="text-sm text-destructive">
-            Couldn’t clear. Try again.
-          </span>
-        )}
       </CardContent>
     </Card>
   )

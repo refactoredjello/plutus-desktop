@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Repeat } from 'lucide-react'
+import { useNavigate } from 'react-router'
 import type { Schemas } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CADENCES, cadencePhrase, useConfirmedRecurring, useMarkRecurring } from '@/features/recurring/queries'
+import { notify } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 
 type Cadence = Schemas['Cadence']
@@ -12,13 +14,12 @@ type Cadence = Schemas['Cadence']
 export function RecurringMark({
   txn,
   label,
-  onMarked,
 }: {
   txn: Schemas['TransactionRead']
   label: string
-  onMarked: (cadence: Cadence) => void
 }) {
   const mark = useMarkRecurring()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const existing = useConfirmedRecurring(txn.merchant_key, txn.account_id, open)
   // null until the user picks: then follow the existing item (once loaded) or default to monthly.
@@ -40,7 +41,7 @@ export function RecurringMark({
       {
         onSuccess: () => {
           setOpen(false)
-          onMarked(cadence)
+          notify(`Marked recurring ${cadencePhrase(cadence)}`, { label: 'View', onClick: () => void navigate('/recurring') })
         },
       },
     )

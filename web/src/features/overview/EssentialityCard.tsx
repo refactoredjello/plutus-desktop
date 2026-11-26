@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router'
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts'
 import { BUCKETS, spendingLink, type Bucket } from '@/features/spending/data'
 import { monthLabel } from '@/lib/dates'
+import { chartAnimation, useAnimateOnce } from '@/lib/motion'
 import { ChartCard } from './ChartCard'
 import { ChartFrame } from './ChartFrame'
 import { moneyCompact, moneyWhole } from './chartFormat'
@@ -14,6 +15,8 @@ const series = BUCKETS.filter((b) => b.value !== 'unset').map((b) => ({ key: b.l
 export function EssentialityCard() {
   const query = useMonthly()
   const navigate = useNavigate()
+  // Animate the first render only: refetches and hovers redraw in place.
+  const motion = chartAnimation(useAnimateOnce(query.isSuccess))
   return (
     <ChartCard
       title="Essential, flexible, discretionary"
@@ -69,7 +72,7 @@ export function EssentialityCard() {
                     strokeWidth={2}
                     maxBarSize={24}
                     radius={i === series.length - 1 ? [4, 4, 0, 0] : 0}
-                    isAnimationActive={false}
+                    {...motion}
                     onClick={(bar) => void navigate(spendingLink(s.value as Bucket, String((bar as { payload?: { key?: string } }).payload?.key ?? latest)))}
                   />
                 ))}

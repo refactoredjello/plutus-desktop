@@ -27,11 +27,6 @@ export function Suggestions({ goalId }: { goalId: number }) {
           </Button>
         )}
       </div>
-      {generate.isError && (
-        <p role="alert" className="text-sm text-destructive">
-          {generate.error.message}
-        </p>
-      )}
       {visible.length > 0 && (
         <ul className="divide-y rounded-lg border">
           {visible.map((s) => (

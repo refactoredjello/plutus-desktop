@@ -9,11 +9,15 @@ export function useGoalMutations() {
   const create = useMutation({
     mutationFn: (body: Schemas['GoalCreate']) => unwrap(api.POST('/api/goals', { body })),
     onSuccess: invalidate,
+    // The goal dialog and card show the error inline.
+    meta: { inlineError: true },
   })
   const update = useMutation({
     mutationFn: ({ id, body }: { id: number; body: Schemas['GoalUpdate'] }) =>
       unwrap(api.PATCH('/api/goals/{goal_id}', { params: { path: { goal_id: id } }, body })),
     onSuccess: invalidate,
+    // The goal dialog and card show the error inline.
+    meta: { inlineError: true },
   })
   return { create, update }
 }
@@ -30,6 +34,7 @@ export function useGenerateSuggestions(goalId: number) {
   return useMutation({
     mutationFn: () => unwrap(api.POST('/api/goals/{goal_id}/suggestions', { params: { path: { goal_id: goalId } } })),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['suggestions', goalId] }),
+    meta: { errorTitle: 'Could not suggest ideas' },
   })
 }
 

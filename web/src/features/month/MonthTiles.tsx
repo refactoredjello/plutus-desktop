@@ -9,7 +9,8 @@ const SUCCESS = 'text-emerald-700 dark:text-emerald-400'
 
 function Tile({ label, value, sub }: { label: string; value: string; sub: ReactNode }) {
   return (
-    <Card size="sm">
+    // Mounts with the month's data, so it settles in once per load, not on refetch.
+    <Card size="sm" className="motion-fade-up">
       <CardContent>
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{value}</p>

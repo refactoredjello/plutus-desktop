@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router'
 import { RefreshButton } from '@/app/RefreshButton'
 import { TransactionPanelProvider } from '@/app/TransactionPanelProvider'
+import { Toaster } from '@/components/ui/sonner'
 import { navItems } from '@/app/router'
 import { useReviewCount } from '@/features/review/queries'
 import { cn } from '@/lib/utils'
@@ -9,7 +10,7 @@ export function Layout() {
   const { count: reviewCount } = useReviewCount()
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
+      <header className="border-b [view-transition-name:header]">
         <nav className="mx-auto flex max-w-6xl items-center gap-6 overflow-x-auto px-4 py-3">
           <span className="font-heading text-lg font-semibold tracking-tight">Plutus</span>
           <ul className="flex gap-1 text-sm">
@@ -18,6 +19,8 @@ export function Layout() {
                 <NavLink
                   to={item.to}
                   end={item.to === '/'}
+                  // A short cross-fade of the page; the header is excluded in index.css.
+                  viewTransition
                   className={({ isActive }) =>
                     cn(
                       'rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground',
@@ -46,6 +49,7 @@ export function Layout() {
           <Outlet />
         </TransactionPanelProvider>
       </main>
+      <Toaster />
     </div>
   )
 }

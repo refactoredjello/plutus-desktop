@@ -26,11 +26,12 @@ function Tile({
     body = <p role="alert" className="mt-1 text-sm text-muted-foreground">Couldn’t load.</p>
   } else {
     const r = render()
+    // Replaces the skeleton when the data arrives, so it settles in once per load, not on refetch.
     body = r ? (
-      <>
+      <div className="motion-fade-up">
         <p className="mt-1 text-2xl font-semibold tracking-tight">{r.value}</p>
         <p className="mt-1 text-xs text-muted-foreground">{r.hint}</p>
-      </>
+      </div>
     ) : (
       <p className="mt-1 text-sm text-muted-foreground">No data yet.</p>
     )

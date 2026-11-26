@@ -99,11 +99,6 @@ export function ChangesCard() {
             Show fewer
           </Button>
         )}
-        {dismiss.isError && (
-          <p role="alert" className="mt-2 text-xs text-destructive">
-            Couldn’t dismiss that. It’s back in the list.
-          </p>
-        )}
       </div>
     )
   }

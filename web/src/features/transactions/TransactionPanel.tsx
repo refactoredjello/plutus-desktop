@@ -103,11 +103,6 @@ export function TransactionPanel({
               label={`Essentiality for ${name}`}
             />
           </div>
-          {update.isError && (
-            <p role="alert" className="text-xs text-destructive">
-              Could not save: {update.error.message}
-            </p>
-          )}
           <Link
             to={transactionsLink(txn)}
             onClick={() => onOpenChange(false)}
@@ -135,7 +130,6 @@ function RuleSection({
   sectionRef: RefObject<HTMLElement | null>
 }) {
   const lookup = useTransactionRule(txn.id, !txn.is_transfer)
-  const [saved, setSaved] = useState(false)
   const data = lookup.data
   return (
     <section ref={sectionRef} tabIndex={-1} aria-label="Rule" className="grid gap-3 px-4 pb-4 outline-none">
@@ -154,11 +148,8 @@ function RuleSection({
           key={data.rule?.id ?? 'new'}
           lookup={data}
           categoryId={categoryId}
-          onSaved={() => setSaved(true)}
-          onChange={() => setSaved(false)}
         />
       )}
-      {saved && <p className="text-xs text-muted-foreground">Rule saved.</p>}
     </section>
   )
 }
@@ -167,13 +158,9 @@ function RuleSection({
 function RuleEditor({
   lookup,
   categoryId,
-  onSaved,
-  onChange,
 }: {
   lookup: Schemas['TransactionRuleRead']
   categoryId: number | undefined
-  onSaved: () => void
-  onChange: () => void
 }) {
   const { rule, suggestion } = lookup
   const save = useSaveRule(rule)
@@ -190,7 +177,6 @@ function RuleEditor({
     // A new rule's pattern follows the match type's default until the owner edits it.
     const follows = !rule && next.match_type !== draft.match_type && draft.pattern === defaultPattern(draft.match_type)
     setDraft(follows ? { ...next, pattern: defaultPattern(next.match_type) } : next)
-    onChange()
   }
 
   return (
@@ -198,7 +184,7 @@ function RuleEditor({
       <p className="text-sm text-muted-foreground">
         {rule ? 'This rule categorizes this transaction.' : 'No rule matches this transaction yet.'}
       </p>
-      <RuleForm id={formId} draft={draft} onChange={change} onSubmit={(body) => save.mutate(body, { onSuccess: onSaved })} />
+      <RuleForm id={formId} draft={draft} onChange={change} onSubmit={(body) => save.mutate(body)} />
       {save.isError && (
         <p role="alert" className="text-sm text-destructive">
           {save.error.message}

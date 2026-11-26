@@ -54,6 +54,7 @@ export function useDismissChange() {
     },
     onError: (_e, _key, ctx) => ctx?.previous.forEach(([k, d]) => qc.setQueryData(k, d)),
     onSettled: () => qc.invalidateQueries({ queryKey: CHANGES_KEY }),
+    meta: { errorTitle: 'Could not dismiss that change' },
   })
 }
 
@@ -62,5 +63,6 @@ export function useClearDismissals() {
   return useMutation({
     mutationFn: () => unwrap(api.DELETE('/api/reports/changes/dismissals')),
     onSuccess: () => qc.invalidateQueries({ queryKey: CHANGES_KEY }),
+    meta: { errorTitle: 'Could not clear dismissed changes' },
   })
 }

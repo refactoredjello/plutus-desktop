@@ -7,6 +7,10 @@ import { server } from '@/mocks/server'
 import { installMatchMedia, setReducedMotion } from './motion'
 
 installMatchMedia()
+// Sonner captures the pointer to let a toast be swiped away; jsdom has no pointer capture.
+Element.prototype.setPointerCapture ??= () => {}
+Element.prototype.releasePointerCapture ??= () => {}
+Element.prototype.hasPointerCapture ??= () => false
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {

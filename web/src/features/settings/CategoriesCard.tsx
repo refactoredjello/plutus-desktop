@@ -19,10 +19,12 @@ function useCategoryMutations() {
     mutationFn: ({ id, ...body }: { id: number } & Schemas['CategoryUpdate']) =>
       unwrap(api.PATCH('/api/categories/{category_id}', { params: { path: { category_id: id } }, body })),
     onSuccess: invalidate,
+    meta: { inlineError: true },
   })
   const create = useMutation({
     mutationFn: (body: Schemas['CategoryCreate']) => unwrap(api.POST('/api/categories', { body })),
     onSuccess: invalidate,
+    meta: { inlineError: true },
   })
   return { update, create }
 }

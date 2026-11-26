@@ -1,5 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
-import type { ComponentProps } from 'react'
+import type { ComponentType } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { MOTION } from '@/lib/motion'
 import { setReducedMotion } from '@/test/motion'
@@ -10,16 +10,13 @@ const seen: { name: string; active: unknown; duration: unknown }[] = []
 
 vi.mock('recharts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('recharts')>()
-  const spy = <P extends { isAnimationActive?: unknown; animationDuration?: unknown }>(name: string, Real: (p: P) => unknown) =>
-    function Spied(props: P) {
+  const { createElement } = await import('react')
+  const spy = (name: string, Real: ComponentType<Record<string, unknown>>) =>
+    function Spied(props: Record<string, unknown>) {
       seen.push({ name, active: props.isAnimationActive, duration: props.animationDuration })
-      return (Real as (p: P) => React.ReactNode)(props)
+      return createElement(Real, props)
     }
-  return {
-    ...actual,
-    Bar: spy<ComponentProps<typeof actual.Bar>>('Bar', actual.Bar as never),
-    Line: spy<ComponentProps<typeof actual.Line>>('Line', actual.Line as never),
-  }
+  return { ...actual, Bar: spy('Bar', actual.Bar as never), Line: spy('Line', actual.Line as never) }
 })
 
 async function renderCharts() {
