@@ -1,11 +1,12 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-// shadcn's Sonner, without next-themes: the app has no theme switcher, and the colors below
-// come from the app's own tokens. Sonner turns its slide off under prefers-reduced-motion.
+// shadcn's Sonner, without next-themes: it follows the system appearance as the app does
+// (src/app/theme.ts), and the colors below come from the app's own tokens. Sonner turns its slide off under prefers-reduced-motion.
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
+      theme="system"
       className="toaster group"
       icons={{
         success: (

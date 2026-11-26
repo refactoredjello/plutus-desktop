@@ -20,6 +20,7 @@ import {
   Menu,
   app,
   dialog,
+  nativeTheme,
   safeStorage,
   shell,
 } from 'electron'
@@ -86,6 +87,8 @@ function createWindow(path: string): BrowserWindow {
     minHeight: 600,
     title: 'Plutus',
     show: false,
+    // The page's own background (--background), so resizing never flashes the other theme.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff',
     webPreferences: {
       preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)),
       contextIsolation: true,

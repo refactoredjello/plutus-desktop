@@ -71,6 +71,7 @@ export function TransactionRow({
     onKeep?.(false)
   }
 
+  const isOpen = panel.openId === txn.id
   const openPanel = () => panel.open(txn)
   const openRule = (categoryId?: number) =>
     panel.open(txn, { section: 'rule', categoryId, onClose: categoryId === undefined ? undefined : dismissOffer })
@@ -80,6 +81,8 @@ export function TransactionRow({
       className="group/row cursor-pointer"
       tabIndex={0}
       data-row-id={txn.id}
+      data-state={isOpen ? 'selected' : undefined}
+      aria-current={isOpen || undefined}
       data-leaving={leaving || undefined}
       aria-hidden={leaving || undefined}
       inert={leaving}

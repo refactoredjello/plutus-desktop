@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { createQueryClient } from '@/app/queryClient'
 import { router } from '@/app/router'
+import { followSystemTheme } from '@/app/theme'
 import './index.css'
 
 async function enableMocks() {
@@ -17,6 +18,9 @@ async function enableMocks() {
     }
   }
 }
+
+// Before the first render, so the page never paints in the wrong theme.
+followSystemTheme()
 
 const queryClient = createQueryClient()
 

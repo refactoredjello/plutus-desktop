@@ -22,7 +22,7 @@ describe('The row open in the transaction panel', () => {
     await screen.findByRole('dialog', { name: 'Blue Bottle Coffee' })
     expect(row).toHaveAttribute('data-state', 'selected')
     expect(row).toHaveAttribute('aria-current', 'true')
-    expect(screen.getAllByRole('row').filter((r) => r.getAttribute('data-state') === 'selected')).toHaveLength(1)
+    expect(screen.getAllByRole('row', { hidden: true }).filter((r) => r.getAttribute('data-state') === 'selected')).toHaveLength(1)
     await user.keyboard('{Escape}')
     await waitFor(() => expect(row).not.toHaveAttribute('data-state', 'selected'))
     expect(row).not.toHaveAttribute('aria-current')

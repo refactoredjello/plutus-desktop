@@ -12,6 +12,8 @@ export interface PanelOptions {
 
 export interface TransactionPanelApi {
   open: (txn: Schemas['TransactionRead'], options?: PanelOptions) => void
+  /** The transaction the panel shows while open (rows mark it), else null. */
+  openId: number | null
 }
 
 export const TransactionPanelContext = createContext<TransactionPanelApi | null>(null)
