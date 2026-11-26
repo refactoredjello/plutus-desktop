@@ -74,7 +74,7 @@ These apply to all server code. Agents follow them without asking.
 | Schemas | Zod schemas in `src/schemas` are both validator and OpenAPI source. Component names: `XCreate`, `XUpdate` (all optional, for PATCH), `XRead`. Request bodies forbid unknown keys. |
 | Money | `INTEGER` cents in the database, a branded `Cents` type in code, a two-decimal string on the wire (`Money`); requests take `MoneyInput` (a number or a decimal string). Arithmetic on integers; division rounds half to even (`lib/money.ts`). Never a float for money. |
 | Dates and time | Transaction and planning dates are `PlainDate` strings `YYYY-MM-DD`, compared as strings. Timestamps are UTC ISO 8601. "Today" comes from `lib/dates.today()`, which honours `PLUTUS_TODAY` so tests can pin it. |
-| Layers | Routes handle HTTP only: parse, call one service function, return the schema. Business logic lives in `services/`. Services never import Hono. `services/aggregates.ts` is the single definition of income, expenses, transfers, money movement, essentiality buckets, and recent active months. |
+| Layers | Routes handle HTTP only: parse, call one service function, return the schema. Business logic lives in `services/`. Services never import Hono. `services/aggregates.ts` is the single definition of income, expenses, transfers, money movement, essentiality buckets, and recent active months. Only posted transactions count: pending rows are in no total, list, or count until a sync posts them; the Transactions list still shows them. |
 | Config | Runtime knobs (LLM provider, model, API key, Ollama URL, owner name tokens, sync interval, first-sync history, scheduler) live in `app_settings`, seeded once from the environment; read them with `runtimeConfig()` / `llmSettings()` in `services/config.ts`, never `process.env`. The headless server applies set environment variables over them at every start; the desktop reads only the table. |
 | Secrets | Through a `SecretStore`: `KeySecretStore` headless and in tests, `SafeStorageSecretStore` in the desktop. Encrypted settings keep `is_encrypted`. |
 | Errors | Domain errors are classes in `lib/errors.ts`, rendered by one handler as RFC 9457 problem details. Validation failures are 422 problem+json with a `detail` naming the failing fields. |
@@ -161,7 +161,7 @@ projected_end = current_total_balance
               + Σ unfulfilled manual entries due before month end
               + (daily_nonrecurring_income − daily_nonrecurring_expense) × remaining_days
 ```
-The daily non-recurring averages cover the trailing 90 days (or less when history is shorter) of non-transfer income and expenses from merchants that are not confirmed recurring. Unconfirmed paychecks and bills are therefore still projected through the averages, and move to their exact amounts and dates once confirmed. Applied per month for the 3-month outlook. Assumptions are returned alongside numbers so the UI can print them.
+The daily non-recurring averages cover the trailing 90 days (or less when history is shorter) of posted, non-transfer income and expenses from merchants that are not confirmed recurring. Unconfirmed paychecks and bills are therefore still projected through the averages, and move to their exact amounts and dates once confirmed. Applied per month for the 3-month outlook. Assumptions are returned alongside numbers so the UI can print them.
 
 ### Savings suggestions
 

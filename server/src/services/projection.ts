@@ -9,7 +9,7 @@
  * (BigInt, as 28 digits exceed a double).
  */
 
-import { eq, gt, isNull, min, or } from 'drizzle-orm'
+import { and, eq, gt, isNull, min, or } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import { type Cadence, manualEntries, recurrences, transactions } from '../db/schema.js'
 import { type PlainDate, addDays, daysBetween, daysInMonth, fromParts, toParts } from '../lib/dates.js'
@@ -131,7 +131,7 @@ export function coveredDays(db: Db, today: PlainDate): number {
   const row = db
     .select({ earliest: min(transactions.posted_on) })
     .from(transactions)
-    .where(eq(transactions.is_transfer, false))
+    .where(and(eq(transactions.pending, false), eq(transactions.is_transfer, false)))
     .get()
   const earliest = row?.earliest ?? null
   if (earliest === null) return TRAILING_DAYS

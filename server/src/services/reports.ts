@@ -316,6 +316,7 @@ export function monthDetail(db: Db, month: MonthKey): MonthDetail {
       .from(transactions)
       .where(
         and(
+          eq(transactions.pending, false),
           eq(transactions.is_transfer, false),
           sql`${transactions.posted_on} >= ${start}`,
           sql`${transactions.posted_on} < ${end}`,
