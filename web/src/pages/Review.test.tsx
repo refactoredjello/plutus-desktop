@@ -18,11 +18,19 @@ describe('Review queue', () => {
     expect(await screen.findByRole('link', { name: `Review ${n}` })).toBeInTheDocument()
   })
 
-  it('lists only review rows, with "Looks right" only where there is a category', async () => {
+  it('lists only review rows, with "Looks right" only where there is a category to confirm', async () => {
     renderAt('/review')
     await screen.findAllByText('Amazon')
     expect(screen.getAllByRole('row').slice(1)).toHaveLength(queue().length)
-    expect(screen.getAllByRole('button', { name: 'Looks right' })).toHaveLength(queue().filter((t) => t.categorization).length)
+    expect(screen.getAllByRole('button', { name: 'Looks right' })).toHaveLength(
+      queue().filter((t) => t.categorization && !t.review_reason).length,
+    )
+  })
+
+  it('shows the reason on a pending charge past the sync reach', async () => {
+    renderAt('/review')
+    const reason = await screen.findByText('Pending for over 44 days')
+    expect(within(reason.closest('tr')!).getByText('Whole Foods')).toBeInTheDocument()
   })
 
   it('accepts the current category and removes the row; the badge drops', async () => {

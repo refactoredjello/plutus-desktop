@@ -39,6 +39,7 @@ function build(): Txn[] {
       note: null,
       one_time: false,
       is_transfer: false,
+      review_reason: null,
       categorization:
         conf === null
           ? null
@@ -47,9 +48,11 @@ function build(): Txn[] {
   }
   out.push({
     id: 500, account_id: 1, posted_on: '2026-09-28', amount: '-500.00', raw_description: 'TRANSFER TO SAVINGS',
-    payee: null, memo: null, pending: false, merchant_key: null, note: null, one_time: false, is_transfer: true,
+    payee: null, memo: null, pending: false, merchant_key: null, note: null, one_time: false, is_transfer: true, review_reason: null,
     categorization: { category_id: byDetailed('TRANSFER_OUT_ACCOUNT_TRANSFER'), essentiality: null, source: 'rule', confidence: 'very_high' },
   })
+  // A pending charge the bank stopped returning: past the sync's reach, so it needs review.
+  out[1]!.review_reason = 'Pending for over 44 days'
   return out
 }
 
@@ -60,7 +63,11 @@ export function resetTransactions() {
 }
 
 export const needsReview = (t: Txn) =>
-  !t.categorization || t.categorization.confidence === 'low' || t.categorization.confidence === 'unknown'
+  !t.categorization || t.categorization.confidence === 'low' || t.categorization.confidence === 'unknown' || t.review_reason !== null
+
+const notFound = () => HttpResponse.json({ title: 'Not Found', status: 404, detail: 'Transaction not found' }, { status: 404 })
+const notPending = (id: number) =>
+  HttpResponse.json({ title: 'Conflict', status: 409, detail: `Transaction ${id} is not pending.` }, { status: 409 })
 
 export const transactionHandlers = [
   http.get('/api/transactions', ({ request }) => {
@@ -120,5 +127,20 @@ export const transactionHandlers = [
       txn.categorization = null
     }
     return HttpResponse.json<Txn>(txn)
+  }),
+  http.post('/api/transactions/:id/mark-posted', ({ params }) => {
+    const txn = transactions.find((t) => t.id === Number(params.id))
+    if (!txn) return notFound()
+    if (!txn.pending) return notPending(txn.id)
+    txn.pending = false
+    txn.review_reason = null
+    return HttpResponse.json<Txn>(txn)
+  }),
+  http.delete('/api/transactions/:id', ({ params }) => {
+    const txn = transactions.find((t) => t.id === Number(params.id))
+    if (!txn) return notFound()
+    if (!txn.pending) return notPending(txn.id)
+    transactions = transactions.filter((t) => t !== txn)
+    return new HttpResponse(null, { status: 204 })
   }),
 ]

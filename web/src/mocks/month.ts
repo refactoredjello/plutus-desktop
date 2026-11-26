@@ -43,6 +43,7 @@ function incomeRows(month: string, income: number): Schemas['TransactionRead'][]
       note: null,
       one_time: false,
       is_transfer: false,
+      review_reason: null,
       categorization: { category_id, essentiality: null, source: 'rule', confidence: 'high' },
     }))
 }
@@ -105,6 +106,7 @@ export function monthDetail(month: string, now = new Date()): Detail {
           note: null,
           one_time: false,
           is_transfer: false,
+          review_reason: null,
           categorization: { category_id, essentiality: 'essential', source: 'rule', confidence: 'high' },
         }))
       : [],
