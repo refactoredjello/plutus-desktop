@@ -122,12 +122,12 @@ change_lines() {
   git -C "$ROOT" log --no-merges --format=%s "$range" | grep -vE '^desktop: version [0-9]' || true
 }
 
-# The SHA a remote tag points at (peeled for an annotated tag), or nothing.
+# The SHA a remote tag points at (peeled for an annotated tag), or nothing (exit 0).
 remote_tag_sha() {
   local out
   out="$(git -C "$ROOT" ls-remote --tags origin "refs/tags/$1" "refs/tags/$1^{}")"
   { echo "$out" | grep -F "refs/tags/$1^{}" || echo "$out" | grep -F "refs/tags/$1"; } |
-    head -1 | cut -f1
+    head -1 | cut -f1 || true
 }
 
 part_arg() {
