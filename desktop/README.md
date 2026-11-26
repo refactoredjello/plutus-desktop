@@ -134,17 +134,24 @@ run `npm run update:app -- <version>`. To use one of Plutus's own pre-update bac
 
 The app version is `version` in `desktop/package.json` (x.y.z). To release:
 
-1. On a clean main, in `desktop/`: `npm run version:bump -- patch` (or `minor`, `major`). It
-   updates `desktop/package.json` and the root `package-lock.json` and commits; it never tags.
-2. Tag that commit `v<version>` and push both: `git tag v0.1.1 && git push origin main v0.1.1`.
-3. `.github/workflows/release.yml` checks that the tag matches the package version
+1. Cut a branch from `origin/main` (`git fetch origin && git switch -c release-0.1.1 origin/main`)
+   and, in `desktop/`, run `npm run version:bump -- patch` (or `minor`, `major`). It updates
+   `desktop/package.json` and the root `package-lock.json` and commits on the branch; it never
+   tags.
+2. Push the branch and open a pull request. The owner merges it into main.
+3. Pull main and tag the merged commit (PRs are squash-merged, so it is not the branch commit),
+   then push only the tag:
+   `git switch main && git pull && git tag v0.1.1 && git push origin v0.1.1`.
+4. `.github/workflows/release.yml` checks that the tag matches the package version
    (`npm run version:check-tag -- v0.1.1`) and is on main, runs `npm run check`, builds the ad
    hoc signed dmg and zip for arm64 and x64, verifies both signatures, runs `smoke:dist`, and
    publishes a GitHub Release with the four files and generated notes. Release files are kept
    until deleted (CI artifacts expire after 14 days).
+5. Install it with `make update`.
 
-A failed release run leaves the tag without a release: fix it on main, then move the tag
-(delete it locally and on GitHub, tag again, push) or bump again.
+A failed release run leaves the tag without a release: fix it through a pull request, then move
+the tag to the merged commit (delete it locally and on GitHub, tag again, push only the tag) or
+bump again.
 
 ## How it is put together
 
