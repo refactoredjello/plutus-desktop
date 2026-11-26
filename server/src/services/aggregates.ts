@@ -4,6 +4,8 @@
  * Orchestrator-owned: reports, projection, and goals all build on these definitions.
  *
  * Definitions, applied everywhere:
+ * - Only posted transactions count: pending rows (pending = true) are in no total, list, or
+ *   count until a sync posts them. The Transactions list still shows them.
  * - Transfers between owned accounts (is_transfer) are excluded entirely.
  * - Money movement is excluded too, even when the other side is not paired: credit card
  *   payments (spending is counted when the purchase posts on the card), account, savings,
@@ -129,6 +131,7 @@ function expenseAmount(): SQL {
 /** _base: the WHERE every aggregate shares, over transactions outer-joined to categories. */
 function baseConditions(start: PlainDate, endExclusive: PlainDate): SQL[] {
   return [
+    eq(transactions.pending, false),
     eq(transactions.is_transfer, false),
     or(isNull(categories.detailed), notInArray(categories.detailed, [...MONEY_MOVEMENT])) as SQL,
     sql`${transactions.posted_on} >= ${start}`,
