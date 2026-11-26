@@ -58,7 +58,7 @@ describe('Overview', () => {
     )
     renderAt('/')
     await waitFor(() => expect(screen.getAllByText(/No data yet\. Run/).length).toBe(4))
-    expect(screen.getAllByRole('link', { name: 'Settings → Sync now' })[0]).toHaveAttribute('href', '/settings')
+    expect(screen.getAllByText(/Sync in the header/).length).toBe(4)
   })
 
   it('an error in one card does not break the others', async () => {
