@@ -37,6 +37,12 @@ export function FilterBar({
     return () => clearTimeout(timer)
   }, [draft, onChange])
 
+  // Dropping the draft also cancels its pending timer, so typed text is not re-applied.
+  const clear = () => {
+    setDraft(null)
+    onChange({ ...emptyFilters, page: 1 })
+  }
+
   const accountItems = {
     [ALL]: 'All accounts',
     ...Object.fromEntries((accounts.data ?? []).map((a) => [String(a.id), a.name])),
@@ -99,6 +105,11 @@ export function FilterBar({
           label="Essentiality filter"
           allLabel="Any essentiality"
         />
+        {(hasActiveFilters(filters) || Boolean(draft)) && (
+          <Button variant="outline" onClick={clear}>
+            Clear filters
+          </Button>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <label className="flex items-center gap-2">
@@ -117,17 +128,6 @@ export function FilterBar({
           />
           Include transfers
         </label>
-        {hasActiveFilters(filters) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              onChange({ ...emptyFilters, page: 1 })
-            }
-          >
-            Clear filters
-          </Button>
-        )}
       </div>
     </div>
   )
