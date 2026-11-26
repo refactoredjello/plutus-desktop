@@ -59,6 +59,7 @@ describe('loadConfig from the environment', () => {
       SYNC_INTERVAL_HOURS: '12',
       SYNC_FIRST_HISTORY_DAYS: '90',
       SCHEDULER_ENABLED: 'false',
+      PLUTUS_ALLOWED_HOSTS: 'plutus.example.com',
     })
     expect(config).toEqual({
       environment: 'production',
@@ -69,6 +70,7 @@ describe('loadConfig from the environment', () => {
       webDist: '/srv/web',
       apiGuard: true,
       host: '0.0.0.0',
+      allowedHosts: ['plutus.example.com'],
       port: 9001,
       logLevel: 'debug',
       defaults: {

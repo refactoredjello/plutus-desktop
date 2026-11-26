@@ -89,7 +89,7 @@ npm run build --workspace web && npm run build --workspace server
 node --env-file=.env server/dist/main.js
 ```
 
-Open http://127.0.0.1:8000. The database is `~/.plutus/plutus.sqlite` unless `PLUTUS_DATA_DIR` or `PLUTUS_DB_PATH` says otherwise; `.env.example` lists every variable. `PLUTUS_SECRET_KEY` encrypts the SimpleFIN link and the API key: changing it later means reconnecting your bank. `make dev-server` runs the server from source with reload.
+Open http://127.0.0.1:8000. The database is `~/.plutus/plutus.sqlite` unless `PLUTUS_DATA_DIR` or `PLUTUS_DB_PATH` says otherwise; `.env.example` lists every variable. `PLUTUS_SECRET_KEY` encrypts the SimpleFIN link and the API key: changing it later means reconnecting your bank. There is no login: keep `HOST=127.0.0.1` and set `PLUTUS_API_GUARD=true`. The server answers only requests addressed to `127.0.0.1` or `localhost`; add other names to `PLUTUS_ALLOWED_HOSTS`. `make dev-server` runs the server from source with reload.
 
 ## First run
 

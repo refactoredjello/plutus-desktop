@@ -128,6 +128,35 @@ function sameToken(a: string | undefined, b: string): boolean {
   return x.length === y.length && timingSafeEqual(x, y)
 }
 
+const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+const WILDCARD_HOSTS = new Set(['', '0.0.0.0', '::', '[::]'])
+
+/** The names the Host header may carry: loopback, HOST when it names this machine, and
+ * PLUTUS_ALLOWED_HOSTS. Ports are not compared. */
+function allowedHosts(config: Config): Set<string> {
+  const hosts = new Set([...LOOPBACK_HOSTS, ...config.allowedHosts])
+  const host = config.host.toLowerCase()
+  if (!WILDCARD_HOSTS.has(host)) hosts.add(host.includes(':') && !host.startsWith('[') ? `[${host}]` : host)
+  return hosts
+}
+
+/** Refuses a request whose Host header names another site, so a page that rebinds its own
+ * domain to this address (DNS rebinding) can't read the API or get the guard cookie. */
+function hostCheck(allowed: Set<string>): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    if (!allowed.has(new URL(c.req.url).hostname.toLowerCase())) {
+      return problem(c, {
+        type: 'about:blank',
+        title: 'Forbidden',
+        status: 403,
+        detail: 'Unknown Host header; open the app at 127.0.0.1 or localhost, or add the name to PLUTUS_ALLOWED_HOSTS.',
+        instance: c.req.path,
+      })
+    }
+    await next()
+  }
+}
+
 /** Every /api request must carry the cookie set on the HTML response. */
 function apiGuard(token: string): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
@@ -241,6 +270,7 @@ export function createApp(deps: AppDeps): App {
     await next()
   })
   app.use('*', requestId())
+  app.use('*', hostCheck(allowedHosts(config)))
   if (guardToken !== null) app.use('*', apiGuard(guardToken))
   app.use('*', requiredBody(app))
 

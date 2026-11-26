@@ -40,6 +40,8 @@ export interface Config {
   /** The per-launch cookie guard on /api; off by default for the headless server. */
   apiGuard: boolean
   host: string
+  /** PLUTUS_ALLOWED_HOSTS: extra names the Host header may carry, lower case (app.ts hostCheck). */
+  allowedHosts: string[]
   port: number
   logLevel: string
   defaults: RuntimeDefaults
@@ -104,6 +106,14 @@ function parseStringList(name: string, value: string): string[] {
   return parsed
 }
 
+/** A comma-separated list of host names, trimmed and lower-cased. */
+function parseHostList(_name: string, value: string): string[] {
+  return value
+    .split(',')
+    .map((host) => host.trim().toLowerCase())
+    .filter((host) => host !== '')
+}
+
 export function loadConfig(env: Env = process.env): Config {
   const get = reader(env)
   const opt = <T>(name: string, parse: (name: string, value: string) => T, fallback: T): T => {
@@ -131,6 +141,7 @@ export function loadConfig(env: Env = process.env): Config {
     webDist: opt('PLUTUS_WEB_DIST', str, DEFAULT_WEB_DIST),
     apiGuard: opt('PLUTUS_API_GUARD', parseBool, false),
     host: opt('HOST', str, '127.0.0.1'),
+    allowedHosts: opt('PLUTUS_ALLOWED_HOSTS', parseHostList, []),
     port: opt('PORT', (n, v) => parseInt10(n, v, 0), 8000),
     logLevel: opt('LOG_LEVEL', str, 'info'),
     defaults: {

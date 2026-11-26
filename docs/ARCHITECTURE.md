@@ -233,7 +233,7 @@ Design rules: one primary action per page, muted palette with a single accent, n
 
 ## Configuration
 
-The desktop app reads its settings from the `app_settings` table only; the Settings page changes them. The headless server reads its process settings from the environment (`.env.example` lists them: `PLUTUS_SECRET_KEY`, `PLUTUS_DATA_DIR` / `PLUTUS_DB_PATH`, `PLUTUS_WEB_DIST`, `HOST`, `PORT`, `PLUTUS_API_GUARD`, `LOG_LEVEL`) and lets the runtime knobs (`LLM_PROVIDER`, `LLM_MODEL`, `ANTHROPIC_API_KEY`, `OLLAMA_BASE_URL`, `OWNER_NAME_TOKENS`, `SYNC_INTERVAL_HOURS`, `SYNC_FIRST_HISTORY_DAYS`, `SCHEDULER_ENABLED`) seed or override the table. `.env.example` is committed; `.env` is ignored.
+The desktop app reads its settings from the `app_settings` table only; the Settings page changes them. The headless server reads its process settings from the environment (`.env.example` lists them: `PLUTUS_SECRET_KEY`, `PLUTUS_DATA_DIR` / `PLUTUS_DB_PATH`, `PLUTUS_WEB_DIST`, `HOST`, `PORT`, `PLUTUS_ALLOWED_HOSTS`, `PLUTUS_API_GUARD`, `LOG_LEVEL`) and lets the runtime knobs (`LLM_PROVIDER`, `LLM_MODEL`, `ANTHROPIC_API_KEY`, `OLLAMA_BASE_URL`, `OWNER_NAME_TOKENS`, `SYNC_INTERVAL_HOURS`, `SYNC_FIRST_HISTORY_DAYS`, `SCHEDULER_ENABLED`) seed or override the table. `.env.example` is committed; `.env` is ignored.
 
 ## Security and privacy
 
@@ -241,6 +241,7 @@ The desktop app reads its settings from the `app_settings` table only; the Setti
 - LLM payloads are built exclusively by `services/scrub.ts` and `services/suggestions.ts`; both have tests asserting no PII patterns.
 - Outbound network is limited to SimpleFIN and the LLM endpoint.
 - The desktop listens on loopback only, behind the per-launch cookie guard; links outside the app's origin open in the system browser.
+- Every request must name this server in its `Host` header: `127.0.0.1`, `localhost`, `[::1]`, `HOST` when it is a name, or one of `PLUTUS_ALLOWED_HOSTS` (any port). Anything else gets a 403 before the guard runs, so a web page that rebinds its own domain to 127.0.0.1 (DNS rebinding) can neither read the API nor get the guard cookie.
 - No secrets in logs.
 
 ## Testing
