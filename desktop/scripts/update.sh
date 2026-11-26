@@ -12,9 +12,12 @@
 # Options for testing: --target <dir> instead of /Applications, --data-dir <dir> instead of
 # ~/Library/Application Support/Plutus. Environment: PLUTUS_UPDATE_ZIP=<zip> installs that zip
 # instead of downloading; PLUTUS_PROCESS_NAME overrides the process name checked (Plutus);
-# GH_REPO=<owner/repo> picks the repository when gh can't tell from this checkout.
+# GH_REPO=<owner/repo> picks the repository when gh can't tell from this checkout;
+# PLUTUS_SIGN_IDENTITY=<certificate name> re-signs the app with that code-signing identity
+# (desktop/README.md, "Signing and notarization"), so the Keychain keeps trusting it.
 #
-# Order of work, so nothing is replaced without a copy first: check Plutus is not running,
+# Order of work, so nothing is replaced without a copy first: check Plutus is not running and
+# nothing holds plutus.sqlite or its -wal file open,
 # download and verify the new app, copy the data (plutus.sqlite, -wal, -shm) to
 # backups/manual-<time>/ (its newest five copies are kept), zip the installed app to
 # previous-app/Plutus-<version>.zip (the two most recently saved are kept), then swap the app in
@@ -25,6 +28,7 @@ set -euo pipefail
 TARGET=/Applications
 DATA_DIR="$HOME/Library/Application Support/Plutus"
 PROCESS_NAME="${PLUTUS_PROCESS_NAME:-Plutus}"
+SIGN_IDENTITY="${PLUTUS_SIGN_IDENTITY:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DATA_FILES="plutus.sqlite plutus.sqlite-wal plutus.sqlite-shm"
 KEEP_APPS=2   # previous-app zips, by when they were saved
@@ -36,7 +40,7 @@ restore_data=0
 want=""
 
 usage() {
-  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 die() {
@@ -145,6 +149,26 @@ require_quit() {
   if pgrep -x "$PROCESS_NAME" >/dev/null 2>&1; then
     die "Plutus is running. Quit Plutus (Cmd-Q, or Plutus > Quit Plutus), then run this again."
   fi
+  # Any other process with the database open (a second copy of Plutus, sqlite3, a demo load)
+  # could write to it while it is copied, restored, or opened by the new app.
+  [ -f "$DATA_DIR/plutus.sqlite" ] || return 0
+  command -v lsof >/dev/null 2>&1 || return 0
+  local f holders="" pid="" line
+  for f in plutus.sqlite plutus.sqlite-wal; do
+    [ -e "$DATA_DIR/$f" ] || continue
+    # lsof -F pc prints "p<pid>" then "c<command>" for each process holding the file.
+    while read -r line; do
+      case "$line" in
+        p*) pid="${line#p}" ;;
+        c*) holders="$holders
+  $f is open in ${line#c} (pid $pid)" ;;
+      esac
+    done < <(lsof -F pc "$DATA_DIR/$f" 2>/dev/null || true)
+  done
+  if [ -n "$holders" ]; then
+    die "your data is in use:$holders
+Close it (quit that program), then run this again. Nothing was changed."
+  fi
 }
 
 require_target() {
@@ -177,8 +201,10 @@ fetch_zip() {
   echo "$zip"
 }
 
-# Unzips an app zip into the work folder, clears quarantine on it, verifies the signature;
-# prints the app's path. Nothing outside the work folder changes.
+# Unzips an app zip into the work folder, clears quarantine on it, verifies the signature, and
+# with PLUTUS_SIGN_IDENTITY re-signs it with that identity and verifies again; prints the app's
+# path. The download is verified as it came, so re-signing never hides a damaged app. Nothing
+# outside the work folder changes.
 unpack_app() {
   local zip="$1" into
   into="$(mktemp -d "$WORK/app.XXXXXX")"
@@ -187,6 +213,12 @@ unpack_app() {
   xattr -dr com.apple.quarantine "$into/Plutus.app" 2>/dev/null || true
   codesign --verify --deep --strict "$into/Plutus.app" >&2 ||
     die "the signature of Plutus.app in $zip does not verify; nothing was changed"
+  if [ -n "$SIGN_IDENTITY" ]; then
+    codesign --force --deep --sign "$SIGN_IDENTITY" "$into/Plutus.app" >&2 ||
+      die "could not sign Plutus.app with \"$SIGN_IDENTITY\" (is it in your keychain? security find-identity -p codesigning); nothing was changed"
+    codesign --verify --deep --strict "$into/Plutus.app" >&2 ||
+      die "Plutus.app signed with \"$SIGN_IDENTITY\" does not verify; nothing was changed"
+  fi
   echo "$into/Plutus.app"
 }
 
@@ -306,8 +338,13 @@ finish() {
   echo
   echo "Plutus $old -> $new, installed in $TARGET."
   echo
-  echo "Open Plutus. A new build asks once to use \"Plutus Safe Storage\" in your Keychain:"
-  echo "choose Always Allow (Deny makes the saved SimpleFIN and API keys unreadable)."
+  if [ -n "$SIGN_IDENTITY" ] && [ "$SIGN_IDENTITY" != - ]; then
+    echo "Signed with \"$SIGN_IDENTITY\". Once the Keychain trusts an app signed with it, opening"
+    echo "Plutus no longer asks to use \"Plutus Safe Storage\"."
+  else
+    echo "Open Plutus. A new build asks once to use \"Plutus Safe Storage\" in your Keychain:"
+    echo "choose Always Allow (Deny makes the saved SimpleFIN and API keys unreadable)."
+  fi
   echo "Data copies:   $BACKUPS"
   echo "Previous apps: $PREV"
   echo "$next"
