@@ -45,7 +45,10 @@ quit-plutus:
 		if pgrep -x Plutus >/dev/null; then echo "Plutus is still running; quit it and try again." >&2; exit 1; fi; \
 	fi
 
-update: quit-plutus ## Quit Plutus, install the latest release (or VERSION=x.y.z) with a data copy and rollback zip, reopen it
+# Looks up the release (--check) before quitting Plutus, so a failed lookup leaves it running.
+update: ## Quit Plutus, install the latest release (or VERSION=x.y.z) with a data copy and rollback zip, reopen it
+	cd desktop && npm run --silent update:app -- --check $(VERSION)
+	@$(MAKE) --no-print-directory quit-plutus
 	cd desktop && npm run update:app -- $(VERSION)
 	open -a /Applications/Plutus.app
 

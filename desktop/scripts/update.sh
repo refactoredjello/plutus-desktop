@@ -8,11 +8,14 @@
 #   update.sh --rollback --restore-data
 #                                 also put back the data copy made before the last update
 #                                 (asks you to type "restore")
+#   update.sh --check [<version>] only look up that release (or the latest) for this Mac and
+#                                 change nothing; make update runs it before quitting Plutus
 #
+# Releases come from GH_REPO=<owner/repo> if set, else from the GitHub repository of this
+# checkout's origin remote (gh's own default repository is not used); every gh call is given it.
 # Options for testing: --target <dir> instead of /Applications, --data-dir <dir> instead of
 # ~/Library/Application Support/Plutus. Environment: PLUTUS_UPDATE_ZIP=<zip> installs that zip
 # instead of downloading; PLUTUS_PROCESS_NAME overrides the process name checked (Plutus);
-# GH_REPO=<owner/repo> picks the repository when gh can't tell from this checkout;
 # PLUTUS_SIGN_IDENTITY=<certificate name> re-signs the app with that code-signing identity
 # (desktop/README.md, "Signing and notarization"), so the Keychain keeps trusting it.
 #
@@ -36,11 +39,13 @@ KEEP_COPIES=5 # this script's data copies in backups/, by the time in their name
 CURRENT_COPY="" # the copy made in this run; never pruned
 
 mode=install
+check=0
 restore_data=0
 want=""
+REPO="" # owner/repo the releases come from (resolve_repo)
 
 usage() {
-  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 die() {
@@ -71,6 +76,7 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --rollback) mode=rollback ;;
+    --check) check=1 ;;
     --restore-data) restore_data=1 ;;
     -h | --help)
       usage
@@ -87,6 +93,9 @@ done
 
 if [ "$restore_data" = 1 ] && [ "$mode" != rollback ]; then
   bad_usage "--restore-data only works with --rollback"
+fi
+if [ "$check" = 1 ] && [ "$mode" != install ]; then
+  bad_usage "--check only works for an install"
 fi
 if [ -n "$want" ]; then
   [ "$mode" = install ] || bad_usage "--rollback takes no version"
@@ -171,6 +180,74 @@ Close it (quit that program), then run this again. Nothing was changed."
   fi
 }
 
+# owner/repo from a GitHub remote URL (https://, git@github.com:, or ssh://git@github.com/).
+repo_from_url() {
+  local path
+  case "$1" in
+    https://github.com/*) path="${1#https://github.com/}" ;;
+    git@github.com:*) path="${1#git@github.com:}" ;;
+    ssh://git@github.com/*) path="${1#ssh://git@github.com/}" ;;
+    *) return 1 ;;
+  esac
+  path="${path%/}"
+  path="${path%.git}"
+  [[ "$path" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 1
+  echo "$path"
+}
+
+# Sets REPO: GH_REPO, else origin's GitHub repository; never gh's per-checkout default, which a
+# checkout with more than one remote may not have. Also checks gh is installed.
+resolve_repo() {
+  if [ -n "${GH_REPO:-}" ]; then
+    REPO="$GH_REPO"
+  else
+    local url=""
+    url="$(git -C "$SCRIPT_DIR" remote get-url origin 2>/dev/null)" || url=""
+    if ! REPO="$(repo_from_url "$url")"; then
+      die "can't tell which GitHub repository to download releases from: ${url:+the origin remote $url is not on GitHub}${url:-this checkout has no origin remote}.
+Run it again with GH_REPO=<owner/repo>. Nothing was changed."
+    fi
+  fi
+  command -v gh >/dev/null 2>&1 ||
+    die "gh (GitHub CLI) is not installed: brew install gh, then gh auth login"
+}
+
+# Dies with gh's own error (in the given file) for a failed gh call about $1.
+gh_failed() {
+  local msg
+  msg="could not $1 from $REPO; gh said:
+$(sed 's/^/  /' "$2")"
+  if grep -qiE 'gh auth login|HTTP 401|bad credentials|not logged in' "$2"; then
+    msg="$msg
+gh is not logged in to GitHub: run gh auth login (gh auth status shows the state)."
+  fi
+  die "$msg
+GH_REPO=<owner/repo> picks the repository. Nothing was changed."
+}
+
+# What to call the release asked for, in messages.
+release_label() {
+  if [ -n "$want" ]; then echo "release v$want"; else echo "the latest release"; fi
+}
+
+# Looks up the release (latest or v$want) and checks it has a zip for this Mac.
+check_release() {
+  local out="$WORK/release.txt" err="$WORK/gh-error.txt" tag name line
+  gh release view ${want:+"v$want"} --repo "$REPO" --json tagName,assets \
+    --jq '.tagName, .assets[].name' >"$out" 2>"$err" ||
+    gh_failed "look up $(release_label)" "$err"
+  tag="$(head -n 1 "$out")"
+  name="Plutus-${want:-[0-9]*.[0-9]*.[0-9]*}-$ARCH.zip"
+  while read -r line; do
+    # shellcheck disable=SC2053 # $name is a glob on purpose
+    if [[ "$line" == $name ]]; then
+      say "Found release $tag for $ARCH in $REPO"
+      return 0
+    fi
+  done < <(tail -n +2 "$out")
+  die "release $tag in $REPO has no Plutus-${want:-*}-$ARCH.zip. Nothing was changed."
+}
+
 require_target() {
   [ -d "$TARGET" ] || die "$TARGET does not exist"
   [ -w "$TARGET" ] || die "can't write to $TARGET"
@@ -183,18 +260,11 @@ fetch_zip() {
     echo "$PLUTUS_UPDATE_ZIP"
     return
   fi
-  command -v gh >/dev/null 2>&1 ||
-    die "gh (GitHub CLI) is not installed: brew install gh, then gh auth login"
-  local dir="$WORK/download"
+  local dir="$WORK/download" err="$WORK/gh-error.txt"
   mkdir -p "$dir"
-  # From the script's folder, so gh finds this checkout's repository (or GH_REPO).
-  if [ -n "$want" ]; then
-    (cd "$SCRIPT_DIR" && gh release download "v$want" --pattern "Plutus-$want-$ARCH.zip" --dir "$dir") >&2 ||
-      die "could not download release v$want (is gh logged in? gh auth status)"
-  else
-    (cd "$SCRIPT_DIR" && gh release download --pattern "Plutus-*-$ARCH.zip" --dir "$dir") >&2 ||
-      die "could not download the latest release (is gh logged in? gh auth status)"
-  fi
+  gh release download ${want:+"v$want"} --repo "$REPO" --pattern "Plutus-${want:-*}-$ARCH.zip" \
+    --dir "$dir" 2>"$err" >&2 ||
+    gh_failed "download $(release_label)" "$err"
   local zip
   zip="$(find "$dir" -maxdepth 1 -name "Plutus-*-$ARCH.zip" | head -n 1)"
   [ -n "$zip" ] || die "the release has no Plutus-*-$ARCH.zip"
@@ -352,6 +422,19 @@ finish() {
 
 # --- main ----------------------------------------------------------------------------------
 
+# Find the repository first: a failure here changes nothing, and --check (run by make update
+# while Plutus is still open) needs only this and the lookup.
+if [ "$mode" = install ] && [ -z "${PLUTUS_UPDATE_ZIP:-}" ]; then resolve_repo; fi
+if [ "$check" = 1 ]; then
+  if [ -n "${PLUTUS_UPDATE_ZIP:-}" ]; then
+    [ -f "$PLUTUS_UPDATE_ZIP" ] || die "PLUTUS_UPDATE_ZIP: no file at $PLUTUS_UPDATE_ZIP"
+    say "Will install $PLUTUS_UPDATE_ZIP"
+  else
+    check_release
+  fi
+  exit 0
+fi
+
 require_quit
 require_target
 
@@ -362,7 +445,7 @@ if [ "$mode" = install ]; then
   if [ -n "${PLUTUS_UPDATE_ZIP:-}" ]; then
     say "Using $PLUTUS_UPDATE_ZIP"
   else
-    say "Downloading the ${want:+v}${want:-latest} release for $ARCH"
+    say "Downloading the ${want:+v}${want:-latest} release for $ARCH from $REPO"
   fi
   zip="$(fetch_zip)"
   new_app="$(unpack_app "$zip")"

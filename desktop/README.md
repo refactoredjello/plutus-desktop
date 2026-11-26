@@ -109,9 +109,12 @@ checks its signature. Before replacing anything, it copies `plutus.sqlite` and i
 made, and nothing else in `backups/`) and zips the installed app to
 `previous-app/Plutus-<version>.zip` (keeping the two most recently saved), both in
 `~/Library/Application Support/Plutus`. Then it installs the app with `ditto`, verifies it, and
-prints the old and new versions. A failed signature check changes nothing. `GH_REPO=owner/repo`
-picks the repository if gh can't tell from the checkout. `bash scripts/update.sh --help` lists
-the testing options (`--target`, `--data-dir`, `PLUTUS_UPDATE_ZIP`).
+prints the old and new versions. A failed signature check changes nothing. Releases come from
+the GitHub repository of the checkout's `origin` remote (not gh's default repository), or from
+`GH_REPO=owner/repo` when set; a failed download prints gh's own error and changes nothing.
+`make update` first runs `--check` (looks up the release for this Mac, changes nothing) and
+quits Plutus only if that succeeds. `bash scripts/update.sh --help` lists the testing options
+(`--target`, `--data-dir`, `PLUTUS_UPDATE_ZIP`).
 
 `PLUTUS_SIGN_IDENTITY="<certificate name>"` re-signs the app with that code-signing identity
 after its download signature is verified, then verifies it again (rollbacks re-sign the saved
