@@ -6,7 +6,7 @@
 import { serve } from '@hono/node-server'
 import { createApp } from './app.js'
 import { loadConfig } from './config.js'
-import { openDb } from './db/index.js'
+import { closeDb, openDb } from './db/index.js'
 import { createLogger } from './lib/log.js'
 import { createScheduler } from './scheduler.js'
 import { KeySecretStore } from './secrets.js'
@@ -35,7 +35,7 @@ function shutdown(signal: string): void {
   log.info({ signal }, 'shutting down')
   scheduler.stop()
   server.close(() => {
-    db.$client.close()
+    closeDb(db)
     process.exit(0)
   })
 }

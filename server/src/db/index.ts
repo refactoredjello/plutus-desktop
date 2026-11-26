@@ -95,6 +95,9 @@ export function openDb(path: string, options: OpenDbOptions = {}): Db {
     // Off while migrating, outside any transaction: SQLite ignores this pragma inside one, and
     // with it on, a table rebuild's DROP TABLE cascades into the child tables.
     client.pragma('foreign_keys = OFF')
+    // Explicitly the modern rename: ALTER TABLE __new_x RENAME TO x rewrites the references in
+    // other tables, views, and triggers instead of leaving them pointing at a dropped name.
+    client.pragma('legacy_alter_table = OFF')
     const bundled = bundledMigrations(migrationsFolder)
     guardSchema(client, bundled, appVersion)
     const next = pendingMigrations(client, bundled)[0]
@@ -131,6 +134,23 @@ export function openDb(path: string, options: OpenDbOptions = {}): Db {
     if (client.open) client.close()
     throw err
   }
+}
+
+/**
+ * Close the database on shutdown: fold the WAL into the main file (TRUNCATE leaves a 0-byte
+ * -wal), let SQLite refresh its planner statistics, then close. Safe on null, on a closed
+ * handle, and on a read-only or in-memory database, where the pragmas may fail.
+ */
+export function closeDb(db: Db | null | undefined): void {
+  const client = db?.$client
+  if (client === undefined || !client.open) return
+  try {
+    client.pragma('wal_checkpoint(TRUNCATE)')
+    client.pragma('optimize')
+  } catch {
+    // Nothing to checkpoint or no right to write: closing is still correct.
+  }
+  client.close()
 }
 
 /** A database file created by this open failed to migrate: it holds no user data, so delete it. */
