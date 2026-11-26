@@ -67,13 +67,19 @@ export interface SimpleFINStatus {
 /** Exchanges a SimpleFIN setup token for the access URL (providers/bank/simplefin.ts). */
 export type ClaimSetupToken = (setupToken: string) => Promise<string>
 
+/**
+ * Connected means an access URL is stored. It is never decrypted here (backlog 13): an
+ * unreadable secret (Keychain denied, key changed) still reports connected, and the sync that
+ * needs it reports the problem.
+ */
 export function simplefinStatus(db: Db, secrets: SecretStore): SimpleFINStatus {
-  const connected = getSetting(db, secrets, SIMPLEFIN_ACCESS_URL)
+  const stored = db.select().from(appSettings).where(eq(appSettings.key, SIMPLEFIN_ACCESS_URL)).get()
+  const connected = stored !== undefined && stored.value !== ''
   const stamp = getSetting(db, secrets, SIMPLEFIN_CONNECTED_AT)
   return {
-    connected: connected !== null,
+    connected,
     // Any ISO stamp, written back as the same instant in the server's format.
-    connected_at: connected !== null && stamp ? new Date(stamp).toISOString() : null,
+    connected_at: connected && stamp ? new Date(stamp).toISOString() : null,
   }
 }
 
