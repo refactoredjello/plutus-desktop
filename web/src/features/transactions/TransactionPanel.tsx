@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { transactionsLink } from './filters'
 import { PendingActions } from './PendingActions'
 import { patchTransaction, useCategories, useUpdateTransaction, type TransactionEdit } from './queries'
+import { RepeatsRow } from './RepeatsRow'
 import type { RuleMatchType } from './RuleMatchSelect'
 import { CategorySelect, EssentialitySelect } from './selects'
 
@@ -104,6 +105,7 @@ export function TransactionPanel({
               label={`Essentiality for ${name}`}
             />
           </div>
+          {!txn.is_transfer && <RepeatsRow txn={txn} name={name} />}
           {txn.pending && <PendingActions txn={txn} onPosted={setTxn} onRemoved={() => onOpenChange(false)} />}
           <Link
             to={transactionsLink(txn)}
