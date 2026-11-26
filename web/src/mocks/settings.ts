@@ -19,12 +19,14 @@ export const settingsState = {
   config: defaultConfig(),
   /** Bodies of every PUT /api/settings/config, so tests can assert exactly what was sent. */
   configUpdates: [] as Schemas['ConfigUpdate'][],
+  theme: 'system' as Schemas['AppearanceRead']['theme'],
 }
 
 export function resetSettings() {
   settingsState.simplefin = disconnected()
   settingsState.config = defaultConfig()
   settingsState.configUpdates = []
+  settingsState.theme = 'system'
 }
 
 /** Mirrors the server's ConfigUpdate checks, answering 422 problem+json like it does. */
@@ -63,6 +65,11 @@ export const settingsHandlers = [
       model: c.llm_model,
       configured: c.llm_provider !== 'claude' || c.anthropic_api_key_set,
     })
+  }),
+  http.get('/api/settings/appearance', () => HttpResponse.json<Schemas['AppearanceRead']>({ theme: settingsState.theme })),
+  http.put('/api/settings/appearance', async ({ request }) => {
+    settingsState.theme = ((await request.json()) as Schemas['AppearanceUpdate']).theme
+    return HttpResponse.json<Schemas['AppearanceRead']>({ theme: settingsState.theme })
   }),
   http.get('/api/settings/config', () => HttpResponse.json<Schemas['ConfigRead']>(settingsState.config)),
   http.put('/api/settings/config', async ({ request }) => {

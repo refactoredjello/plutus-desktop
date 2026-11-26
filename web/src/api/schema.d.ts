@@ -448,6 +448,27 @@ export interface paths {
         patch: operations["update_rule"];
         trace?: never;
     };
+    "/api/settings/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Appearance */
+        get: operations["get_appearance"];
+        /**
+         * Update Appearance
+         * @description Choose the colour theme: follow the system, or always light or dark.
+         */
+        put: operations["update_appearance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/config": {
         parameters: {
             query?: never;
@@ -752,6 +773,22 @@ export interface components {
          * @enum {string}
          */
         AccountType: "checking" | "savings" | "credit" | "loan" | "other";
+        /** AppearanceRead */
+        AppearanceRead: {
+            /**
+             * Theme
+             * @enum {string}
+             */
+            theme: "system" | "light" | "dark";
+        };
+        /** AppearanceUpdate */
+        AppearanceUpdate: {
+            /**
+             * Theme
+             * @enum {string}
+             */
+            theme: "system" | "light" | "dark";
+        };
         /** BalancePoint */
         BalancePoint: {
             /** Balance */
@@ -2254,6 +2291,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuleRead"];
+                };
+            };
+        };
+    };
+    get_appearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceRead"];
+                };
+            };
+        };
+    };
+    update_appearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppearanceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceRead"];
                 };
             };
         };

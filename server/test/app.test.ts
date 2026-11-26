@@ -179,7 +179,7 @@ describe('SPA static handler (web/nginx.conf)', () => {
       })
       for (const path of ['/', '/goals/3']) {
         const res = await app.request(path)
-        expect(await res.text()).toContain('<html lang="en" data-theme="light">')
+        expect(await res.text()).toMatch(/<html data-theme="light" lang="en">/)
         expect(res.headers.get('content-security-policy')).toContain("script-src 'self'")
       }
     } finally {

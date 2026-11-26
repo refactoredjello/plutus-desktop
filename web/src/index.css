@@ -133,11 +133,16 @@
     color-scheme: dark;
     }
   /*
-   * Before the bundle adds .dark (src/app/theme.ts), a dark system already gets a dark canvas:
-   * no white flash on load. Same colour as the dark --background.
+   * Before the bundle adds .dark (src/app/theme.ts), the canvas is already in the right theme:
+   * a chosen dark (data-theme, written by the server), or a dark system unless light was
+   * chosen. No flash on load. Same colour as the dark --background.
    */
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    background-color: oklch(0.145 0 0);
+    }
   @media (prefers-color-scheme: dark) {
-    html {
+    html:not([data-theme="light"]) {
       color-scheme: dark;
       background-color: oklch(0.145 0 0);
       }

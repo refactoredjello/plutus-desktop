@@ -12,6 +12,7 @@ import type { Db } from '../db/index.js'
 import { appSettings } from '../db/schema.js'
 import { utcNow } from '../lib/dates.js'
 import { DomainError } from '../lib/errors.js'
+import { THEMES, type Theme } from '../schemas/settings.js'
 import { SecretDecryptError, type SecretStore } from '../secrets.js'
 
 export const SIMPLEFIN_ACCESS_URL = 'simplefin_access_url'
@@ -100,4 +101,17 @@ export async function connectSimplefin(
 export function disconnectSimplefin(db: Db): void {
   deleteSetting(db, SIMPLEFIN_ACCESS_URL)
   deleteSetting(db, SIMPLEFIN_CONNECTED_AT)
+}
+
+export const THEME = 'theme'
+
+/** The chosen colour theme; 'system' until one is chosen. */
+export function getTheme(db: Db, secrets: SecretStore): Theme {
+  const stored = getSetting(db, secrets, THEME)
+  return (THEMES as readonly string[]).includes(stored ?? '') ? (stored as Theme) : 'system'
+}
+
+export function setTheme(db: Db, secrets: SecretStore, theme: Theme): Theme {
+  setSetting(db, secrets, THEME, theme)
+  return theme
 }
