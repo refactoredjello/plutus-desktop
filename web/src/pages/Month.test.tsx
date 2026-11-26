@@ -114,14 +114,13 @@ describe('Month view', () => {
     expect(link).toHaveAttribute('href', `/transactions?start=${prev}-01&end=${monthEnd(prev)}`)
   })
 
-  it('lists the largest transactions with a link to Transactions', async () => {
+  it('lists the largest transactions, each opening the transaction panel', async () => {
     renderAt(`/month/${prev}`)
-    const row = await screen.findByRole('link', { name: /Landlord LLC/ })
-    expect(row.getAttribute('href')).toContain('q=Landlord+LLC')
+    const row = await screen.findByRole('button', { name: /Landlord LLC/ })
     expect(await within(row).findByText(/Rent/)).toBeInTheDocument()
   })
 
-  it('shows an Income card above spending, one linked row per income transaction', async () => {
+  it('shows an Income card above spending, one row per income transaction', async () => {
     const base = monthDetail(prev).largest[0]!
     serve({
       income_transactions: [
@@ -135,15 +134,13 @@ describe('Month view', () => {
     expect(income).toBeDefined()
     expect(income.compareDocumentPosition(spending) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const card = income.closest('[data-slot="card"]') as HTMLElement
-    const rows = within(card).getAllByRole('link')
+    const rows = within(card).getAllByRole('button')
     expect(rows).toHaveLength(2)
     expect(rows[0]).toHaveTextContent('Acme Corp')
     expect(rows[0]).toHaveTextContent('$4,200.00')
     expect(await within(rows[0]!).findByText(/Salary/)).toBeInTheDocument()
-    expect(rows[0]!.getAttribute('href')).toContain('q=Acme+Corp')
     expect(rows[1]).toHaveTextContent('MOBILE DEPOSIT')
     expect(rows[1]).toHaveTextContent('Uncategorized')
-    expect(rows[1]!.getAttribute('href')).toContain('q=MOBILE+DEPOSIT')
   })
 
   it('hides the Income card when the month has no income transactions', async () => {

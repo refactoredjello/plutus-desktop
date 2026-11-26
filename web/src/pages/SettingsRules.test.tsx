@@ -35,7 +35,7 @@ describe('Settings: rules', () => {
   it('explains where rules come from when there are none', async () => {
     server.use(http.get('/api/rules', () => HttpResponse.json([])))
     renderAt('/settings')
-    expect(await screen.findByText(/choose "Apply to all"/)).toBeInTheDocument()
+    expect(await screen.findByText(/open any transaction and create one in its Rule section/)).toBeInTheDocument()
   })
 
   it('refreshes transactions after deleting a rule', async () => {
@@ -99,6 +99,7 @@ describe('Settings: new rule', () => {
     ])
     await user.click(screen.getByRole('option', { name: 'Merchant starts with' }))
     await user.type(within(dialog).getByRole('textbox', { name: 'Pattern' }), 'uber')
+    expect(await within(dialog).findByText('Matches 0 transactions.')).toBeInTheDocument()
     expect(create).toBeDisabled() // no category yet
     await user.click(within(dialog).getByRole('combobox', { name: 'Category' }))
     await user.click(await screen.findByRole('option', { name: 'Public transit' }))

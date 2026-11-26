@@ -154,17 +154,25 @@ describe('Transactions', () => {
     expect(await screen.findByText('51–100 of 120')).toBeInTheDocument()
   })
 
-  it('edits a category inline and offers to apply it to all from the merchant', async () => {
+  it('edits a category inline and offers to make it a rule', async () => {
     const bodies = recordPatches()
     renderAt('/transactions')
     const row = await firstRow()
     await chooseCategory(row, 'Groceries')
 
-    expect(await within(row).findByText('Apply to all where')).toBeInTheDocument()
-    expect(within(row).getByRole('combobox', { name: 'Match type' })).toHaveTextContent('Merchant is')
-    expect(within(row).getByRole('textbox', { name: 'Pattern' })).toHaveValue('blue-bottle-coffee')
+    expect(await within(row).findByRole('button', { name: 'Make this a rule' })).toBeInTheDocument()
     expect(bodies[0]).toMatchObject({ category_id: 7, save_as_rule: false })
     expect(within(row).getByRole('combobox', { name: /Category for/ })).toHaveTextContent('Groceries')
+  })
+
+  it('dismisses the rule offer', async () => {
+    recordPatches()
+    const user = userEvent.setup()
+    renderAt('/transactions')
+    const row = await firstRow()
+    await chooseCategory(row, 'Groceries')
+    await user.click(await within(row).findByRole('button', { name: 'Dismiss' }))
+    expect(within(row).queryByText('Make this a rule')).not.toBeInTheDocument()
   })
 
   it('filters categories by label or group, and selects with the keyboard', async () => {
@@ -203,52 +211,6 @@ describe('Transactions', () => {
     expect(within(row).getByRole('combobox', { name: /Category for/ })).toHaveFocus()
   })
 
-  it('saves a rule when the prompt is accepted, and the prompt can be dismissed', async () => {
-    const bodies = recordPatches()
-    const user = userEvent.setup()
-    renderAt('/transactions')
-    const row = await firstRow()
-    await chooseCategory(row, 'Groceries')
-    await user.click(await within(row).findByRole('button', { name: 'Apply' }))
-
-    await waitFor(() => expect(bodies).toHaveLength(2))
-    expect(bodies[1]).toMatchObject({
-      category_id: 7,
-      save_as_rule: true,
-      rule_match_type: 'exact',
-      rule_pattern: 'blue-bottle-coffee',
-    })
-    await waitFor(() => expect(within(row).queryByText(/Apply to all/)).not.toBeInTheDocument())
-
-    await chooseCategory(row, 'Rent')
-    await user.click(await within(row).findByRole('button', { name: 'Dismiss' }))
-    expect(within(row).queryByText(/Apply to all/)).not.toBeInTheDocument()
-  })
-
-  it('applies to all with a chosen match type and an edited pattern', async () => {
-    const bodies = recordPatches()
-    const user = userEvent.setup()
-    renderAt('/transactions')
-    const row = await firstRow()
-    await chooseCategory(row, 'Groceries')
-    const pattern = await within(row).findByRole('textbox', { name: 'Pattern' })
-
-    // A contains rule matches the bank description, so it starts from the payee.
-    await user.click(within(row).getByRole('combobox', { name: 'Match type' }))
-    await user.click(await screen.findByRole('option', { name: 'Bank description contains' }))
-    expect(pattern).toHaveValue('Blue Bottle Coffee')
-    await user.click(within(row).getByRole('combobox', { name: 'Match type' }))
-    await user.click(await screen.findByRole('option', { name: 'Merchant starts with' }))
-    expect(pattern).toHaveValue('blue-bottle-coffee')
-
-    await user.clear(pattern)
-    expect(within(row).getByRole('button', { name: 'Apply' })).toBeDisabled()
-    await user.type(pattern, ' blue-bottle ')
-    await user.click(within(row).getByRole('button', { name: 'Apply' }))
-    await waitFor(() => expect(bodies).toHaveLength(2))
-    expect(bodies[1]).toMatchObject({ save_as_rule: true, rule_match_type: 'prefix', rule_pattern: 'blue-bottle' })
-  })
-
   it('edits essentiality inline', async () => {
     const bodies = recordPatches()
     const user = userEvent.setup()
@@ -270,7 +232,7 @@ describe('Transactions', () => {
 
     expect(await within(row).findByRole('alert')).toHaveTextContent('Database unavailable')
     expect(trigger).toHaveTextContent('Coffee')
-    expect(within(row).queryByText(/Apply to all/)).not.toBeInTheDocument()
+    expect(within(row).queryByText('Make this a rule')).not.toBeInTheDocument()
   })
 })
 
