@@ -108,6 +108,12 @@ describe('GET /api/transactions', () => {
     expect(c.confidence).toBe('high')
   })
 
+  it('reads the bank memo', async () => {
+    const { app, db } = makeApp()
+    makeTx(db, makeAccount(db), '-4.25', 'SQ *BLUE BOTTLE 1234', '2026-01-10', { memo: 'Card 1234' })
+    expect(((await list(app)).items[0] as Body).memo).toBe('Card 1234')
+  })
+
   it('filters', async () => {
     const { app, db } = makeApp()
     const a = makeAccount(db)
