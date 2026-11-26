@@ -18,6 +18,7 @@ import {
   merchantClassifications,
   recurrences,
   rules,
+  transactions,
 } from '../src/db/schema.js'
 import { utcNow } from '../src/lib/dates.js'
 import { ClaudeProvider } from '../src/providers/llm/claude.js'
@@ -26,6 +27,7 @@ import { OllamaProvider } from '../src/providers/llm/ollama.js'
 import { KeySecretStore } from '../src/secrets.js'
 import { categorizePending } from '../src/services/categorize.js'
 import { recalculate } from '../src/services/recalculate.js'
+import { merchantKey } from '../src/services/scrub.js'
 import { type Transaction, categoryId, makeAccount, makeTx } from './factories.js'
 import { makeApp, makeDb, testConfig } from './setup.js'
 
@@ -192,6 +194,28 @@ describe('recalculate', () => {
     }
     expect(run().recurring_changes).toBe(1)
     expect(db.select().from(recurrences).all().map((r) => r.merchant_key)).toEqual(['NETFLIX'])
+  })
+
+  it('re-keys a row whose description changed when it posted, so its recurring charge advances', () => {
+    // A monthly charge on the 29th; the October row was keyed while pending, when the bank
+    // described it differently, and kept that key after posting (the stored data of 0.6.0).
+    vi.stubEnv('PLUTUS_TODAY', '2026-11-25')
+    const acct = makeAccount(db)
+    const posted = 'ACME INSURE *AUTO SPRINGFIELD IL'
+    const key = merchantKey(posted)
+    for (const day of ['2026-06-29', '2026-07-29', '2026-08-29', '2026-09-29']) {
+      setCategorization(makeTx(db, acct, '-90.00', posted, day, { merchant_key: key }), 'GENERAL_SERVICES_INSURANCE', 'cache')
+    }
+    run()
+    const october = makeTx(db, acct, '-95.00', posted, '2026-10-29', {
+      merchant_key: merchantKey('ACME INSURE *AUTO SPRINGFIELD USA'),
+    })
+    setCategorization(october, 'GENERAL_SERVICES_INSURANCE', 'cache')
+    run()
+    const stored = db.select().from(transactions).where(eq(transactions.id, october.id)).get()
+    expect(stored?.merchant_key).toBe(key)
+    const charge = db.select().from(recurrences).get()
+    expect([charge?.last_seen_on, charge?.next_expected_date]).toEqual(['2026-10-29', '2026-11-29'])
   })
 
   it('never calls an llm', async () => {
