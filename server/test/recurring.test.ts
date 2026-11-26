@@ -481,3 +481,28 @@ describe('recurring routes', () => {
     expect((await c.post('/api/recurring', { transaction_id: 999999, cadence: 'monthly' })).status).toBe(404)
   })
 })
+
+describe('recurring names', () => {
+  it("names a charge by its latest matching payee on the same account, else its key", async () => {
+    const acct = makeAccount(db)
+    const other = makeAccount(db)
+    const key = 'netflix com'
+    makeTx(db, acct, '-15.49', 'NETFLIX.COM 1', '2026-08-03', { merchant_key: key, payee: 'Netflix Old' })
+    makeTx(db, acct, '-15.49', 'NETFLIX.COM 2', '2026-09-03', { merchant_key: key, payee: 'Netflix' })
+    makeTx(db, acct, '-15.49', 'NETFLIX.COM 3', '2026-10-03', { merchant_key: key, payee: null })
+    makeTx(db, other, '-15.49', 'NETFLIX.COM 4', '2026-10-04', { merchant_key: key, payee: 'Elsewhere' })
+    const values = { amount: money('-15.49'), cadence: 'monthly' as const, next_expected_date: d('2026-11-03'), status: 'confirmed' as const }
+    db.insert(recurrences).values({ merchant_key: key, account_id: acct.id, ...values }).run()
+    db.insert(recurrences).values({ merchant_key: 'gym co', account_id: acct.id, ...values }).run()
+    const body = (await (await client().get('/api/recurring')).json()) as Row[]
+    const names = Object.fromEntries(body.map((r) => [r.merchant_key, r.name]))
+    expect(names).toEqual({ [key]: 'Netflix', 'gym co': 'gym co' })
+  })
+
+  it('names the charge in the mark response', async () => {
+    const acct = makeAccount(db)
+    const tx = makeTx(db, acct, '-9.99', 'SPOTIFY P1234', '2026-10-01', { merchant_key: 'spotify', payee: 'Spotify' })
+    const body = (await (await client().post('/api/recurring', { transaction_id: tx.id, cadence: 'monthly' })).json()) as Row
+    expect(body.name).toBe('Spotify')
+  })
+})
