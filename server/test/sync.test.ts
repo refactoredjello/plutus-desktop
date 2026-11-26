@@ -170,6 +170,26 @@ describe('sync', () => {
     expect([second.added, second.updated]).toEqual([0, 1])
   })
 
+  it('a row whose description changes when it posts takes the new merchant key', async () => {
+    // The bank describes the pending charge differently from the posted one (fake names).
+    const charge = (ext: string, day: string, description: string, pending = false): ProviderTransaction => ({
+      ...tx(ext, { pending, amount: '-90.00', postedOn: day as PlainDate }),
+      description,
+    })
+    const posted = 'ACME INSURE *AUTO SPRINGFIELD IL'
+    const history = ['2026-06-29', '2026-07-29', '2026-08-29', '2026-09-29'].map((d, i) => charge(`H${i}`, d, posted))
+    const provider = new FakeProvider(
+      snap([...history, charge('OCT', '2026-10-29', 'ACME INSURE *AUTO SPRINGFIELD USA', true)]),
+      snap([...history, charge('OCT', '2026-10-29', posted)]),
+    )
+    await run(provider)
+    await run(provider)
+    const keys = new Set(db.select().from(transactions).all().map((t) => t.merchant_key))
+    expect(keys.size).toBe(1)
+    const stored = db.select().from(recurrences).all()
+    expect(stored.map((r) => [r.last_seen_on, r.next_expected_date])).toEqual([['2026-10-29', '2026-11-29']])
+  })
+
   it('pending posts in place and with new id', async () => {
     // Posted today: a stale pending row is only dropped inside the second run's overlap window.
     const today = new Date().toISOString().slice(0, 10) as PlainDate

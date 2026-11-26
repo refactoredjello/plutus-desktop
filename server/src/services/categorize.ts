@@ -15,7 +15,7 @@
  * - Keys sort by code point; JavaScript's default sort compares UTF-16 units.
  */
 
-import { type Column, and, asc, eq, isNull, ne, sql } from 'drizzle-orm'
+import { type Column, and, asc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm'
 import type { RuntimeDefaults } from '../config.js'
 import type { Db } from '../db/index.js'
 import {
@@ -121,6 +121,30 @@ export function compareCodePoints(a: string, b: string): number {
 const pyLen = (text: string): number => Array.from(text).length
 
 /**
+ * Re-key every keyed transaction whose merchant key no longer matches its description, e.g. a
+ * charge keyed while pending that the bank described differently once it posted. Its
+ * categorization stays. Returns the number of transactions re-keyed.
+ */
+export function refreshMerchantKeys(db: Db, secrets: SecretStore, defaults: RuntimeDefaults): number {
+  const { ownerNameTokens } = runtimeConfig(db, secrets, defaults)
+  const keyed = db
+    .select({ id: transactions.id, key: transactions.merchant_key, raw: transactions.raw_description })
+    .from(transactions)
+    .where(isNotNull(transactions.merchant_key))
+    .all()
+  let changed = 0
+  db.transaction(() => {
+    for (const tx of keyed) {
+      const key = merchantKey(tx.raw, ownerNameTokens)
+      if (key === tx.key) continue
+      db.update(transactions).set({ merchant_key: key }).where(eq(transactions.id, tx.id)).run()
+      changed += 1
+    }
+  })
+  return changed
+}
+
+/**
  * Set merchant_key and a categorization on every transaction that lacks one.
  *
  * Order: transfers, owner rules (exact, contains, prefix), cached merchant classifications,
@@ -135,6 +159,7 @@ export async function categorizePending(
   provider: LLMProvider | null = null,
   log: Logger = silentLogger(),
 ): Promise<number> {
+  refreshMerchantKeys(db, secrets, defaults)
   const pass = localPass(db, secrets, defaults)
   if (pass === null) return 0
   const { pipeline, unseen, keyOf, accountTypes } = pass
