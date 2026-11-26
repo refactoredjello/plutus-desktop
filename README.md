@@ -4,6 +4,8 @@ A private personal finance app for one person. Plutus pulls balances and transac
 
 It is a desktop app (Electron) that keeps everything in one SQLite file on your machine. The same server also runs headless, without Electron, serving the web app on a port.
 
+Plutus is a personal project, built for its author's own use and published as is. It is not a hosted service: there is no Plutus account to sign up for and no Plutus server. You bring your own SimpleFIN Bridge subscription and, if you use Claude, your own Anthropic API key. It runs on macOS only.
+
 ## What it does
 
 - **Sync.** Read-only bank access through SimpleFIN, every 6 hours while the app is open or on demand, within SimpleFIN's 24-requests-a-day budget. The access link is encrypted at rest.
@@ -21,12 +23,34 @@ Nothing identifying leaves your machine.
 - **Known limitation:** a PayPal payment to a person (`PAYPAL *NAME`) can't be told apart from a merchant, so that name is not removed.
 - **Fully local option:** choose Ollama as the LLM provider in Settings and nothing goes to any outside service except SimpleFIN.
 
-## Prerequisites
+## Install
+
+You need:
+
+- A Mac: Apple Silicon or Intel
+- A [SimpleFIN Bridge](https://bridge.simplefin.org) account ($15 a year) for read-only bank access
+- An [Anthropic API key](https://console.anthropic.com) for categorization, or [Ollama](https://ollama.com) to keep everything local
+
+[First run](#first-run) says how to get the SimpleFIN token and the key.
+
+1. From the [Releases page](https://github.com/refactoredjello/plutus-desktop/releases), download `Plutus-<version>-arm64.dmg` for Apple Silicon or `Plutus-<version>-x64.dmg` for Intel.
+2. Open the dmg and drag Plutus to Applications.
+3. Open Plutus. The app is not notarized by Apple, so macOS blocks the first open. Either open System Settings > Privacy & Security and click **Open Anyway** next to the message about Plutus, or run this once in Terminal:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Plutus.app
+   ```
+
+4. macOS asks to let Plutus use "Plutus Safe Storage" in your Keychain, where Plutus keeps the key that encrypts your SimpleFIN link and API key. Choose **Always Allow**.
+
+Plutus opens on Settings. Your data lives in `~/Library/Application Support/Plutus/`.
+
+**To update** a downloaded app: quit Plutus, download the newer dmg (or the `.zip`, which unzips to `Plutus.app`), and replace `/Applications/Plutus.app` with it. Your data stays where it is. Copy `plutus.sqlite` (and `plutus.sqlite-wal` and `plutus.sqlite-shm`, if present) out of the data folder first if you want a way back. The new version asks for the Keychain once more: choose **Always Allow** again. If you choose Deny, Plutus can't read the saved SimpleFIN link and API key, and you have to enter them again in Settings. Your financial data is not affected. From a checkout of this repository, `make update` does all of this for you (see [Updating](#updating)).
+
+## Building from source
 
 - [Node](https://nodejs.org) 24 or later, and GNU Make for the shortcuts below
 - macOS for the desktop app (the headless server runs wherever Node does)
-- A [SimpleFIN Bridge](https://bridge.simplefin.org) account ($15 a year) for read-only bank access
-- An [Anthropic API key](https://console.anthropic.com) for categorization, or [Ollama](https://ollama.com) to keep everything local
 
 In a checkout of this repository, install every package from the root lockfile:
 
@@ -46,7 +70,7 @@ This builds the web app, the server, and the Electron shell and packages the app
 
 ### Updating
 
-Releases are on the repository's GitHub Releases page (tag `v<version>`, a dmg and a zip for each architecture). With the GitHub CLI logged in (`gh auth login`), run from the repository root:
+Releases are on the repository's GitHub Releases page (tag `v<version>`, a dmg and a zip for each architecture). Without a checkout, update by hand as described under [Install](#install). From a checkout, with the GitHub CLI logged in (`gh auth login`), run this from the repository root:
 
 ```bash
 make update                  # quits Plutus, installs the latest release, reopens it; or: make update VERSION=0.2.0
@@ -69,10 +93,17 @@ Open http://127.0.0.1:8000. The database is `~/.plutus/plutus.sqlite` unless `PL
 
 ## First run
 
-1. Open Settings. Choose the LLM provider (Claude with your API key, or Ollama), and set the **owner name tokens**: the pieces of your name your bank prints, for example `JANE` and `DOE`, so they're scrubbed before categorization. Do this before the first sync, which caches categories from whichever provider is set.
-2. In SimpleFIN Bridge, connect your banks and create a setup token. In Settings, paste the token and click Connect.
+1. Open Settings. Choose the LLM provider (see below), and set the **owner name tokens**: the pieces of your name your bank prints, for example `JANE` and `DOE`, so they're scrubbed before categorization. Do this before the first sync, which caches categories from whichever provider is set.
+2. Get a SimpleFIN setup token (see below). In Settings, paste the token and click Connect.
 3. Click Sync now. The first sync fetches up to 180 days of history and takes a minute or two.
 4. Work through the Review page to confirm or fix categories, and confirm detected items on the Recurring page.
+
+**SimpleFIN setup token.** Create an account at [bridge.simplefin.org](https://bridge.simplefin.org), connect your banks there, then create a setup token for a new app. A setup token works only once: Plutus exchanges it for an access link, stores that link encrypted, and the token stops working. To reconnect later, create a new token. SimpleFIN Bridge is a third-party service, so it sees your bank data. Plutus only reads from it.
+
+**LLM provider.** Plutus sends the LLM only the scrubbed data described under [Privacy](#privacy). Choose one of these:
+
+- **Claude:** create an API key in the [Anthropic Console](https://console.anthropic.com) under API keys. API usage is billed to your Anthropic account, separately from any Claude.ai subscription. In Settings, choose Claude and paste the key. The model defaults to `claude-opus-5-5`, and the Model field takes any Claude model ID.
+- **Ollama (fully local):** install [Ollama](https://ollama.com) and download a model with `ollama pull <model>`. In Settings, choose Ollama, set Model to that model's name, and leave the Ollama URL at `http://localhost:11434` unless you changed it.
 
 Syncs then run every 6 hours while the app runs. SimpleFIN allows 24 requests a day; Settings shows how many are used, and Plutus refuses a sync that would exceed the budget.
 
