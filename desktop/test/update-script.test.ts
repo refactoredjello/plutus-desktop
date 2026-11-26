@@ -175,6 +175,107 @@ describe.skipIf(process.platform !== 'darwin')('scripts/update.sh', () => {
     expect(previousApps()).toEqual([])
   })
 
+  /** Starts `tail -f` on files in the data folder and waits until lsof sees it holding them. */
+  function holdOpen(...names: string[]) {
+    const files = names.map((n) => join(data, n))
+    running = spawn('tail', ['-f', ...files], { stdio: 'ignore' })
+    const pid = String(running.pid)
+    const holds = () =>
+      spawnSync('lsof', ['-t', ...files], { encoding: 'utf8' }).stdout.split('\n').includes(pid)
+    for (let i = 0; i < 50 && !holds(); i++) spawnSync('sleep', ['0.1'])
+    expect(holds()).toBe(true)
+  }
+
+  it('refuses while another process holds the database open, before changing anything', () => {
+    holdOpen('plutus.sqlite')
+    const r = run([], { env: { PLUTUS_UPDATE_ZIP: makeZip('0.2.0') } })
+
+    expect(r.status).not.toBe(0)
+    expect(r.out).toMatch(/plutus\.sqlite is open in tail \(pid \d+\)/)
+    expect(r.out).toMatch(/close it/i)
+    expect(installedVersion()).toBe('0.1.0')
+    expect(backups('manual-')).toEqual([])
+    expect(previousApps()).toEqual([])
+    expect(readdirSync(target)).toEqual(['Plutus.app'])
+  })
+
+  it('refuses a rollback or a data restore while the -wal file is open', () => {
+    expect(run([], { env: { PLUTUS_UPDATE_ZIP: makeZip('0.2.0') } }).status).toBe(0)
+    writeData('v2')
+    holdOpen('plutus.sqlite-wal')
+
+    for (const args of [['--rollback'], ['--rollback', '--restore-data']]) {
+      const r = run(args, { input: 'restore\n' })
+      expect(r.status).not.toBe(0)
+      expect(r.out).toMatch(/is open in tail/)
+      expect(r.out).not.toMatch(/Type restore/)
+    }
+    expect(installedVersion()).toBe('0.2.0')
+    expect(readFileSync(join(data, 'plutus.sqlite'), 'utf8')).toBe('v2 db')
+    expect(backups('before-')).toEqual([])
+    expect(previousApps()).toEqual(['Plutus-0.1.0.zip'])
+  })
+
+  /** A codesign stub that logs its arguments; it signs for real only with the ad hoc identity. */
+  function stubCodesign() {
+    const log = join(root, 'codesign.log')
+    writeFileSync(
+      join(bin, 'codesign'),
+      `#!/bin/bash
+echo "$@" >> "${log}"
+for a in "$@"; do
+  if [ "$prev" = --sign ] && [ "$a" != - ]; then exit 0; fi
+  prev="$a"
+done
+exec /usr/bin/codesign "$@"
+`,
+    )
+    chmodSync(join(bin, 'codesign'), 0o755)
+    return () => (existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [])
+  }
+
+  it('re-signs the unpacked app with PLUTUS_SIGN_IDENTITY, after verifying the download', () => {
+    const calls = stubCodesign()
+    const r = run([], { env: { PLUTUS_UPDATE_ZIP: makeZip('0.2.0'), PLUTUS_SIGN_IDENTITY: '-' } })
+
+    expect(r.status, r.out).toBe(0)
+    expect(installedVersion()).toBe('0.2.0')
+    sh('codesign', ['--verify', '--deep', '--strict', join(target, 'Plutus.app')])
+    const log = calls()
+    const signed = log.findIndex((c) => /^--force --deep --sign - .*\/Plutus\.app$/.test(c))
+    expect(signed, log.join('\n')).toBeGreaterThan(0)
+    expect(log[signed - 1]).toMatch(/^--verify --deep --strict /)
+    expect(log[signed + 1]).toMatch(/^--verify --deep --strict /)
+    // The ad hoc identity is still a new identity per build: the Keychain advice stays.
+    expect(r.out).toMatch(/Always Allow/)
+  })
+
+  it('still refuses a tampered download when PLUTUS_SIGN_IDENTITY is set', () => {
+    const r = run([], { env: { PLUTUS_UPDATE_ZIP: makeZip('0.2.0', { tamper: true }), PLUTUS_SIGN_IDENTITY: '-' } })
+
+    expect(r.status).not.toBe(0)
+    expect(r.out).toMatch(/signature/i)
+    expect(installedVersion()).toBe('0.1.0')
+  })
+
+  it('says which identity signed the app instead of the Keychain advice', () => {
+    const calls = stubCodesign()
+    const env = { PLUTUS_SIGN_IDENTITY: 'Plutus Local Signing' }
+    const r = run([], { env: { ...env, PLUTUS_UPDATE_ZIP: makeZip('0.2.0') } })
+
+    expect(r.status, r.out).toBe(0)
+    expect(calls()).toContainEqual(expect.stringMatching(/^--force --deep --sign Plutus Local Signing .*Plutus\.app$/))
+    expect(r.out).toContain('Signed with "Plutus Local Signing"')
+    expect(r.out).not.toMatch(/Always Allow/)
+
+    // A rollback re-signs the saved app it reinstalls, too.
+    const back = run(['--rollback'], { env })
+    expect(back.status, back.out).toBe(0)
+    expect(installedVersion()).toBe('0.1.0')
+    expect(calls().filter((c) => c.startsWith('--force --deep --sign Plutus Local Signing'))).toHaveLength(2)
+    expect(back.out).toContain('Signed with "Plutus Local Signing"')
+  })
+
   it('refuses a download whose signature does not verify, leaving the installed app', () => {
     const zip = makeZip('0.2.0', { tamper: true })
     const r = run([], { env: { PLUTUS_UPDATE_ZIP: zip } })
