@@ -10,7 +10,7 @@
  *   Services downstream (recurring detection) read lib/dates.today() themselves.
  */
 
-import { and, desc, eq, gte, lt, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, lt, min, sql } from 'drizzle-orm'
 import type { RuntimeDefaults } from '../config.js'
 import type { Db } from '../db/index.js'
 import { type SyncTrigger, accounts, balanceSnapshots, syncRuns, transactions } from '../db/schema.js'
@@ -24,6 +24,7 @@ import { SIMPLEFIN_ACCESS_URL, getSetting } from './app_settings.js'
 import { categorizePending } from './categorize.js'
 import { pruneDismissals } from './changes.js'
 import { runtimeConfig } from './config.js'
+import { dropBeyondReach, dropPending, pendingReachStart } from './pending.js'
 import { detectRecurring } from './recurring.js'
 import { matchTransfers } from './transfers.js'
 
@@ -158,7 +159,13 @@ export function startRun(
   })
 }
 
+/**
+ * The dates a run requests. After a first history load it starts OVERLAP_DAYS before the last
+ * successful run, or earlier at the oldest pending row so that row is checked again, but
+ * never before pendingReachStart: the reach for a pending row never costs an extra request.
+ */
 function window(db: Db, now: Date, firstHistoryDays: number): [PlainDate, PlainDate] {
+  const end = utcDate(now.getTime())
   const last = db
     .select({ started_at: syncRuns.started_at })
     .from(syncRuns)
@@ -166,9 +173,14 @@ function window(db: Db, now: Date, firstHistoryDays: number): [PlainDate, PlainD
     .orderBy(desc(syncRuns.started_at))
     .limit(1)
     .get()?.started_at
-  const start =
-    last !== undefined ? Date.parse(last) - OVERLAP_DAYS * DAY_MS : now.getTime() - firstHistoryDays * DAY_MS
-  return [utcDate(start), utcDate(now.getTime())]
+  if (last === undefined) return [utcDate(now.getTime() - firstHistoryDays * DAY_MS), end]
+  const start = utcDate(Date.parse(last) - OVERLAP_DAYS * DAY_MS)
+  const oldestPending = db
+    .select({ on: min(transactions.posted_on) })
+    .from(transactions)
+    .where(and(eq(transactions.pending, true), gte(transactions.posted_on, pendingReachStart(end))))
+    .get()?.on
+  return [oldestPending != null && oldestPending < start ? (oldestPending as PlainDate) : start, end]
 }
 
 function upsertAccount(db: Db, providerName: string, pa: ProviderAccount): Account {
@@ -221,13 +233,14 @@ function changes(tx: Transaction | undefined, pt: ProviderTransaction): Partial<
 
 /**
  * Insert new rows and update changed ones; returns [added, updated]. `fresh` collects the ids
- * of new and newly posted rows, the only rows transfer matching may pair.
+ * of new and newly posted rows, the only rows transfer matching may pair; `inserted` the new ones.
  */
 function upsertTransactions(
   db: Db,
   account: Account,
   txs: readonly ProviderTransaction[],
   fresh: Set<number>,
+  inserted: Set<number>,
 ): [number, number] {
   if (txs.length === 0) return [0, 0]
   // Read the account's rows and look ids up, rather than `external_id IN (ids)`, to stay clear
@@ -254,6 +267,7 @@ function upsertTransactions(
         .returning({ id: transactions.id })
         .get()
       fresh.add(row.id)
+      inserted.add(row.id)
       added += 1
       continue
     }
@@ -267,19 +281,29 @@ function upsertTransactions(
   return [added, updated]
 }
 
-/** A pending row that was not returned again either posted under a new id or was dropped. */
-function dropStalePending(db: Db, account: Account, start: PlainDate, seen: ReadonlySet<string>): void {
-  // Delete the candidates whose external_id is not in `seen` (all of them when seen is empty);
-  // filtering here rather than with NOT IN avoids SQLite's bound-parameter limit.
-  const stale = db
-    .select({ id: transactions.id, external_id: transactions.external_id })
+/**
+ * A pending row in the window that was not returned again either posted under a new id or was
+ * dropped by the bank. Its edits go to an unambiguous twin among the rows this run inserted.
+ */
+function dropStalePending(
+  db: Db,
+  account: Account,
+  start: PlainDate,
+  seen: ReadonlySet<string>,
+  inserted: ReadonlySet<number>,
+): void {
+  // Filter here rather than with NOT IN, which avoids SQLite's bound-parameter limit.
+  const rows = db
+    .select()
     .from(transactions)
-    .where(
-      and(eq(transactions.account_id, account.id), eq(transactions.pending, true), gte(transactions.posted_on, start)),
-    )
+    .where(and(eq(transactions.account_id, account.id), gte(transactions.posted_on, start)))
     .all()
-    .filter((t) => !seen.has(t.external_id))
-  for (const t of stale) db.delete(transactions).where(eq(transactions.id, t.id)).run()
+  const stale = rows.filter((t) => t.pending && !seen.has(t.external_id))
+  dropPending(
+    db,
+    stale,
+    rows.filter((t) => inserted.has(t.id)),
+  )
 }
 
 function loadRun(db: Db, runId: number): SyncRun | undefined {
@@ -303,20 +327,22 @@ export async function executeRun(
     let added = 0
     let updated = 0
     const fresh = new Set<number>()
+    const inserted = new Set<number>()
     db.transaction(() => {
       for (const pa of snapshot.accounts) {
         const account = upsertAccount(db, provider.name, pa)
         db.insert(balanceSnapshots)
           .values({ account_id: account.id, balance: pa.balance, available: pa.available, as_of: pa.balance_as_of })
           .run()
-        const [a, u] = upsertTransactions(db, account, pa.transactions, fresh)
+        const [a, u] = upsertTransactions(db, account, pa.transactions, fresh, inserted)
         added += a
         updated += u
         if (snapshot.errors.length === 0) {
           // partial data must not delete rows we simply did not see
-          dropStalePending(db, account, start, new Set(pa.transactions.map((t) => t.external_id)))
+          dropStalePending(db, account, start, new Set(pa.transactions.map((t) => t.external_id)), inserted)
         }
       }
+      if (snapshot.errors.length === 0) dropBeyondReach(db, start)
       matchTransfers(db, fresh)
     })
     await categorizePending(db, secrets, defaults, null, log)

@@ -167,6 +167,7 @@ describe('month detail details', () => {
         'note',
         'one_time',
         'is_transfer',
+        'review_reason',
         'categorization',
       ].sort(),
     )

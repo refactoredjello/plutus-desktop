@@ -119,14 +119,14 @@ Both return plain objects. Nothing provider-specific leaks past these boundaries
 ### SimpleFIN sync algorithm
 
 1. Create a `sync_runs` row with status `running`.
-2. Determine window: `start = last_successful_sync_start - 5 days` (or the first-sync history, default 180 days, on the first run), `end = now`. Requests are chunked to 45 days: SimpleFIN documents 90, but the live bridge warns above 45 and may cap there.
+2. Determine window: `start = last_successful_sync_start - 5 days` (or the first-sync history, default 180 days, on the first run), `end = now`. When a pending row is older than that start, the window starts at the oldest pending row instead, but never earlier than 44 days before today (`pendingReachStart` in `services/pending.ts`), so a bank that keeps a charge pending longer than the overlap is still checked again without costing a second request. Requests are chunked to 45 days: SimpleFIN documents 90, but the live bridge warns above 45 and may cap there.
 3. `GET {access_url}/accounts?start-date=…&end-date=…` with Basic Auth from the access URL.
 4. For each account: upsert by `(provider, external_id)`. Insert a `balance_snapshots` row.
-5. For each transaction: upsert by `(account_id, external_id)`. If an existing row was `pending` and is now posted, update in place. Rows absent from a window they previously appeared in are left alone (SimpleFIN does not report removals), except stale pending rows.
+5. For each transaction: upsert by `(account_id, external_id)`. If an existing row was `pending` and is now posted, update in place. Rows absent from a window they previously appeared in are left alone (SimpleFIN does not report removals), except stale pending rows: on a run without provider errors, a pending row in the window that the bank did not return is dropped. If exactly one row this run inserted is its posted twin (same account and amount, dated within 7 days, and no other pending row claims it), the pending row's manual categorization, note, and one-time flag move to the twin first, never over a manual value already there. A pending row older than the window is past the reach: it is dropped only for an unambiguous posted twin among all posted rows, otherwise it stays pending and joins the review queue ("Pending for over 44 days", `review_reason`), where the owner marks it posted (`POST /api/transactions/{id}/mark-posted`) or removes it (`DELETE /api/transactions/{id}`, pending rows only). A row marked posted stays posted unless the bank returns its external id as pending again; then the bank wins.
 6. Run transfer matching on new rows, then categorization on uncategorized rows.
 7. Mark the run `success` or `error` with counts and provider `errlist` messages. Never retry within the same run.
 
-Request budget: one request per 45-day chunk per sync, at most 24 in a rolling day. A default first sync is 4 requests. Steady state is 1 request per sync, 4 scheduled syncs per day.
+Request budget: one request per 45-day chunk per sync, at most 24 in a rolling day. A default first sync is 4 requests. Steady state is 1 request per sync, 4 scheduled syncs per day; reaching back for an old pending row keeps it at 1.
 
 ### Categorization pipeline
 
@@ -203,6 +203,7 @@ GET  /api/settings/simplefin   POST /api/settings/simplefin   DELETE /api/settin
 GET  /api/settings/llm      GET  /api/settings/config    PUT /api/settings/config
 GET  /api/transactions      PATCH /api/transactions/{id}   POST /api/transactions/{id}/unpair
 GET  /api/transactions/{id}/rule   (the rule categorization picks for it, or null, plus defaults for a new one)
+POST /api/transactions/{id}/mark-posted   DELETE /api/transactions/{id}   (pending rows only; 409 otherwise)
 GET  /api/categories        POST /api/categories         PATCH /api/categories/{id}
 GET  /api/rules             POST /api/rules              PATCH /api/rules/{id}       DELETE /api/rules/{id}
 POST /api/rules/preview     (how many transactions a rule would match, and how many of them are manual; saves nothing)
@@ -225,7 +226,7 @@ Pages, in navigation order:
 1. **Overview** — "What changed", current-month summary, income vs expenses (12 mo), balances over time, projection chart.
 2. **Month** — one month against the three complete months before it; its Income and Largest rows open the transaction panel.
 3. **Transactions** — table with filters and inline category/essentiality editing; a row click opens the transaction panel, and after a category change the row offers "Make this a rule".
-4. **Review** — uncategorized and low-confidence transactions to confirm or fix.
+4. **Review** — uncategorized and low-confidence transactions to confirm or fix, and pending charges past the sync's reach.
 5. **Recurring** — detected and confirmed recurrences with annual cost.
 6. **Goals** — goal card with on-track indicator, suggestions list, Suggest button.
 7. **Planned** — manual expected income and expenses: simple form and list.

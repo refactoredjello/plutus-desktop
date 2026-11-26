@@ -16,7 +16,7 @@ import type { RuntimeDefaults } from '../config.js'
 import type { Db } from '../db/index.js'
 import { type Essentiality, type EssentialityFilter, categories, categorizations, transactions } from '../db/schema.js'
 import { type PlainDate, utcNow } from '../lib/dates.js'
-import { DomainError, NotFoundError } from '../lib/errors.js'
+import { ConflictError, DomainError, NotFoundError } from '../lib/errors.js'
 import { formatMoney } from '../lib/money.js'
 import type { TransactionRead, TransactionRuleRead, TransactionUpdate } from '../schemas/transactions.js'
 import type { SecretStore } from '../secrets.js'
@@ -24,7 +24,10 @@ import { essentialityCondition } from './aggregates.js'
 import { pyStrip, saveRule } from './categories.js'
 import { containsPattern, ensurePgLower, icontains, matchingRule } from './categorize.js'
 import { runtimeConfig } from './config.js'
+import { reviewReason, stalePendingCondition } from './pending.js'
+import { detectRecurring } from './recurring.js'
 import { merchantKey as scrubMerchantKey } from './scrub.js'
+import { matchTransfers } from './transfers.js'
 
 type Tx = typeof transactions.$inferSelect
 type Categorization = typeof categorizations.$inferSelect
@@ -44,6 +47,7 @@ export function toTransactionRead(tx: Tx, cat: Categorization | null | undefined
     note: tx.note,
     one_time: tx.one_time,
     is_transfer: tx.is_transfer,
+    review_reason: reviewReason(tx),
     categorization: cat
       ? { category_id: cat.category_id, essentiality: cat.essentiality, source: cat.source, confidence: cat.confidence }
       : null,
@@ -82,7 +86,13 @@ export function listTransactions(db: Db, filters: TransactionFilters): [Transact
   if (essentiality) where.push(essentialityCondition(essentiality))
   if (filters.uncategorized) where.push(isNull(categorizations.transaction_id))
   if (filters.needs_review) {
-    where.push(or(isNull(categorizations.transaction_id), inArray(categorizations.confidence, ['low', 'unknown'])) as SQL)
+    where.push(
+      or(
+        isNull(categorizations.transaction_id),
+        inArray(categorizations.confidence, ['low', 'unknown']),
+        stalePendingCondition(),
+      ) as SQL,
+    )
   }
   if (!filters.include_transfers) where.push(eq(transactions.is_transfer, false))
   const condition = and(...where)
@@ -245,4 +255,34 @@ export function transactionRule(
 function defaultContainsPattern(tx: Tx): string {
   const payee = pyStrip(tx.payee ?? '')
   return payee && containsPattern(tx.raw_description, payee) ? payee : tx.raw_description
+}
+
+function pendingTransaction(db: Db, transactionId: number): Tx {
+  const tx = getTransaction(db, transactionId)
+  if (tx === undefined) throw new NotFoundError(`Transaction ${transactionId} not found`)
+  if (!tx.pending) throw new ConflictError(`Transaction ${transactionId} is not pending.`)
+  return tx
+}
+
+/**
+ * POST /api/transactions/{id}/mark-posted: the owner says a pending row is a real charge, so it
+ * counts in totals. Transfer pairing and recurring detection pick it up as a new posting. It
+ * stays posted until the bank itself returns its external id as pending again.
+ */
+export function markPosted(db: Db, transactionId: number): TransactionRead {
+  return db.transaction(() => {
+    const tx = pendingTransaction(db, transactionId)
+    db.update(transactions).set({ pending: false }).where(eq(transactions.id, tx.id)).run()
+    matchTransfers(db, new Set([tx.id]))
+    detectRecurring(db)
+    return toTransactionRead(getTransaction(db, tx.id) as Tx, getCategorization(db, tx.id))
+  })
+}
+
+/** DELETE /api/transactions/{id}: remove a pending hold that never became a charge. */
+export function removePending(db: Db, transactionId: number): void {
+  db.transaction(() => {
+    const tx = pendingTransaction(db, transactionId)
+    db.delete(transactions).where(eq(transactions.id, tx.id)).run()
+  })
 }
