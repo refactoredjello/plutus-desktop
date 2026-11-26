@@ -3,7 +3,7 @@
   "productName": "Plutus",
   "private": true,
   "license": "MIT",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Plutus personal finance, as a desktop app",
   "author": "Plutus",
   "type": "module",
